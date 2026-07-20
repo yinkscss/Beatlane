@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Block Drop — Blast Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #121820;
+      --ink-soft: #5a6675;
+      --paper: #f4f0ea;
+      --white: #fffdf8;
+      --brand: #0f8f7b;
+      --brand-deep: #0a5c50;
+      --coral: #e76f51;
+      --mango: #f4a261;
+      --sun: #e9c46a;
+      --sky: #4cc9f0;
+      --mint: #8fdcc8;
+      --lilac: #7b6cf0;
+      --rose: #f071a5;
+      --lime: #9ccc65;
+      --board: #1c2836;
+      --cell: #2a3a4f;
+      --line: #ddd5c8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 600px at 10% -10%, #c8ebe4 0%, transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, #ffd9c2 0%, transparent 45%),
+        radial-gradient(700px 400px at 50% 100%, #ffe9a8 0%, transparent 40%),
+        var(--paper);
+      overflow-x: hidden;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+      color: var(--brand-deep);
+    }
+    .logo span { color: var(--coral); }
+    .links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .links a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid var(--line);
+    }
+    .links a:hover { color: var(--brand-deep); background: #fff; }
+
+    .stage {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px 24px 64px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 40px;
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .stage { grid-template-columns: 1fr; gap: 28px; }
+    }
+
+    .pitch h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      letter-spacing: -0.045em;
+      line-height: 1.02;
+      margin: 0 0 16px;
+    }
+    .pitch h1 em {
+      font-style: normal;
+      color: var(--coral);
+    }
+    .pitch .lede {
+      font-size: 1.15rem;
+      line-height: 1.55;
+      color: var(--ink-soft);
+      max-width: 38ch;
+      margin: 0 0 22px;
+    }
+    .beats {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .beats li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      font-size: 0.98rem;
+      line-height: 1.4;
+    }
+    .beats .n {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      color: var(--brand);
+      font-size: 0.85rem;
+      padding-top: 2px;
+    }
+    .beats strong { color: var(--ink); }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #19b39a, var(--brand));
+      color: #fff;
+      box-shadow: 0 4px 0 var(--brand-deep);
+    }
+    .btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--brand-deep); }
+    .btn-ghost {
+      background: var(--white);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: 0 2px 0 #ddd5c8;
+    }
+
+    .demo-shell {
+      position: relative;
+      background: #111820;
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow:
+        0 0 0 2px #2a3340,
+        0 30px 60px rgba(18, 24, 32, 0.28);
+    }
+    .demo-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #f4f7fb;
+      padding: 4px 6px 14px;
+    }
+    .demo-bar .mode {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      background: rgba(255,255,255,.1);
+      padding: 5px 10px;
+      border-radius: 999px;
+    }
+    .demo-bar .score .lbl {
+      font-size: 10px;
+      opacity: .6;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      text-align: right;
+    }
+    .demo-bar .score .val {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: -0.03em;
+    }
+
+    .board-wrap {
+      position: relative;
+      background: #15202c;
+      border-radius: 16px;
+      padding: 8px;
+      overflow: hidden;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      aspect-ratio: 1;
+    }
+    .cell {
+      border-radius: 6px;
+      background: var(--cell);
+      aspect-ratio: 1;
+      position: relative;
+      transition: transform .12s ease, opacity .12s ease;
+    }
+    .cell.on {
+      box-shadow: inset 0 -3px 0 rgba(0,0,0,.22), inset 0 2px 0 rgba(255,255,255,.22);
+    }
+    .c-coral { background: var(--coral); }
+    .c-mango { background: var(--mango); }
+    .c-sun { background: var(--sun); }
+    .c-sky { background: var(--sky); }
+    .c-teal { background: var(--brand); }
+    .c-mint { background: var(--mint); }
+    .c-lilac { background: var(--lilac); }
+    .c-rose { background: var(--rose); }
+    .c-lime { background: var(--lime); }
+
+    .cell.flash {
+      animation: cellFlash .28s ease-out;
+      z-index: 2;
+    }
+    .cell.blast {
+      animation: cellBlast .45s cubic-bezier(.2,.8,.2,1) forwards;
+      z-index: 3;
+    }
+    .cell.drop-in {
+      animation: dropIn .35s cubic-bezier(.2,1.2,.3,1) both;
+    }
+
+    @keyframes cellFlash {
+      0% { filter: brightness(1); transform: scale(1); }
+      40% { filter: brightness(2.2); transform: scale(1.08); box-shadow: 0 0 16px rgba(255,255,255,.55); }
+      100% { filter: brightness(1); transform: scale(1); }
+    }
+    @keyframes cellBlast {
+      0% { transform: scale(1); opacity: 1; filter: brightness(1.6); }
+      55% { transform: scale(1.25) rotate(4deg); opacity: 1; filter: brightness(2); }
+      100% { transform: scale(0) rotate(-12deg); opacity: 0; }
+    }
+    @keyframes dropIn {
+      from { transform: translateY(-18px) scale(.7); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .line-beam {
+      position: absolute;
+      pointer-events: none;
+      z-index: 4;
+      border-radius: 8px;
+      opacity: 0;
+    }
+    .line-beam.row {
+      left: 8px; right: 8px; height: calc((100% - 16px) / 8);
+      background: linear-gradient(90deg, transparent, #fff 20%, var(--sun) 50%, #fff 80%, transparent);
+      box-shadow: 0 0 24px rgba(233,196,106,.8);
+      animation: beamRow .5s ease-out forwards;
+    }
+    .line-beam.col {
+      top: 8px; bottom: 8px; width: calc((100% - 16px) / 8);
+      background: linear-gradient(180deg, transparent, #fff 20%, var(--sky) 50%, #fff 80%, transparent);
+      box-shadow: 0 0 24px rgba(76,201,240,.75);
+      animation: beamCol .5s ease-out forwards;
+    }
+    @keyframes beamRow {
+      0% { opacity: 0; transform: scaleX(.2); }
+      30% { opacity: 1; transform: scaleX(1); }
+      100% { opacity: 0; transform: scaleX(1.05); }
+    }
+    @keyframes beamCol {
+      0% { opacity: 0; transform: scaleY(.2); }
+      30% { opacity: 1; transform: scaleY(1); }
+      100% { opacity: 0; transform: scaleY(1.05); }
+    }
+
+    .burst {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      z-index: 6;
+    }
+    .burst .shout {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      letter-spacing: -0.05em;
+      line-height: .9;
+      color: var(--sun);
+      text-shadow: 0 4px 0 #c4922a, 0 10px 30px rgba(0,0,0,.45);
+      opacity: 0;
+      transform: scale(.4);
+    }
+    .burst .shout.show {
+      animation: shoutPop .7s cubic-bezier(.15,1.4,.3,1) forwards;
+    }
+    .burst .shout.x2 { font-size: clamp(3.5rem, 12vw, 5rem); color: var(--sun); text-shadow: 0 4px 0 #c4922a, 0 10px 30px rgba(0,0,0,.45); }
+    .burst .shout.x3 { font-size: clamp(3.5rem, 12vw, 5rem); color: var(--coral); text-shadow: 0 4px 0 #b84a32, 0 10px 30px rgba(0,0,0,.45); }
+    .burst .shout.mega { font-size: clamp(2.6rem, 9vw, 3.8rem); color: var(--mint); text-shadow: 0 4px 0 #0a5c50, 0 10px 30px rgba(0,0,0,.45); }
+    .burst .sub {
+      position: absolute;
+      margin-top: 72px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #fff;
+      font-size: 0.85rem;
+      opacity: 0;
+    }
+    .burst .sub.show { animation: fadeUp .55s .1s ease-out forwards; }
+    @keyframes shoutPop {
+      0% { opacity: 0; transform: scale(.35) rotate(-6deg); }
+      55% { opacity: 1; transform: scale(1.08) rotate(1deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .spark {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 5;
+      animation: sparkFly .55s ease-out forwards;
+    }
+    @keyframes sparkFly {
+      0% { opacity: 1; transform: translate(0,0) scale(1) rotate(0); }
+      100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3) rotate(140deg); }
+    }
+
+    .board-flash {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255,255,255,.28), transparent 60%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .board-flash.on { animation: boardFlash .4s ease-out; }
+    @keyframes boardFlash {
+      0% { opacity: .9; }
+      100% { opacity: 0; }
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .controls button {
+      flex: 1 1 auto;
+      min-width: 72px;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 10px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 12px;
+      color: #fff;
+      background: rgba(255,255,255,.1);
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .controls button:hover { background: rgba(255,255,255,.18); }
+    .controls button:active { transform: scale(.97); }
+    .controls button.active { background: var(--brand); }
+    .controls button.coral { background: rgba(231,111,81,.35); }
+    .controls button.coral.active { background: var(--coral); }
+
+    .hint {
+      margin-top: 10px;
+      text-align: center;
+      font-size: 12px;
+      color: rgba(255,255,255,.45);
+      font-weight: 600;
+    }
+
+    .tagline {
+      margin-top: 28px;
+      padding: 16px 18px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--ink-soft);
+    }
+    .tagline strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="logo" href="design-pack.html">BLOCK<span>DROP</span></a>
+    <div class="links">
+      <a href="PRD.html">PRD</a>
+      <a href="design-pack.html">Design pack</a>
+    </div>
+  </div>
+
+  <div class="stage">
+    <section class="pitch">
+      <h1>Place blocks.<br>Clear lines.<br><em>Feel the blast.</em></h1>
+      <p class="lede">
+        Block Drop is the sticky one-thumb puzzle — tray of three, 8×8 grid —
+        where every multi-clear hits like a dopamine firework. Web-first on Celo.
+        Keep the run alive with cheap cUSD continues. No ads. No skins.
+      </p>
+      <ol class="beats">
+        <li><span class="n">01</span><span><strong>The loop you’ll refresh 20× a day.</strong> Drag. Drop. Near-miss. Clear.</span></li>
+        <li><span class="n">02</span><span><strong>Blasts that sell the skill.</strong> Singles whisper. Doubles pop. Megas shake the board.</span></li>
+        <li><span class="n">03</span><span><strong>Pay at the regret peak.</strong> Second Chance $0.49 · Reshuffle $0.19 — in cUSD, not CELO.</span></li>
+        <li><span class="n">04</span><span><strong>Invisible wallet.</strong> Magic sign-in. Boast a high score on-chain. Blitz for cash cups.</span></li>
+      </ol>
+      <div class="cta-row">
+        <button class="btn btn-primary" id="autoDemo">Play the blast reel</button>
+        <button class="btn btn-ghost" id="resetBoard">Reset board</button>
+      </div>
+      <div class="tagline">
+        <strong>Pitch in one line:</strong> Fruit-ninja energy, Block Blast bones —
+        settled in stablecoins so a continue costs pocket change, not a token thesis.
+      </div>
+    </section>
+
+    <section class="demo-shell" aria-label="Blast animation demo">
+      <div class="demo-bar">
+        <div class="mode">CLASSIC · DEMO</div>
+        <div class="score">
+          <div class="lbl">Score</div>
+          <div class="val" id="scoreVal">0</div>
+        </div>
+      </div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="board"></div>
+        <div class="board-flash" id="boardFlash"></div>
+        <div class="burst">
+          <div class="shout" id="shout"></div>
+          <div class="sub" id="sub"></div>
+        </div>
+      </div>
+      <div class="controls">
+        <button data-blast="single">Single</button>
+        <button data-blast="double">×2</button>
+        <button data-blast="triple" class="coral">×3</button>
+        <button data-blast="mega">Mega</button>
+        <button data-blast="chain">Chain</button>
+      </div>
+      <div class="hint">Tap a blast · or run the full pitch reel</div>
+    </section>
+  </div>
+
+  <script>
+    const COLORS = ["c-coral","c-mango","c-sun","c-sky","c-teal","c-mint","c-lilac","c-rose","c-lime"];
+    const boardEl = document.getElementById("board");
+    const wrapEl = document.getElementById("boardWrap");
+    const shoutEl = document.getElementById("shout");
+    const subEl = document.getElementById("sub");
+    const flashEl = document.getElementById("boardFlash");
+    const scoreEl = document.getElementById("scoreVal");
+    let cells = [];
+    let score = 0;
+    let busy = false;
+    let demoTimer = null;
+
+    function idx(r, c) { return r * 8 + c; }
+
+    function paintBoard(seed = 42, density = 0.55) {
+      boardEl.innerHTML = "";
+      cells = [];
+      let s = seed;
+      for (let i = 0; i < 64; i++) {
+        s = (s * 1103515245 + 12345) & 0x7fffffff;
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        if ((s % 100) / 100 < density) {
+          cell.classList.add("on", COLORS[s % COLORS.length], "drop-in");
+          cell.style.animationDelay = `${(i % 8) * 18}ms`;
+        }
+        boardEl.appendChild(cell);
+        cells.push(cell);
+      }
+    }
+
+    function fillLines(rows, cols) {
+      rows.forEach((r) => {
+        for (let c = 0; c < 8; c++) {
+          const cell = cells[idx(r, c)];
+          cell.className = "cell on " + COLORS[(r + c) % COLORS.length];
+        }
+      });
+      cols.forEach((c) => {
+        for (let r = 0; r < 8; r++) {
+          const cell = cells[idx(r, c)];
+          cell.className = "cell on " + COLORS[(r + c + 3) % COLORS.length];
+        }
+      });
+    }
+
+    function spawnSparks(count, color) {
+      for (let i = 0; i < count; i++) {
+        const sp = document.createElement("div");
+        sp.className = "spark";
+        sp.style.background = color;
+        sp.style.left = `${20 + Math.random() * 60}%`;
+        sp.style.top = `${20 + Math.random() * 60}%`;
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 40 + Math.random() * 90;
+        sp.style.setProperty("--dx", `${Math.cos(ang) * dist}px`);
+        sp.style.setProperty("--dy", `${Math.sin(ang) * dist}px`);
+        wrapEl.appendChild(sp);
+        setTimeout(() => sp.remove(), 600);
+      }
+    }
+
+    function showShout(text, cls, sub) {
+      shoutEl.className = "shout " + cls;
+      shoutEl.textContent = text;
+      subEl.textContent = sub || "";
+      subEl.className = "sub";
+      void shoutEl.offsetWidth;
+      shoutEl.classList.add("show");
+      if (sub) subEl.classList.add("show");
+      setTimeout(() => {
+        shoutEl.classList.remove("show");
+        subEl.classList.remove("show");
+      }, 750);
+    }
+
+    function beam(rows, cols) {
+      rows.forEach((r) => {
+        const b = document.createElement("div");
+        b.className = "line-beam row";
+        b.style.top = `calc(8px + ${r} * (100% - 16px) / 8)`;
+        wrapEl.appendChild(b);
+        setTimeout(() => b.remove(), 520);
+      });
+      cols.forEach((c) => {
+        const b = document.createElement("div");
+        b.className = "line-beam col";
+        b.style.left = `calc(8px + ${c} * (100% - 16px) / 8)`;
+        wrapEl.appendChild(b);
+        setTimeout(() => b.remove(), 520);
+      });
+    }
+
+    function addScore(n) {
+      score += n;
+      scoreEl.textContent = score.toLocaleString();
+      scoreEl.style.transform = "scale(1.15)";
+      setTimeout(() => { scoreEl.style.transform = "scale(1)"; }, 180);
+    }
+
+    async function wait(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
+
+    async function blastLines(rows, cols, shout) {
+      // ensure lines are filled
+      fillLines(rows, cols);
+      await wait(80);
+
+      // flash
+      [...rows.flatMap((r) => Array.from({ length: 8 }, (_, c) => cells[idx(r, c)])),
+       ...cols.flatMap((c) => Array.from({ length: 8 }, (_, r) => cells[idx(r, c)]))
+      ].forEach((cell) => cell.classList.add("flash"));
+
+      beam(rows, cols);
+      flashEl.classList.remove("on");
+      void flashEl.offsetWidth;
+      flashEl.classList.add("on");
+
+      await wait(180);
+
+      const targets = new Set([
+        ...rows.flatMap((r) => Array.from({ length: 8 }, (_, c) => idx(r, c))),
+        ...cols.flatMap((c) => Array.from({ length: 8 }, (_, r) => idx(r, c))),
+      ]);
+
+      targets.forEach((i) => {
+        cells[i].classList.remove("flash");
+        cells[i].classList.add("blast");
+      });
+
+      const sparkColor = shout?.cls === "x3" ? "#e76f51" : shout?.cls === "mega" ? "#8fdcc8" : "#e9c46a";
+      spawnSparks(14 + targets.size, sparkColor);
+      if (shout) showShout(shout.text, shout.cls, shout.sub);
+
+      const points = (rows.length + cols.length) * 120 * Math.max(1, rows.length + cols.length);
+      addScore(points);
+
+      await wait(420);
+
+      targets.forEach((i) => {
+        cells[i].className = "cell";
+      });
+    }
+
+    async function runBlast(type) {
+      if (busy) return;
+      busy = true;
+      document.querySelectorAll(".controls button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.blast === type);
+      });
+
+      try {
+        if (type === "single") {
+          paintBoard(Date.now() % 1000, 0.5);
+          await wait(200);
+          await blastLines([3], [], { text: "CLEAR", cls: "x2", sub: "Single" });
+        } else if (type === "double") {
+          paintBoard(7, 0.48);
+          await wait(200);
+          await blastLines([2, 5], [], { text: "×2", cls: "x2", sub: "Double" });
+        } else if (type === "triple") {
+          paintBoard(13, 0.45);
+          await wait(200);
+          await blastLines([1, 4], [6], { text: "×3", cls: "x3", sub: "Triple" });
+        } else if (type === "mega") {
+          paintBoard(21, 0.4);
+          await wait(200);
+          await blastLines([0, 3, 7], [2], { text: "MEGA", cls: "mega", sub: "4 lines" });
+        } else if (type === "chain") {
+          paintBoard(31, 0.42);
+          await wait(180);
+          await blastLines([6], [], { text: "CLEAR", cls: "x2", sub: "Streak 1" });
+          await wait(220);
+          await blastLines([2], [4], { text: "×2", cls: "x2", sub: "Streak 2" });
+          await wait(220);
+          await blastLines([0, 5], [1], { text: "×3", cls: "x3", sub: "Streak 3" });
+          await wait(200);
+          showShout("CHAIN", "mega", "Keep going");
+          spawnSparks(28, "#f4a261");
+          flashEl.classList.remove("on");
+          void flashEl.offsetWidth;
+          flashEl.classList.add("on");
+          addScore(500);
+        }
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function autoDemo() {
+      if (demoTimer) {
+        clearTimeout(demoTimer);
+        demoTimer = null;
+      }
+      score = 0;
+      scoreEl.textContent = "0";
+      const seq = ["single", "double", "triple", "mega", "chain"];
+      for (const step of seq) {
+        await runBlast(step);
+        await wait(700);
+      }
+    }
+
+    document.querySelectorAll(".controls button").forEach((btn) => {
+      btn.addEventListener("click", () => runBlast(btn.dataset.blast));
+    });
+    document.getElementById("autoDemo").addEventListener("click", autoDemo);
+    document.getElementById("resetBoard").addEventListener("click", () => {
+      score = 0;
+      scoreEl.textContent = "0";
+      paintBoard(Date.now() % 999, 0.55);
+    });
+
+    paintBoard(42, 0.55);
+    // soft intro blast after load
+    setTimeout(() => runBlast("double"), 600);
+  </script>
+</body>
+</html>

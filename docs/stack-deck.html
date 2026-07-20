@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Block Drop — Stack Selection Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2330;
+      --ink-soft: #5a6675;
+      --paper: #f6f3ee;
+      --white: #fffdf9;
+      --line: #d8dfe8;
+      --brand: #0f8f7b;
+      --brand-deep: #0a5c50;
+      --coral: #e76f51;
+      --mango: #f4a261;
+      --sun: #e9c46a;
+      --sky: #4cc9f0;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #d9f3ee 0%, transparent 50%),
+        radial-gradient(800px 480px at 100% 5%, #ffe8d6 0%, transparent 45%),
+        var(--paper);
+      line-height: 1.45;
+      padding-bottom: 120px;
+    }
+
+    .bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 22px;
+      background: rgba(246,243,238,.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.03em;
+      text-decoration: none; color: var(--brand-deep); font-size: 1.1rem;
+    }
+    .logo span { color: var(--coral); }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .bar nav a {
+      font-size: 12px; font-weight: 600; color: var(--ink-soft);
+      text-decoration: none; padding: 5px 10px; border-radius: 999px;
+    }
+    .bar nav a:hover { background: #fff; color: var(--brand-deep); }
+    .bar .meta { font-size: 12px; color: var(--ink-soft); font-weight: 600; }
+
+    .hero {
+      max-width: 960px; margin: 0 auto; padding: 36px 22px 18px;
+    }
+    .hero h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.04em;
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      margin: 0 0 10px; line-height: 1.05;
+    }
+    .hero h1 em { font-style: normal; color: var(--brand); }
+    .hero p { margin: 0; color: var(--ink-soft); max-width: 52ch; font-size: 1.05rem; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+    }
+    .chip {
+      font-size: 11px; font-weight: 700; padding: 4px 10px;
+      border-radius: 999px; border: 1px solid var(--line); background: var(--white);
+    }
+    .chip.free { background: #e6f4ee; color: var(--brand-deep); border-color: #b7d9c8; }
+    .chip.lock { background: #fff3e8; color: #8a4b12; border-color: #f0d7b4; }
+    .chip.rec { background: #e8f4fc; color: #15658a; border-color: #b8d9ec; }
+
+    .deck { max-width: 960px; margin: 0 auto; padding: 8px 22px; }
+
+    .layer {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px 20px 16px;
+      margin-bottom: 14px;
+      scroll-margin-top: 72px;
+    }
+    .layer-head {
+      display: flex; justify-content: space-between; gap: 12px;
+      align-items: baseline; flex-wrap: wrap; margin-bottom: 6px;
+    }
+    .layer-head h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.25rem; font-weight: 800; letter-spacing: -.02em; margin: 0;
+    }
+    .layer-head .picked {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px; font-weight: 700; color: var(--brand-deep);
+    }
+    .layer .why {
+      font-size: 13px; color: var(--ink-soft); margin: 0 0 14px;
+    }
+
+    .opts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .opt {
+      position: relative;
+      text-align: left;
+      border: 1.5px solid var(--line);
+      background: #fbfaf7;
+      border-radius: 14px;
+      padding: 12px 12px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      color: inherit;
+      transition: border-color .15s, background .15s, transform .1s;
+    }
+    .opt:hover { border-color: #b7d0c6; background: #fff; }
+    .opt:active { transform: scale(.985); }
+    .opt.selected {
+      border-color: var(--brand);
+      background: #eef8f5;
+      box-shadow: 0 0 0 3px rgba(15,143,123,.12);
+    }
+    .opt .name {
+      font-weight: 700; font-size: 14px; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    }
+    .opt .desc { font-size: 12px; color: var(--ink-soft); line-height: 1.4; }
+    .badge {
+      font-size: 9px; font-weight: 800; letter-spacing: .06em;
+      text-transform: uppercase; padding: 2px 6px; border-radius: 6px;
+    }
+    .badge.free { background: #d4efe6; color: var(--brand-deep); }
+    .badge.rec { background: #d6ebf8; color: #15658a; }
+    .badge.lock { background: #ffe4c8; color: #8a4b12; }
+    .badge.paid { background: #eee; color: #666; }
+
+    .dock {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+      background: rgba(26,35,48,.94);
+      color: #f4f7fb;
+      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding: 12px 20px;
+      display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    }
+    .dock .sum {
+      flex: 1; min-width: 200px;
+      font-size: 12px; line-height: 1.45;
+      font-family: "JetBrains Mono", monospace;
+      opacity: .9;
+      max-height: 52px; overflow: auto;
+    }
+    .dock button, .dock a.btn {
+      border: 0; border-radius: 12px; padding: 11px 14px;
+      font-family: inherit; font-weight: 700; font-size: 13px;
+      cursor: pointer; text-decoration: none; display: inline-flex;
+      color: #fff;
+    }
+    .dock .primary { background: var(--brand); }
+    .dock .ghost { background: rgba(255,255,255,.12); color: #fff; }
+
+    .export {
+      display: none;
+      max-width: 960px; margin: 20px auto;
+      padding: 0 22px;
+    }
+    .export.show { display: block; }
+    .export pre {
+      background: #1a2330; color: #e8f0ec;
+      border-radius: 16px; padding: 18px 20px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px; line-height: 1.55;
+      overflow: auto; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="logo" href="design-pack.html">BLOCK<span>DROP</span></a>
+    <nav>
+      <a href="PRD.html">PRD</a>
+      <a href="design-pack.html">Design</a>
+      <a href="blast-pitch.html">Blast</a>
+      <a href="#app-shell">Shell</a>
+      <a href="#game">Game</a>
+      <a href="#backend">API</a>
+      <a href="#data">Data</a>
+      <a href="#chain">Chain</a>
+      <a href="#host">Host</a>
+    </nav>
+    <div class="meta">Stack deck · free-first</div>
+  </div>
+
+  <header class="hero">
+    <h1>Pick a stack you can <em>run free</em></h1>
+    <p>One choice per layer. Defaults lean free-tier / open-source. Locked items match decisions already in the PRD (web-only, Magic, cUSD on Celo).</p>
+    <div class="legend">
+      <span class="chip free">Free tier / $0 to start</span>
+      <span class="chip rec">Recommended for Block Drop</span>
+      <span class="chip lock">Already decided</span>
+      <span class="chip">Paid later OK</span>
+    </div>
+  </header>
+
+  <div class="deck" id="deck"></div>
+
+  <div class="export" id="exportBox">
+    <pre id="exportPre"></pre>
+  </div>
+
+  <div class="dock">
+    <div class="sum" id="dockSum">Select options…</div>
+    <button class="ghost" type="button" id="btnReset">Reset</button>
+    <button class="ghost" type="button" id="btnCopy">Copy stack</button>
+    <button class="primary" type="button" id="btnExport">Show summary</button>
+  </div>
+
+  <script>
+    const LAYERS = [
+      {
+        id: "app-shell",
+        title: "App shell / framework",
+        why: "How the web app is structured and routed. Prefer static-export friendly if you want $0 hosting.",
+        options: [
+          { id: "vite-react", name: "Vite + React + TS", desc: "SPA. Fastest free path. Ship to any static host. Great for a game + light UI.", free: true, rec: true },
+          { id: "next", name: "Next.js (App Router)", desc: "SSR/API routes on Vercel free. Heavier; useful if you want server actions later.", free: true },
+          { id: "astro", name: "Astro + React islands", desc: "Mostly static, hydrate only the game. Excellent free Pages/Netlify deploy.", free: true },
+          { id: "sveltekit", name: "SvelteKit", desc: "Lean SPA/SSR. Free on Vercel/CF/Netlify adapters.", free: true },
+          { id: "plain", name: "Vanilla TS + Vite", desc: "No UI framework. Smallest bundle; more DIY for menus/sheets.", free: true },
+        ],
+      },
+      {
+        id: "game",
+        title: "Game client (canvas)",
+        why: "8×8 drag-and-drop needs a 2D engine — not Unity. All of these are free/open-source.",
+        options: [
+          { id: "pixi", name: "PixiJS", desc: "WebGL renderer, great for blasts/particles. Pair with React for chrome.", free: true, rec: true },
+          { id: "phaser", name: "Phaser 3", desc: "Full game framework (input, scenes, tweens). Slightly heavier.", free: true },
+          { id: "canvas", name: "Canvas 2D DIY", desc: "Zero deps. Fine for a grid puzzle; you write drag + VFX yourself.", free: true },
+          { id: "three", name: "Three.js", desc: "Overkill for 2D blocks. Skip unless you want 3D flex later.", free: true },
+        ],
+      },
+      {
+        id: "ui",
+        title: "UI / styling",
+        why: "Menus, sheets, wallet, shop — outside the canvas.",
+        options: [
+          { id: "css-modules", name: "CSS Modules / plain CSS", desc: "No runtime CSS cost. Matches design-pack tokens easily.", free: true, rec: true },
+          { id: "tailwind", name: "Tailwind CSS", desc: "Fast UI iteration. Free. Watch bundle if overused.", free: true },
+          { id: "panda", name: "Panda CSS", desc: "Type-safe styles, zero-runtime. Free.", free: true },
+          { id: "shadcn", name: "shadcn/ui + Tailwind", desc: "Copy-paste components. Free; more “app” than “game”.", free: true },
+        ],
+      },
+      {
+        id: "client-state",
+        title: "Client state",
+        why: "Board/session UI state. Keep game sim on server for anti-cheat later.",
+        options: [
+          { id: "zustand", name: "Zustand", desc: "Tiny store for score, tray, sheets. Free.", free: true, rec: true },
+          { id: "react-context", name: "React Context", desc: "Fine for small app; can re-render a lot.", free: true },
+          { id: "jotai", name: "Jotai", desc: "Atomic state. Free.", free: true },
+          { id: "redux", name: "Redux Toolkit", desc: "Heavy for this game. Skip unless you love it.", free: true },
+        ],
+      },
+      {
+        id: "backend",
+        title: "Backend / API",
+        why: "Validate boards, scores, purchases, tournaments. Free serverless first.",
+        options: [
+          { id: "hono-cf", name: "Hono on Cloudflare Workers", desc: "TS, edge, generous free tier. Ideal with D1/KV.", free: true, rec: true },
+          { id: "next-api", name: "Next.js Route Handlers", desc: "Same repo as Next frontend. Vercel free hobby.", free: true },
+          { id: "supabase-edge", name: "Supabase Edge Functions", desc: "Deno functions next to free Postgres. Nice all-in-one.", free: true },
+          { id: "vercel-fn", name: "Vercel Serverless (TS)", desc: "With Vite front + separate API, or Next. Free hobby limits.", free: true },
+          { id: "render-node", name: "Render free Node service", desc: "Long-running Express/Fastify. Spins down on free — OK for alpha.", free: true },
+          { id: "fly-io", name: "Fly.io free allowance", desc: "Small VMs. Free allowance; card often required.", free: true },
+        ],
+      },
+      {
+        id: "data",
+        title: "Database",
+        why: "Users, sessions, leaderboards, purchase receipts. Free Postgres preferred.",
+        options: [
+          { id: "supabase-pg", name: "Supabase Postgres", desc: "Free project, auth optional, realtime. Strong default.", free: true, rec: true },
+          { id: "neon", name: "Neon Postgres", desc: "Serverless PG, free tier, branching. Great with Workers via HTTP.", free: true },
+          { id: "cf-d1", name: "Cloudflare D1", desc: "SQLite at the edge. Free tier. Simpler than PG for v1.", free: true },
+          { id: "turso", name: "Turso (libSQL)", desc: "Edge SQLite, free tier. Pairs with Workers.", free: true },
+          { id: "planetscale", name: "PlanetScale / MySQL", desc: "Free tiers change often — check current limits.", free: true },
+        ],
+      },
+      {
+        id: "cache",
+        title: "Cache / rate limits",
+        why: "Leaderboard hot paths, OTP-ish cooldowns, anti-spam. Free Redis-compatible or KV.",
+        options: [
+          { id: "upstash", name: "Upstash Redis", desc: "Serverless Redis, free tier, REST from edge. Best fit.", free: true, rec: true },
+          { id: "cf-kv", name: "Cloudflare KV", desc: "Eventually consistent KV. Free. Good for config/sessions.", free: true },
+          { id: "cf-cache", name: "CF Cache API only", desc: "HTTP cache, no Redis. Free; limited for leaderboards.", free: true },
+          { id: "none", name: "DB only (no cache)", desc: "Fine for alpha MAU. Add Upstash when hot.", free: true },
+          { id: "redis-cloud", name: "Redis Cloud free", desc: "Classic Redis free DB. Always-on; smaller than Upstash DX for edge.", free: true },
+        ],
+      },
+      {
+        id: "auth-wallet",
+        title: "Auth / wallet",
+        why: "PRD decision: Magic for now. Alternates listed if free tier becomes a blocker.",
+        locked: "magic",
+        options: [
+          { id: "magic", name: "Magic.link", desc: "Email/social → embedded wallet. Decided. Free tier for early volume.", free: true, rec: true, lock: true },
+          { id: "privy", name: "Privy", desc: "Alt embedded wallets + social. Free tier; compare later.", free: true },
+          { id: "dynamic", name: "Dynamic", desc: "Wallet UX suite. Free tier for starters.", free: true },
+          { id: "wagmi-only", name: "wagmi + injected only", desc: "No email wallet — MiniPay OK, casuals suffer. Not recommended.", free: true },
+        ],
+      },
+      {
+        id: "chain",
+        title: "Chain / payments",
+        why: "cUSD on Celo — decided. Testnet is free; mainnet gas is still tiny.",
+        locked: "celo",
+        options: [
+          { id: "celo", name: "Celo + cUSD", desc: "Decided. Player prices in cUSD, not CELO. Testnet free.", free: true, rec: true, lock: true },
+          { id: "celo-sepolia", name: "Celo testnet first", desc: "Build entire alpha on testnet stables. $0.", free: true, rec: true },
+          { id: "base-usdc", name: "Base + USDC", desc: "Alt L2 later. Not v1.", free: true },
+        ],
+      },
+      {
+        id: "contracts",
+        title: "Smart contracts",
+        why: "Session-save receipts, Boast, tournament escrow. Tooling is free; audits are not.",
+        options: [
+          { id: "foundry", name: "Solidity + Foundry", desc: "Test/fuzz local. Free. PRD lean.", free: true, rec: true },
+          { id: "hardhat", name: "Solidity + Hardhat", desc: "Familiar JS tooling. Free.", free: true },
+          { id: "thirdweb", name: "thirdweb contracts", desc: "Faster scaffolds; free tier, less control.", free: true },
+          { id: "no-chain-alpha", name: "Off-chain ledger first", desc: "Simulate purchases in DB on testnet later. Fastest $0 alpha.", free: true },
+        ],
+      },
+      {
+        id: "indexing",
+        title: "On-chain indexing",
+        why: "Boast / tournament events → queryable API. Free tiers are thin — start minimal.",
+        options: [
+          { id: "app-events", name: "App writes + chain receipt", desc: "Backend records purchase after tx hash. $0. Good for v1 continues.", free: true, rec: true },
+          { id: "ponder", name: "Ponder (self-host)", desc: "Open-source indexer. Free if you host (Fly/Render free).", free: true },
+          { id: "envio", name: "Envio HyperIndex", desc: "Often free tier for small apps. Check current.", free: true },
+          { id: "goldsky", name: "Goldsky", desc: "PRD mention. Subgraphs/Mirror — free credits then paid.", free: true },
+          { id: "thegraph", name: "The Graph Studio", desc: "Free queries with limits. Subgraph publish path.", free: true },
+        ],
+      },
+      {
+        id: "realtime",
+        title: "Realtime / leaderboards",
+        why: "Live tournament ranks optional for alpha.",
+        options: [
+          { id: "poll", name: "HTTP polling", desc: "Simplest. Free. Fine for Daily/Classic boards.", free: true, rec: true },
+          { id: "supabase-rt", name: "Supabase Realtime", desc: "Included in free project.", free: true },
+          { id: "cf-durable", name: "CF Durable Objects", desc: "Strong for live Blitz rooms. Free tier limits.", free: true },
+          { id: "partykit", name: "PartyKit / Cloudflare", desc: "WebSocket rooms. Free tier.", free: true },
+          { id: "pusher", name: "Pusher / Ably free", desc: "Hosted pubsub free tiers.", free: true },
+        ],
+      },
+      {
+        id: "host-web",
+        title: "Host — web frontend",
+        why: "Static or SSR. All have free hobby tiers.",
+        options: [
+          { id: "cf-pages", name: "Cloudflare Pages", desc: "Unlimited-ish static, free. Pairs with Workers.", free: true, rec: true },
+          { id: "vercel", name: "Vercel Hobby", desc: "Best with Next. Free; bandwidth/function limits.", free: true },
+          { id: "netlify", name: "Netlify free", desc: "Static + functions. Free tier.", free: true },
+          { id: "github-pages", name: "GitHub Pages", desc: "Static only. $0. No API.", free: true },
+          { id: "render-static", name: "Render static", desc: "Free static sites.", free: true },
+        ],
+      },
+      {
+        id: "host-api",
+        title: "Host — API",
+        why: "Where validation + payments webhooks live.",
+        options: [
+          { id: "cf-workers", name: "Cloudflare Workers", desc: "Free daily requests. Same vibe as Hono rec.", free: true, rec: true },
+          { id: "vercel-api", name: "Vercel functions", desc: "Free hobby. Cold starts.", free: true },
+          { id: "supabase-fn", name: "Supabase functions", desc: "Tied to free Supabase project.", free: true },
+          { id: "render-web", name: "Render free web", desc: "Spins to sleep — OK for alpha.", free: true },
+        ],
+      },
+      {
+        id: "storage",
+        title: "File / asset storage",
+        why: "Audio, sprites, Boast card images.",
+        options: [
+          { id: "r2", name: "Cloudflare R2", desc: "S3-compatible. Free egress. Best free object store.", free: true, rec: true },
+          { id: "supabase-storage", name: "Supabase Storage", desc: "In free project quota.", free: true },
+          { id: "repo-static", name: "In-repo /public", desc: "Ship assets with the frontend. $0 until big.", free: true },
+          { id: "uploadthing", name: "UploadThing free", desc: "If users upload later.", free: true },
+        ],
+      },
+      {
+        id: "ci",
+        title: "CI / quality",
+        why: "Free on GitHub for public or standard private minutes.",
+        options: [
+          { id: "gh-actions", name: "GitHub Actions", desc: "Lint, test, deploy. Free minutes.", free: true, rec: true },
+          { id: "cf-builds", name: "CF / Vercel git deploy", desc: "Build on push. Free hobby.", free: true },
+          { id: "local-only", name: "Local scripts only", desc: "No CI yet. Fine for solo spike.", free: true },
+        ],
+      },
+      {
+        id: "observability",
+        title: "Logs / errors",
+        why: "See crashes without paying Datadog.",
+        options: [
+          { id: "sentry", name: "Sentry free", desc: "Error tracking free tier.", free: true, rec: true },
+          { id: "cf-logs", name: "Workers / Pages logs", desc: "Built-in. Free.", free: true },
+          { id: "axiom", name: "Axiom free", desc: "Logs free tier.", free: true },
+          { id: "console", name: "Console only", desc: "Alpha OK.", free: true },
+        ],
+      },
+      {
+        id: "analytics",
+        title: "Product analytics",
+        why: "Funnels for continue conversion — privacy-light free tools.",
+        options: [
+          { id: "posthog", name: "PostHog free/cloud", desc: "Generous free. Events + funnels.", free: true, rec: true },
+          { id: "plausible", name: "Plausible (paid) / skip", desc: "Nice but not free hosted. Skip for $0.", paid: true },
+          { id: "ga", name: "GA4", desc: "Free. Heavier privacy tradeoff.", free: true },
+          { id: "none-a", name: "None yet", desc: "Ship game first.", free: true },
+        ],
+      },
+    ];
+
+    const DEFAULTS = {
+      "app-shell": "vite-react",
+      game: "pixi",
+      ui: "css-modules",
+      "client-state": "zustand",
+      backend: "supabase-edge",
+      data: "supabase-pg",
+      cache: "upstash",
+      "auth-wallet": "magic",
+      chain: "celo",
+      contracts: "foundry",
+      indexing: "app-events",
+      realtime: "poll",
+      "host-web": "vercel",
+      "host-api": "supabase-fn",
+      storage: "supabase-storage",
+      ci: "gh-actions",
+      observability: "sentry",
+      analytics: "posthog",
+    };
+
+    const KEY = "block-drop-stack-v1";
+
+    function load() {
+      try {
+        return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
+      } catch {
+        return { ...DEFAULTS };
+      }
+    }
+
+    let selected = load();
+
+    function save() {
+      localStorage.setItem(KEY, JSON.stringify(selected));
+      renderDock();
+    }
+
+    function badgeHtml(opt) {
+      const bits = [];
+      if (opt.lock) bits.push('<span class="badge lock">Locked</span>');
+      if (opt.rec) bits.push('<span class="badge rec">Rec</span>');
+      if (opt.free) bits.push('<span class="badge free">Free</span>');
+      if (opt.paid) bits.push('<span class="badge paid">Paid</span>');
+      return bits.join("");
+    }
+
+    function render() {
+      const root = document.getElementById("deck");
+      root.innerHTML = LAYERS.map((layer) => {
+        const pick = selected[layer.id];
+        const pickName = layer.options.find((o) => o.id === pick)?.name || "—";
+        return `
+          <section class="layer" id="${layer.id}">
+            <div class="layer-head">
+              <h2>${layer.title}</h2>
+              <div class="picked">${pickName}</div>
+            </div>
+            <p class="why">${layer.why}</p>
+            <div class="opts">
+              ${layer.options.map((opt) => `
+                <button type="button" class="opt ${pick === opt.id ? "selected" : ""}" data-layer="${layer.id}" data-opt="${opt.id}" ${opt.lock && layer.locked === opt.id ? "" : ""}>
+                  <div class="name">${opt.name} ${badgeHtml(opt)}</div>
+                  <div class="desc">${opt.desc}</div>
+                </button>
+              `).join("")}
+            </div>
+          </section>
+        `;
+      }).join("");
+
+      root.querySelectorAll(".opt").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const layerId = btn.dataset.layer;
+          const optId = btn.dataset.opt;
+          const layer = LAYERS.find((l) => l.id === layerId);
+          // allow changing locked layers still (user) but lock badge marks decided
+          selected[layerId] = optId;
+          // if layer has locked preferred, don't force — user can explore alts
+          save();
+          render();
+        });
+      });
+      renderDock();
+    }
+
+    function summaryLines() {
+      return LAYERS.map((l) => {
+        const opt = l.options.find((o) => o.id === selected[l.id]);
+        return `${l.title}: ${opt?.name || "—"}`;
+      });
+    }
+
+    function renderDock() {
+      document.getElementById("dockSum").textContent = summaryLines().join(" · ");
+    }
+
+    function exportText() {
+      const lines = [
+        "Block Drop — selected stack (free-first)",
+        "========================================",
+        ...summaryLines().map((l) => "- " + l),
+        "",
+        "Locked $0 alpha path:",
+        "Vite+React+Pixi → Vercel Hobby",
+        "Supabase (Postgres + Edge Functions + Storage) + Upstash Redis",
+        "Magic + Celo cUSD (testnet) + Foundry",
+        "App-level purchase receipts (defer Goldsky)",
+        "",
+        "See also: docs/STACK.html",
+      ];
+      return lines.join("\n");
+    }
+
+    document.getElementById("btnReset").onclick = () => {
+      selected = { ...DEFAULTS };
+      save();
+      render();
+      document.getElementById("exportBox").classList.remove("show");
+    };
+    document.getElementById("btnCopy").onclick = async () => {
+      await navigator.clipboard.writeText(exportText());
+      const b = document.getElementById("btnCopy");
+      b.textContent = "Copied";
+      setTimeout(() => { b.textContent = "Copy stack"; }, 1200);
+    };
+    document.getElementById("btnExport").onclick = () => {
+      const box = document.getElementById("exportBox");
+      document.getElementById("exportPre").textContent = exportText();
+      box.classList.add("show");
+      box.scrollIntoView({ behavior: "smooth" });
+    };
+
+    render();
+  </script>
+</body>
+</html>

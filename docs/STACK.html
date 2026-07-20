@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Block Drop — Locked Stack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a2330; --soft: #5a6675; --paper: #f6f3ee; --white: #fffdf9;
+      --line: #d8dfe8; --brand: #0f8f7b; --deep: #0a5c50; --coral: #e76f51;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: "DM Sans", system-ui, sans-serif; color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #d9f3ee 0%, transparent 50%),
+        radial-gradient(800px 400px at 100% 0%, #ffe8d6 0%, transparent 45%),
+        var(--paper);
+      line-height: 1.45;
+    }
+    .bar {
+      display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+      padding: 14px 22px; border-bottom: 1px solid var(--line);
+      background: rgba(246,243,238,.9); position: sticky; top: 0; backdrop-filter: blur(10px);
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+      letter-spacing: -.03em; text-decoration: none; color: var(--deep);
+    }
+    .logo span { color: var(--coral); }
+    .bar a { font-size: 13px; font-weight: 600; color: var(--soft); text-decoration: none; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 36px 22px 64px; }
+    h1 {
+      font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+      letter-spacing: -.04em; font-size: clamp(1.8rem, 4vw, 2.6rem);
+      margin: 0 0 8px; line-height: 1.1;
+    }
+    .sub { color: var(--soft); margin: 0 0 24px; }
+    .chip {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 999px; background: #e6f4ee;
+      color: var(--deep); margin-bottom: 18px;
+    }
+    table {
+      width: 100%; border-collapse: collapse; background: var(--white);
+      border: 1px solid var(--line); border-radius: 16px; overflow: hidden;
+      font-size: 14px;
+    }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { background: #eef8f5; color: var(--deep); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+    tr:last-child td { border-bottom: 0; }
+    td.layer { color: var(--soft); font-weight: 600; width: 42%; }
+    td.pick { font-weight: 700; }
+    .note {
+      margin-top: 20px; padding: 16px 18px; background: var(--white);
+      border: 1px solid var(--line); border-radius: 14px; color: var(--soft); font-size: 14px;
+    }
+    .note strong { color: var(--ink); }
+    code { font-family: "JetBrains Mono", monospace; font-size: 12px; background: #eef2f0; padding: 1px 6px; border-radius: 6px; }
+    .flow {
+      margin-top: 16px; font-family: "JetBrains Mono", monospace; font-size: 12px;
+      background: #1a2330; color: #e8f0ec; padding: 16px 18px; border-radius: 14px; line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="logo" href="stack-deck.html">BLOCK<span>DROP</span></a>
+    <a href="PRD.html">PRD</a>
+    <a href="design-pack.html">Design</a>
+    <a href="stack-deck.html">Stack deck</a>
+    <a href="blast-pitch.html">Blast</a>
+  </div>
+  <div class="wrap">
+    <div class="chip">Locked · free-first · Jul 20, 2026</div>
+    <h1>Selected stack</h1>
+    <p class="sub">Your picks from the stack deck. Supabase-centric API + Vercel web. Magic + Celo cUSD unchanged.</p>
+
+    <table>
+      <thead><tr><th>Layer</th><th>Choice</th></tr></thead>
+      <tbody>
+        <tr><td class="layer">App shell</td><td class="pick">Vite + React + TypeScript</td></tr>
+        <tr><td class="layer">Game client</td><td class="pick">PixiJS</td></tr>
+        <tr><td class="layer">UI / styling</td><td class="pick">CSS Modules / plain CSS</td></tr>
+        <tr><td class="layer">Client state</td><td class="pick">Zustand</td></tr>
+        <tr><td class="layer">Backend / API</td><td class="pick">Supabase Edge Functions</td></tr>
+        <tr><td class="layer">Database</td><td class="pick">Supabase Postgres</td></tr>
+        <tr><td class="layer">Cache / rate limits</td><td class="pick">Upstash Redis</td></tr>
+        <tr><td class="layer">Auth / wallet</td><td class="pick">Magic.link</td></tr>
+        <tr><td class="layer">Chain / payments</td><td class="pick">Celo + cUSD</td></tr>
+        <tr><td class="layer">Smart contracts</td><td class="pick">Solidity + Foundry</td></tr>
+        <tr><td class="layer">On-chain indexing</td><td class="pick">App writes + chain receipt</td></tr>
+        <tr><td class="layer">Realtime / leaderboards</td><td class="pick">HTTP polling</td></tr>
+        <tr><td class="layer">Host — web</td><td class="pick">Vercel Hobby</td></tr>
+        <tr><td class="layer">Host — API</td><td class="pick">Supabase Edge Functions</td></tr>
+        <tr><td class="layer">File / asset storage</td><td class="pick">Supabase Storage</td></tr>
+        <tr><td class="layer">CI</td><td class="pick">GitHub Actions</td></tr>
+        <tr><td class="layer">Logs / errors</td><td class="pick">Sentry free</td></tr>
+        <tr><td class="layer">Product analytics</td><td class="pick">PostHog free/cloud</td></tr>
+      </tbody>
+    </table>
+
+    <div class="flow">
+      Vite+React+Pixi → Vercel<br />
+      Supabase (Postgres + Edge Functions + Storage)<br />
+      Upstash Redis · Magic · Celo cUSD (testnet) · Foundry<br />
+      App-level purchase receipts (defer Goldsky)
+    </div>
+
+    <div class="note">
+      <strong>Why this hangs together:</strong> web on Vercel, everything server-ish in one Supabase project (DB + functions + storage), Redis only where you need rate limits/leaderboard heat, chain kept thin (receipt hash in Postgres). Differs from the deck’s Cloudflare default — that’s fine; your path is still $0-friendly for alpha.
+      <br /><br />
+      Change picks anytime in <a href="stack-deck.html"><code>stack-deck.html</code></a>.
+    </div>
+  </div>
+</body>
+</html>
