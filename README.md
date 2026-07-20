@@ -10,6 +10,7 @@ open docs/design-pack.html
 open docs/blast-pitch.html
 open docs/stack-deck.html
 open docs/STACK.html
+open docs/ROADMAP.html
 ```
 
 Or serve locally:
