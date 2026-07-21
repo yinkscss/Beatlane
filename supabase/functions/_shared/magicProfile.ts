@@ -26,26 +26,45 @@ function decodeBase64Json(b64: string): unknown {
  * Decode Magic DID claim payload.
  *
  * Real Magic DID tokens from `magic.user.getIdToken()` are:
- *   base64(JSON.stringify([proof, claimJwt]))
- * where claimJwt is a JWT (`header.payload.sig`).
+ *   base64(JSON.stringify([proof, claimJsonString]))
+ * where claimJsonString is JSON.stringify({ iat, ext, iss, sub, aud, nbf, tid }).
+ * See https://docs.magic.link/embedded-wallets/authentication/features/decentralized-id
  *
- * Verify scripts also forge a lightweight `hdr.payload.sig` shape when
- * MAGIC_SECRET_KEY is unset — keep that path working.
+ * Verify scripts also forge:
+ *   - base64([proof, "hdr.payload.sig"]) JWT-shaped claim
+ *   - bare `hdr.payload.sig` tokens when MAGIC_SECRET_KEY is unset
  */
 export function parseDidClaim(didToken: string): DidClaim {
   const trimmed = didToken.trim()
   if (!trimmed) throw new Error('Malformed DID token')
 
-  // Real Magic DID: base64([proof, claimJwt])
+  // Real Magic DID: base64([proof, claimJsonString])
   try {
     const decoded = decodeBase64Json(trimmed)
-    if (Array.isArray(decoded) && typeof decoded[1] === 'string') {
-      const claimParts = decoded[1].split('.')
-      if (claimParts.length < 2) throw new Error('Malformed DID token')
-      return decodeBase64Json(claimParts[1]) as DidClaim
+    if (Array.isArray(decoded) && decoded.length >= 2) {
+      const claimRaw = decoded[1]
+      if (claimRaw && typeof claimRaw === 'object') {
+        return claimRaw as DidClaim
+      }
+      if (typeof claimRaw === 'string') {
+        // Official format: claim is a JSON object string
+        try {
+          const asJson = JSON.parse(claimRaw) as DidClaim
+          if (asJson && typeof asJson === 'object' && typeof asJson.iss === 'string') {
+            return asJson
+          }
+        } catch {
+          // Fall through to JWT-shaped claim
+        }
+        // Forged JWT claim: header.payload.sig
+        const claimParts = claimRaw.split('.')
+        if (claimParts.length >= 2) {
+          return decodeBase64Json(claimParts[1]) as DidClaim
+        }
+      }
     }
   } catch {
-    // Fall through to forged JWT-shaped tokens.
+    // Fall through to forged whole-token JWT
   }
 
   // Lightweight forge / JWT-shaped: hdr.payload.sig

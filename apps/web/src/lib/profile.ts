@@ -1,4 +1,8 @@
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 
 export type ProfileRow = Database['public']['Tables']['profiles']['Row']
@@ -44,7 +48,9 @@ export async function upsertMagicProfile(
     },
   )
 
-  if (error) throw error
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(error, 'Profile upsert failed'))
+  }
   if (!data?.ok || !data.profile) {
     throw new Error(data?.error ?? 'Profile upsert failed')
   }

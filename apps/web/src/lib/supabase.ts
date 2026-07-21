@@ -31,3 +31,32 @@ export function getSupabase(): SupabaseClient<Database> {
   if (!cached) cached = createSupabaseClient()
   return cached
 }
+
+/**
+ * Prefer the Edge Function JSON `{ error }` body over the generic
+ * "Edge Function returned a non-2xx status code" message from supabase-js.
+ */
+export async function edgeFunctionErrorMessage(
+  error: unknown,
+  fallback = 'Edge Function failed',
+): Promise<string> {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'context' in error &&
+    error.context instanceof Response
+  ) {
+    try {
+      const body = (await error.context.clone().json()) as {
+        error?: string
+      }
+      if (typeof body?.error === 'string' && body.error.trim()) {
+        return body.error
+      }
+    } catch {
+      /* ignore parse failures */
+    }
+  }
+  if (error instanceof Error && error.message.trim()) return error.message
+  return fallback
+}

@@ -10,7 +10,11 @@ import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { getMagic } from '@/lib/magic'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 
 export const TOURNAMENT_RAKE_BPS = 1500
 export const BLITZ_DURATION_SEC = 60
@@ -120,7 +124,11 @@ async function invokeCup<T>(
     body: { issuer, ...body },
     headers: { Authorization: `Bearer ${did}` },
   })
-  if (error) throw error
+  if (error) {
+    throw new Error(
+      await edgeFunctionErrorMessage(error, 'Tournament request failed'),
+    )
+  }
   if (!data?.ok) throw new Error(data?.error ?? 'Tournament request failed')
   return data
 }

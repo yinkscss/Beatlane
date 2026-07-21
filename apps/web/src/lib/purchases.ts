@@ -4,7 +4,11 @@
  */
 
 import { getMagic } from '@/lib/magic'
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 
 export type PurchaseRow = Database['public']['Tables']['purchases']['Row']
@@ -93,7 +97,11 @@ export async function recordPurchaseReceipt(
     },
   )
 
-  if (error) throw error
+  if (error) {
+    throw new Error(
+      await edgeFunctionErrorMessage(error, 'Purchase receipt failed'),
+    )
+  }
   if (!data?.ok || !data.purchase) {
     throw new Error(data?.error ?? 'Purchase receipt failed')
   }

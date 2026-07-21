@@ -7,7 +7,11 @@ import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { getMagic } from '@/lib/magic'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 
 export const SEASON_PASS_PRICE = 2.99
 export const SEASON_DURATION_DAYS = 28
@@ -77,7 +81,11 @@ export async function fetchSeasonPassStatus(
     body: { issuer, action: 'status', slug },
     headers: { Authorization: `Bearer ${did}` },
   })
-  if (error) throw error
+  if (error) {
+    throw new Error(
+      await edgeFunctionErrorMessage(error, 'Season pass status failed'),
+    )
+  }
   if (!data?.ok) throw new Error(data?.error ?? 'Season pass status failed')
   return data
 }

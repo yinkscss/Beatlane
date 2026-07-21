@@ -3,7 +3,11 @@
  */
 
 import { getMagic } from '@/lib/magic'
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 
 export type DailyChallenge = {
   day: string
@@ -97,7 +101,9 @@ export async function fetchDailyChallenge(): Promise<DailyChallenge> {
     body: { issuer },
     headers: { Authorization: `Bearer ${did}` },
   })
-  if (error) throw error
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(error, 'Daily challenge failed'))
+  }
   if (!data?.ok || !data.day || !data.seed || !data.chartId) {
     throw new Error(data?.error ?? 'Daily challenge failed')
   }
@@ -124,7 +130,9 @@ export async function submitRun(
       headers: { Authorization: `Bearer ${did}` },
     },
   )
-  if (error) throw error
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(error, 'Submit failed'))
+  }
   if (!data) throw new Error('Empty submit-run response')
   return data
 }
