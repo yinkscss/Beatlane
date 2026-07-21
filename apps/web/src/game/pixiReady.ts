@@ -1,5 +1,6 @@
 /**
- * PixiJS is installed for the G2 playfield. Import proves the dependency resolves.
- * Do not mount a canvas until G2.
+ * PixiJS entry — G2 playfield lives in classicPlayfield.ts.
+ * Re-export keeps the G0/G1 import surface valid if anything still references it.
  */
 export { Application } from 'pixi.js'
+export { ClassicPlayfield } from '@/game/classicPlayfield'
