@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { audioRuntime } from '@/audio/runtime'
 import {
   ClassicPlayfield,
   type FailReason,
@@ -9,6 +10,7 @@ import {
   railMarks,
   type JudgeGrade,
 } from '@/game/judging'
+import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Play.module.css'
 
 const JUDGE_MS = 520
@@ -19,11 +21,15 @@ const MARK_GLYPH: Record<'star' | 'flag' | 'crown', string> = {
   crown: '👑',
 }
 
-/** G3 — Judging & HUD over G2 Pixi Classic playfield. */
+/** G3 HUD + G4 Web Audio over G2 Pixi Classic playfield. */
 export default function PlayPage() {
   const hostRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<ClassicPlayfield | null>(null)
   const judgeTimer = useRef<number | null>(null)
+  const bedArmedRef = useRef(true)
+
+  const muted = useAppStore((s) => s.muted)
+  const toggleMute = useAppStore((s) => s.toggleMute)
 
   const [score, setScore] = useState(0)
   const [combo, setCombo] = useState(0)
@@ -49,9 +55,12 @@ export default function PlayPage() {
     if (!host) return
 
     let cancelled = false
+    bedArmedRef.current = true
+
     const game = new ClassicPlayfield({
       onHit: (grade: HitGrade, nextScore, nextCombo) => {
         if (cancelled) return
+        audioRuntime.playSfx(grade === 'perfect' ? 'perfect' : 'great')
         setScore(nextScore)
         setCombo(nextCombo)
         setScorePop(true)
@@ -60,6 +69,9 @@ export default function PlayPage() {
       },
       onFail: (reason, nextScore, endedCombo) => {
         if (cancelled) return
+        bedArmedRef.current = false
+        audioRuntime.playSfx('miss')
+        audioRuntime.stopBed()
         setScore(nextScore)
         setCombo(0)
         setFailCombo(endedCombo)
@@ -71,13 +83,38 @@ export default function PlayPage() {
     })
     gameRef.current = game
 
-    void game.mount(host).catch((err) => {
-      console.error('Playfield failed to mount', err)
-    })
+    const kickBed = () => {
+      if (cancelled || !bedArmedRef.current) return
+      void audioRuntime.startBed().catch((err) => {
+        console.error('Bed start failed', err)
+      })
+    }
+
+    // Autoplay policy: resume/start on first gesture if mount unlock was blocked.
+    const onGesture = () => {
+      kickBed()
+    }
+    host.addEventListener('pointerdown', onGesture)
+    window.addEventListener('keydown', onGesture)
+
+    void (async () => {
+      try {
+        await game.mount(host)
+        if (cancelled) return
+        // Best-effort: works when navigation itself counts as a user gesture.
+        kickBed()
+      } catch (err) {
+        console.error('Playfield / audio failed to start', err)
+      }
+    })()
 
     return () => {
       cancelled = true
+      bedArmedRef.current = false
+      host.removeEventListener('pointerdown', onGesture)
+      window.removeEventListener('keydown', onGesture)
       if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
+      audioRuntime.stopBed()
       game.destroy()
       gameRef.current = null
     }
@@ -90,7 +127,17 @@ export default function PlayPage() {
     setFailCombo(0)
     setJudge(null)
     setMissFlash(false)
+    bedArmedRef.current = true
     gameRef.current?.restart()
+    void audioRuntime.startBed({ restart: true }).catch((err) => {
+      console.error('Bed restart failed', err)
+    })
+  }
+
+  const onMuteClick = () => {
+    toggleMute()
+    // Keep context alive; unlock if still suspended after a gesture.
+    void audioRuntime.unlock()
   }
 
   const fill = railFillPct(combo)
@@ -100,6 +147,16 @@ export default function PlayPage() {
 
   return (
     <div className={styles.page}>
+      <button
+        type="button"
+        className={styles.mute}
+        onClick={onMuteClick}
+        aria-pressed={muted}
+        aria-label={muted ? 'Unmute audio' : 'Mute audio'}
+      >
+        {muted ? 'Unmute' : 'Mute'}
+      </button>
+
       <div className={styles.progress} aria-hidden="true">
         <div className={styles.rail} />
         <div className={styles.fill} style={{ width: `${fill}%` }} />

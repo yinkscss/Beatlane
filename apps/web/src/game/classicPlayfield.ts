@@ -39,7 +39,7 @@ type FxJob = { update: (dtMs: number) => boolean; destroy: () => void }
 
 /**
  * Classic stub playfield: four lanes, scrolling tiles, glass shatter + sparkles,
- * score/combo for G3 HUD. No audio (G4).
+ * score/combo for G3 HUD. Audio lives in `@/audio/runtime` (G4), wired from Play.
  */
 export class ClassicPlayfield {
   private app: Application | null = null
