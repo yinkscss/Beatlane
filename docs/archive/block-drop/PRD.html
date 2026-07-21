@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Block Drop — Product Requirements Document</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #14201a;
+      --muted: #5a6b62;
+      --accent: #0f6b4c;
+      --accent-soft: #e6f4ee;
+      --line: #d5e0da;
+      --paper: #f7faf8;
+      --card: #ffffff;
+      --warn: #8a4b12;
+      --warn-bg: #fff6eb;
+      --shadow: 0 1px 0 rgba(20, 32, 26, 0.04), 0 12px 32px rgba(20, 32, 26, 0.06);
+      --max: 720px;
+      --toc: 240px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #dcefe6 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #e8f2ec 0%, transparent 45%),
+        var(--paper);
+      font-family: "Source Sans 3", system-ui, sans-serif;
+      font-size: 17px;
+      line-height: 1.65;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: var(--toc) minmax(0, var(--max));
+      gap: 48px;
+      max-width: calc(var(--toc) + var(--max) + 96px);
+      margin: 0 auto;
+      padding: 40px 28px 80px;
+      justify-content: center;
+    }
+
+    nav.toc {
+      position: sticky;
+      top: 28px;
+      align-self: start;
+      max-height: calc(100vh - 56px);
+      overflow: auto;
+      padding-right: 8px;
+    }
+
+    nav.toc .label {
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    nav.toc a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      line-height: 1.35;
+      padding: 6px 0 6px 10px;
+      border-left: 2px solid transparent;
+      margin-left: 2px;
+    }
+    nav.toc a:hover { color: var(--accent); }
+    nav.toc a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      font-weight: 600;
+    }
+
+    article { min-width: 0; }
+
+    header.doc-hero {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 36px 36px 28px;
+      box-shadow: var(--shadow);
+      margin-bottom: 36px;
+      position: relative;
+      overflow: hidden;
+    }
+    header.doc-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 6px;
+      background: linear-gradient(180deg, var(--accent), #3aa37a);
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin: 0 0 10px;
+    }
+    h1 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: clamp(1.85rem, 3vw, 2.35rem);
+      line-height: 1.15;
+      font-weight: 700;
+      margin: 0 0 14px;
+      letter-spacing: -0.02em;
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 10px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .chip {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .chip.neutral {
+      background: #eef2f0;
+      color: var(--muted);
+    }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 28px 32px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 0 rgba(20, 32, 26, 0.03);
+      scroll-margin-top: 24px;
+    }
+
+    h2 {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 1.45rem;
+      margin: 0 0 14px;
+      letter-spacing: -0.015em;
+    }
+    h3 {
+      font-size: 1.05rem;
+      margin: 22px 0 10px;
+      color: var(--accent);
+      font-weight: 700;
+    }
+    p { margin: 0 0 14px; }
+    p:last-child, ul:last-child, table:last-child, .callout:last-child { margin-bottom: 0; }
+
+    strong.lead { color: var(--ink); }
+    ul {
+      margin: 0 0 14px;
+      padding-left: 1.2em;
+    }
+    li { margin-bottom: 8px; }
+    li::marker { color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14.5px;
+      margin: 12px 0 8px;
+      overflow: hidden;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+    th {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12.5px;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #fbfdfc; }
+
+    .callout {
+      background: var(--warn-bg);
+      border: 1px solid #f0d7b4;
+      color: var(--warn);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 14.5px;
+      margin-top: 16px;
+    }
+
+    footer.note {
+      color: var(--muted);
+      font-size: 14px;
+      font-style: italic;
+      padding: 8px 8px 0;
+      line-height: 1.55;
+    }
+
+    .grid-2 {
+      display: grid;
+      gap: 12px;
+    }
+    @media (min-width: 700px) {
+      .grid-2.personas { grid-template-columns: 1fr; }
+    }
+    .persona {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px 16px;
+      background: #fbfdfc;
+    }
+    .persona strong { display: block; margin-bottom: 4px; }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 20px 16px 64px;
+        gap: 20px;
+      }
+      nav.toc {
+        position: relative;
+        top: 0;
+        max-height: none;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        padding: 14px 16px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+      nav.toc .label { width: 100%; margin-bottom: 4px; }
+      nav.toc a {
+        border-left: none;
+        padding: 4px 0;
+        margin: 0;
+      }
+      section, header.doc-hero { padding: 22px 20px; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="toc" aria-label="Table of contents">
+      <div class="label">Contents</div>
+      <a href="#summary">1. Executive Summary</a>
+      <a href="#problem">2. Problem & Opportunity</a>
+      <a href="#goals">3. Goals & Metrics</a>
+      <a href="#users">4. Target Users</a>
+      <a href="#gameplay">5. Core Gameplay</a>
+      <a href="#business">6. Business Model</a>
+      <a href="#tech">7. Tech Stack</a>
+      <a href="#security">8. Security & Risk</a>
+      <a href="#rollout">9. Rollout Plan</a>
+      <a href="#questions">10. Decisions</a>
+      <a href="ROADMAP.html">Roadmap →</a>
+    </nav>
+
+    <article>
+      <header class="doc-hero">
+        <p class="eyebrow">Product Requirements Document</p>
+        <h1>“Block Drop” — A Play-to-Earn Block-Placement Puzzle on Celo</h1>
+        <div class="meta">
+          <span class="chip">Draft v1.2</span>
+          <span class="chip neutral">July 20, 2026</span>
+          <span class="chip neutral">Owner: Senior Product Manager</span>
+        </div>
+      </header>
+
+      <section id="summary">
+        <h2>1. Executive Summary</h2>
+        <p>Block Drop is a mobile-first, drag-and-drop block placement puzzle (Block Blast / 1010!-style, not a falling-piece Tetris clone) built on Celo, an Ethereum Layer 2 optimized for low-cost, mobile-friendly payments. Players drag polyomino pieces from a tray onto an 8×8 grid to fill and clear rows and columns, with no rotation, no timer pressure in the core mode, and a game-over state when none of the current pieces fit.</p>
+        <p>The game combines this session-dense, one-thumb puzzle loop with real-money spending at the moments players already care about—second chance after a loss, tray reshuffles, undo, and other mid-run save tools—plus blitz tournament entry and on-chain “boast” flexing. Player-facing prices are in <strong>cUSD</strong> (stable), not native CELO—so a Second Chance stays “$0.49” instead of a moving token amount. Gas can still be abstracted in stablecoins. Cosmetic skins are out of v1: players buy another turn, not a new look.</p>
+        <p>Celo is a strong fit here for the same reasons as the rest of the studio’s slate: it is currently the #1 Ethereum L2 by daily active users, transaction fees average roughly half a cent, users can pay gas in stablecoins instead of a native token, and it already has significant reach in emerging markets via Opera’s MiniPay wallet (16M+ wallets across 65+ countries), a natural acquisition channel for a casual mobile puzzle with a spending loop.</p>
+      </section>
+
+      <section id="problem">
+        <h2>2. Problem Statement &amp; Opportunity</h2>
+        <p><strong class="lead">Problem: </strong>Block-placement puzzles are among the stickiest genres in mobile (multiple sessions per day, very high D1 retention), which makes them a favorite for aggressive ad-network monetization (frequent interstitials, forced rewarded-video loops) and opaque continue-purchase mechanics. That volume of ad exposure caps user goodwill and margin per session, and players get no ownership of anything they spend on.</p>
+        <p><strong class="lead">Opportunity: </strong>Keep the addictive core loop (tray-of-three placement, line clears, combo chains, near-miss board states) but settle the purchases players already make in this genre—continues, reshuffles, undos—directly on-chain in stablecoins, bypassing app-store fees where possible; add provable high-score/combo attestations as a shareable differentiator versus ad-saturated incumbents; and tap Celo’s existing mobile-first, emerging-market user base (MiniPay) as a low-CAC acquisition channel for a genre that already over-indexes on high-frequency, low-friction play.</p>
+      </section>
+
+      <section id="goals">
+        <h2>3. Goals &amp; Success Metrics</h2>
+        <h3>Business Goals</h3>
+        <ul>
+          <li>Launch a free-to-play game with a real-money spending loop generating positive unit economics within 2 quarters of launch.</li>
+          <li>Achieve Day-30 retention ≥ 22% and a paying-user rate ≥ 5% (puzzle-genre benchmarks run higher than arcade: D30 retention 18–28%, payer conversion 3–6%; we lean into proven continue/reshuffle willingness-to-pay rather than cosmetic vanity purchases).</li>
+          <li>Establish Block Drop as a flagship consumer app in the Celo ecosystem (co-marketing potential with Celo Foundation / MiniPay).</li>
+        </ul>
+        <h3>Non-Goals (v1)</h3>
+        <ul>
+          <li>No cosmetic shop / skins / NFT wearables in v1 — players do not buy new looks; they buy another chance to keep playing.</li>
+          <li>No ads — no interstitials, no rewarded video, no ad SDK. Revenue is paid continues/reshuffles and related spends only.</li>
+          <li>No speculative token ($BLOCK token, yield farming) at launch, to avoid gambling/securities classification risk.</li>
+          <li>No player-vs-player wagering of stablecoins in v1 (regulatory complexity); blitz tournaments use a rake/entry-fee model instead, not peer-to-peer betting pools.</li>
+        </ul>
+        <h3>Success Metrics (KPIs)</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Metric</th><th>Target (Month 6)</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>MAU</td><td>300,000</td><td>Puzzle genre supports higher MAU per CAC dollar than arcade</td></tr>
+              <tr><td>D1 / D7 / D30 retention</td><td>45% / 26% / 22%</td><td>Above Fruit Slash targets, reflecting genre norms</td></tr>
+              <tr><td>Paying user %</td><td>5–8%</td><td></td></tr>
+              <tr><td>ARPPU (avg revenue/paying user/mo)</td><td>$3–6</td><td>Lower ticket, higher purchase frequency (micro-continues)</td></tr>
+              <tr><td>ARPDAU</td><td>$0.05–0.09</td><td></td></tr>
+              <tr><td>Avg on-chain tx cost per purchase</td><td>&lt; $0.01</td><td></td></tr>
+              <tr><td>Gross margin per transaction</td><td>&gt; 90%</td><td>After infra + gateway</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="users">
+        <h2>4. Target Users &amp; Personas</h2>
+        <div class="grid-2 personas">
+          <div class="persona">
+            <strong>1. Casual Puzzle Grinder (primary, global)</strong>
+            Plays short 2–5 minute sessions many times a day; when the board dies they tap Second Chance or Reshuffle to keep the run alive. May not know or care it’s “on Celo,” the wallet is invisible to them.
+          </div>
+          <div class="persona">
+            <strong>2. MiniPay / Emerging-Market Stablecoin User (acquisition wedge)</strong>
+            Already has a Celo-based wallet via Opera MiniPay in Africa/LatAm/SE Asia, holds cUSD/USDT, low data-cost sensitivity, values near-zero fees.
+          </div>
+          <div class="persona">
+            <strong>3. Crypto-native Competitive Clearer (differentiator audience)</strong>
+            Cares about provable high scores and clear-combo streaks, on-chain flex/boast, leaderboard NFTs, blitz tournament prize pools.
+          </div>
+        </div>
+      </section>
+
+      <section id="gameplay">
+        <h2>5. Core Gameplay (Feature Scope)</h2>
+        <h3>5.1 Core Loop (v1 — table stakes, must match Block Blast / 1010! quality bar)</h3>
+        <ul>
+          <li>8×8 grid; a tray of 3 polyomino pieces at a time, drag-and-drop placement (no rotation, matching genre convention).</li>
+          <li>Clearing a full row or column removes it; clearing multiple lines in one placement triggers combo scoring.</li>
+          <li>No core-mode timer; game ends when none of the 3 tray pieces fit anywhere on the board.</li>
+          <li>Game modes: Classic (endless, no timer), Blitz (timed sprint for tournament play), Daily Puzzle (fixed seeded board and piece order for fair daily-challenge comparison).</li>
+          <li>Daily challenges &amp; streaks; local + global leaderboards.</li>
+        </ul>
+        <h3>5.2 Session Saves (primary monetization — what players actually buy)</h3>
+        <ul>
+          <li><strong>Second Chance: </strong>on game-over (no tray piece fits), pay to revive the run—clear a stuck cell / free space / keep score and continue. Offered at peak regret, when willingness-to-pay is highest.</li>
+          <li><strong>Reshuffle tray: </strong>replace the current 3 polyominoes with a new draw when none (or only awkward ones) fit—without ending the run.</li>
+          <li><strong>Undo last move: </strong>revert the last placement when a drop ruins the board.</li>
+          <li><strong>Swap / pick a piece: </strong>replace one tray piece with a better option mid-run.</li>
+          <li><strong>Optional hard clear (secondary): </strong>single-cell bomb or color-match clear as a rarer, higher-priced escape hatch—not the default offer.</li>
+        </ul>
+        <h3>5.3 Web3-Native Features (differentiators)</h3>
+        <ul>
+          <li><strong>Invisible wallet onboarding: </strong>wallet created automatically via Magic.link on first login (email/social/phone); player never sees a seed phrase.</li>
+          <li><strong>On-chain “Boast” system: </strong>player can pay a small fee to mint an immutable, timestamped attestation of a high score or a clear-combo streak to a smart contract; shareable as a card/link with a verifiable on-chain proof.</li>
+          <li><strong>Tournaments: </strong>entry-fee based (cUSD) Blitz-mode cash tournaments scored on lines cleared in a fixed time, with automated smart-contract payout to top finishers, rake taken by the house.</li>
+          <li><strong>Season Pass (optional later): </strong>cUSD purchase unlocking bonus continues/reshuffles and challenge rewards over a 4–6 week season—not a cosmetic track.</li>
+        </ul>
+      </section>
+
+      <section id="business">
+        <h2>6. Business Model &amp; Monetization</h2>
+        <h3>6.1 Revenue Streams</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Stream</th><th>Mechanic</th><th>Price (cUSD)</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Second Chance (primary)</td><td>Revive after game-over; keep score / free space to continue</td><td>$0.49 → $0.79 → $0.99</td><td>Cheap first revive; escalate within a run (cUSD)</td></tr>
+              <tr><td>Reshuffle tray</td><td>Replace current 3 pieces with a new draw</td><td>$0.19</td><td>Impulse micro-spend mid-run</td></tr>
+              <tr><td>Undo last move</td><td>Revert last placement</td><td>$0.19</td><td>Same band as reshuffle</td></tr>
+              <tr><td>Swap piece</td><td>Replace one tray piece</td><td>$0.15</td><td>Cheapest helper</td></tr>
+              <tr><td>Hard clear (secondary)</td><td>Single-cell bomb or color-match clear</td><td>$0.49–$0.79</td><td>Rarer escape hatch</td></tr>
+              <tr><td>Continue packs</td><td>Bundles of revives / reshuffles / undos</td><td>$0.79–$2.49</td><td>Better unit price than singles</td></tr>
+              <tr><td>Boast/Flex minting</td><td>On-chain proof-of-score or combo-streak attestation</td><td>$0.29</td><td>Low marginal cost</td></tr>
+              <tr><td>Tournament entry</td><td>Timed Blitz clear-count competitions</td><td>$1–$10 entry</td><td>House rake 15–20% of prize pool</td></tr>
+              <tr><td>Season Pass</td><td>Bonus continues / reshuffles + challenge track</td><td>$2.99 / season</td><td>Recurring; no cosmetic track in v1</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>6.2 Why Session Saves Beat Skins</h3>
+        <ul>
+          <li><strong>No ads, paid saves only: </strong>incumbents flood sessions with rewarded video for a free continue; we skip that entirely and sell Second Chance / Reshuffle as clean paid offers—better UX, cleaner unit economics, no ad-network dependency.</li>
+          <li><strong>Willingness-to-pay is contextual: </strong>players buy when they lose a good run, not when browsing a shop. Second Chance and Reshuffle convert at the regret peak; skins convert when players feel optional vanity—far weaker in this genre.</li>
+          <li><strong>Micro price band: </strong>helpers at $0.15–$0.19 and first revive at $0.49 maximize conversion (especially MiniPay / emerging markets) while Celo fees stay negligible vs. ticket size.</li>
+          <li><strong>cUSD, not CELO: </strong>all player-facing prices are denominated in cUSD (or USDC/USDT). Native CELO is volatile and turns every Undo into a trading decision—wrong for casuals. CELO may appear only as optional under-the-hood gas if ever needed.</li>
+          <li><strong>Same loop incumbents already proved: </strong>Block Blast–style titles monetize continues and piece helpers far harder than cosmetics; we meet that demand with cheaper, clearer settlement on Celo.</li>
+          <li><strong>Lower payment-processing cost: </strong>Celo fees run near $0.0005–$0.001; stablecoin settlement avoids card interchange (2–3%) when purchases happen via web checkout.</li>
+          <li><strong>Web checkout by default: </strong>the game is web-only, so Second Chance / Reshuffle packs settle in-browser on Celo—no app-store IAP cut.</li>
+          <li><strong>Boast-to-acquire loop: </strong>a shareable on-chain proof of a high score or long combo streak is viral marketing after a saved run—not after buying a skin.</li>
+        </ul>
+
+        <h3>6.3 Pricing &amp; Economy Guardrails</h3>
+        <ul>
+          <li>No cosmetic shop in v1; do not dilute the offer surface with skins nobody asked for.</li>
+          <li>Second Chance / Reshuffle / Undo usable only in Classic and Daily modes. Tournament Blitz is continue-free and boost-free so ranked play stays skill-fair and avoids a pay-to-win / skill-gambling classification.</li>
+          <li>Escalate Second Chance within a run: <strong>$0.49 → $0.79 → $0.99</strong> (cUSD) so the first continue feels easy and later ones still monetize whales without feeling predatory early.</li>
+          <li>Cap daily spend on continues/tournament entries with soft warnings and optional self-exclusion limits.</li>
+          <li>Jurisdiction / country-by-country legal scoping is out of scope for this PRD; ship as a public web game without a geo launch matrix.</li>
+        </ul>
+      </section>
+
+      <section id="tech">
+        <h2>7. Tech Stack Recommendation</h2>
+        <h3>7.1 Blockchain Layer — Celo (L2)</h3>
+        <p>Celo migrated from a standalone L1 to a full Ethereum L2 (OP Stack + EigenDA) in March 2025 and is EVM-equivalent, so standard Solidity/Hardhat/Foundry tooling works unmodified.</p>
+        <p>Fee abstraction lets players pay gas in cUSD/USDC/USDT directly, critical for a “Second Chance for $0.49” tap where you don’t want to explain gas tokens or CELO volatility. Block times of roughly 1 second mean continue purchases and boast-mints confirm fast enough for a mid-run UX loop.</p>
+        <p>Distribution advantage: MiniPay (Opera) gives access to 16M+ existing Celo wallets in emerging markets, a real acquisition channel and not just an infrastructure choice.</p>
+        <p>Smart contract stack: Solidity + Foundry (testing/fuzzing) or Hardhat; a simple payment/receipt contract for session-save packs (Second Chance, Reshuffle, Undo); an escrow/attestation contract for Boast; and a tournament-payout contract. No cosmetic ERC-1155 marketplace in v1.</p>
+
+        <h3>7.2 Wallet &amp; Auth — Magic.link</h3>
+        <ul>
+          <li>Embedded/dedicated wallet SDK for invisible onboarding: email OTP, SMS, social login, or passkeys; the player logs in like any web2 game and a non-custodial wallet is provisioned behind the scenes (50–100ms wallet creation/signing latency).</li>
+          <li>Non-custodial: Magic’s key-management system means the studio never custodies player funds, reducing regulatory and security burden.</li>
+          <li><strong>Decision: Magic for now.</strong> Gas sponsorship / paymaster pairing is a later optimization if needed—not a v1 blocker.</li>
+        </ul>
+
+        <h3>7.3 Blockchain Data / Indexing — Goldsky</h3>
+        <ul>
+          <li>Goldsky Subgraphs to index on-chain events (session-save purchases, boast attestations, tournament results) into a queryable GraphQL API for the game backend and leaderboard service, sub-second indexing latency, fully managed.</li>
+          <li>Goldsky Mirror to stream the same on-chain events directly into a Postgres/ClickHouse analytics warehouse in real time for BI, fraud detection, and finance reconciliation, with automatic reorg handling.</li>
+        </ul>
+
+        <h3>7.4 Game Client</h3>
+        <p><strong>Decision: web game only.</strong> No native app-store build in v1. A drag-and-drop grid puzzle is 2D state + pointer/touch events—no physics engine required.</p>
+        <ul>
+          <li>Client: PixiJS or Phaser.js + React, shipped as a responsive web app (PWA optional for “Add to Home Screen”).</li>
+          <li>Players open a URL in the browser (desktop or mobile); purchases settle in that same web session.</li>
+          <li>No Unity, no Capacitor / App Store / Play Store packaging for v1.</li>
+        </ul>
+
+        <h3>7.5 Backend</h3>
+        <ul>
+          <li>Node.js/TypeScript services (board-state validation, anti-cheat score verification, matchmaking for tournaments), pairs naturally with Goldsky’s GraphQL/webhook outputs and Magic’s SDK (also TS-native).</li>
+          <li>Postgres (via Goldsky Mirror sink) as the source of truth for indexed on-chain data joined with off-chain game-session data.</li>
+          <li>Redis for real-time leaderboard caching and rate limiting.</li>
+        </ul>
+
+        <h3>7.6 Infra / DevOps</h3>
+        <ul>
+          <li>AWS or GCP for backend hosting; Cloudflare for CDN/edge (asset delivery, DDoS protection).</li>
+          <li>CI/CD: GitHub Actions; contracts tested via Foundry fuzzing plus a third-party audit before mainnet deployment (non-negotiable given real money flows).</li>
+        </ul>
+
+        <h3>7.7 Summary Stack</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Choice</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Blockchain</td><td>Celo (Ethereum L2)</td></tr>
+              <tr><td>Wallet/Auth</td><td>Magic.link (embedded wallets, passwordless)</td></tr>
+              <tr><td>On-chain data indexing</td><td>Goldsky (Subgraphs + Mirror)</td></tr>
+              <tr><td>Smart contracts</td><td>Solidity, Foundry, OpenZeppelin</td></tr>
+              <tr><td>Game client</td><td>PixiJS/Phaser + React — web game only (browser / optional PWA)</td></tr>
+              <tr><td>Backend</td><td>Node.js/TypeScript, Postgres, Redis</td></tr>
+              <tr><td>Hosting</td><td>AWS/GCP + Cloudflare</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="security">
+        <h2>8. Security, Compliance &amp; Risk</h2>
+        <ul>
+          <li>Smart contract audit mandatory before mainnet launch for any contract touching player funds (shop, tournament payouts).</li>
+          <li>KYC/AML: tournament cash payouts above regulatory thresholds may require KYC; plan for a KYC provider integration (many embedded-wallet vendors, including Magic, support pluggable identity/compliance tooling) before scaling tournament stakes.</li>
+          <li>Anti-cheat: server-authoritative board-state validation (client sends placements, server recomputes clears and score) to prevent fraudulent boast/tournament submissions.</li>
+          <li>Regulatory review per country on the tournament entry-fee/rake model (skill-game vs. gambling classification varies globally).</li>
+          <li>Responsible spending: daily/weekly spend caps, cooldowns, and clear odds with no gacha-style randomized paid loot, to reduce regulatory exposure.</li>
+        </ul>
+      </section>
+
+      <section id="rollout">
+        <h2>9. Rollout Plan</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Phase</th><th>Scope</th><th>Timeline</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Alpha</td><td>Core drag-and-drop gameplay + wallet onboarding (Magic) + Second Chance / Reshuffle / Undo offers, testnet</td><td>Weeks 1–6</td></tr>
+              <tr><td>Closed Beta</td><td>Add Boast minting, Goldsky indexing/leaderboards, mainnet with real cUSD</td><td>Weeks 7–12</td></tr>
+              <tr><td>Public Launch</td><td>Tournaments, Season Pass (continue packs), MiniPay co-marketing push</td><td>Week 14</td></tr>
+              <tr><td>Post-launch</td><td>Economy tuning (revive pricing curves), expand chains if warranted; cosmetics only if data shows demand</td><td>Ongoing</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="questions">
+        <h2>10. Decisions Locked</h2>
+        <ul>
+          <li><strong>Distribution: </strong>web game only. Players play in the browser. No Apple/Google app-store build in v1, so no store IAP / checkout-compliance question.</li>
+          <li><strong>Jurisdictions: </strong>none in scope for this PRD. No country launch matrix or legal geo-gating work tracked here.</li>
+          <li><strong>Wallets: </strong>Magic.link for now. Revisit paymaster / gasless later only if UX needs it.</li>
+          <li><strong>Currency: </strong>price and settle shop / continues / tournaments in <strong>cUSD</strong> (stable). Do not price player offers in native CELO.</li>
+          <li><strong>Price band: </strong>Undo/Reshuffle $0.19 · Swap $0.15 · Second Chance $0.49/$0.79/$0.99 · Boast $0.29 · Season Pass $2.99 (all cUSD).</li>
+        </ul>
+        <div class="callout">
+          <strong>What that confusing last question meant (and why it’s gone):</strong> it was asking whether to build Block Drop in the browser first as a cheap experiment, vs. building it in Unity like a heavier native game. You’re shipping a web game—so the answer is simply “build it for the web.” No Unity debate.
+        </div>
+        <div class="callout" style="margin-top:12px; background: var(--accent-soft); border-color: #b7d9c8; color: var(--accent);">
+          This PRD reflects product decisions as of July 2026. Reconfirm Celo / Goldsky / Magic details against current vendor docs before engineering commits.
+        </div>
+      </section>
+
+      <footer class="note">
+        Source: Block Drop PRD Draft v1.2 · Cheaper cUSD micro-prices · no native CELO pricing.
+      </footer>
+    </article>
+  </div>
+
+  <script>
+    const links = [...document.querySelectorAll("nav.toc a")];
+    const sections = links.map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const id = "#" + visible.target.id;
+        links.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === id));
+      },
+      { rootMargin: "-20% 0px -60% 0px", threshold: [0.2, 0.5, 0.8] }
+    );
+    sections.forEach((s) => observer.observe(s));
+  </script>
+</body>
+</html>

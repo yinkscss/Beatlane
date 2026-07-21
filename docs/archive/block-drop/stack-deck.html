@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Beatlane — Stack Selection Deck</title>
+  <title>Block Drop — Stack Selection Deck</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -185,11 +185,11 @@
 </head>
 <body>
   <div class="bar">
-    <a class="logo" href="design-pack.html">BEAT<span>LANE</span></a>
+    <a class="logo" href="design-pack.html">BLOCK<span>DROP</span></a>
     <nav>
       <a href="PRD.html">PRD</a>
       <a href="design-pack.html">Design</a>
-      <a href="beat-pitch.html">Beat pitch</a>
+      <a href="blast-pitch.html">Blast</a>
       <a href="#app-shell">Shell</a>
       <a href="#game">Game</a>
       <a href="#backend">API</a>
@@ -202,7 +202,7 @@
 
   <header class="hero">
     <h1>Pick a stack you can <em>run free</em></h1>
-    <p>Beatlane re-select. One choice per layer. Hit <strong>Reset</strong> for a clean slate, then tap options. When done, use <strong>Copy stack</strong> and paste it back here so we can lock <code>STACK.html</code>.</p>
+    <p>One choice per layer. Defaults lean free-tier / open-source. Locked items match decisions already in the PRD (web-only, Magic, cUSD on Celo).</p>
     <div class="legend">
       <span class="chip free">Free tier / $0 to start</span>
       <span class="chip rec">Recommended for Block Drop</span>
@@ -455,7 +455,7 @@
       analytics: "posthog",
     };
 
-    const KEY = "beatlane-stack-v2";
+    const KEY = "block-drop-stack-v1";
 
     function load() {
       try {
@@ -533,7 +533,7 @@
 
     function exportText() {
       const lines = [
-        "Beatlane — selected stack (free-first)",
+        "Block Drop — selected stack (free-first)",
         "========================================",
         ...summaryLines().map((l) => "- " + l),
         "",

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Beatlane — Locked Stack</title>
+  <title>Block Drop — Locked Stack</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
@@ -68,22 +68,23 @@
 </head>
 <body>
   <div class="bar">
-    <a class="logo" href="stack-deck.html">BEAT<span>LANE</span></a>
+    <a class="logo" href="stack-deck.html">BLOCK<span>DROP</span></a>
     <a href="PRD.html">PRD</a>
     <a href="design-pack.html">Design</a>
-    <a href="beat-pitch.html">Beat pitch</a>
     <a href="stack-deck.html">Stack deck</a>
+    <a href="blast-pitch.html">Blast</a>
+    <a href="ROADMAP.html">Roadmap</a>
   </div>
   <div class="wrap">
     <div class="chip">Locked · free-first · Jul 20, 2026</div>
     <h1>Selected stack</h1>
-    <p class="sub">Carried into Beatlane greenfield. Supabase-centric API + Vercel web. Magic + Celo/MiniPay + cUSD.</p>
+    <p class="sub">Your picks from the stack deck. Supabase-centric API + Vercel web. Magic + Celo cUSD unchanged.</p>
 
     <table>
       <thead><tr><th>Layer</th><th>Choice</th></tr></thead>
       <tbody>
         <tr><td class="layer">App shell</td><td class="pick">Vite + React + TypeScript</td></tr>
-        <tr><td class="layer">Game client</td><td class="pick">PixiJS + Web Audio</td></tr>
+        <tr><td class="layer">Game client</td><td class="pick">PixiJS</td></tr>
         <tr><td class="layer">UI / styling</td><td class="pick">CSS Modules / plain CSS</td></tr>
         <tr><td class="layer">Client state</td><td class="pick">Zustand</td></tr>
         <tr><td class="layer">Backend / API</td><td class="pick">Supabase Edge Functions</td></tr>
@@ -112,8 +113,6 @@
 
     <div class="note">
       <strong>Why this hangs together:</strong> web on Vercel, everything server-ish in one Supabase project (DB + functions + storage), Redis only where you need rate limits/leaderboard heat, chain kept thin (receipt hash in Postgres). Differs from the deck’s Cloudflare default — that’s fine; your path is still $0-friendly for alpha.
-      <br /><br />
-      <strong>Audio:</strong> PixiJS draws; <strong>Web Audio API</strong> plays (one <code>AudioContext</code>, music + SFX gains, mute via gain). Songs = Storage audio + JSON chart; chart + music start time drive gameplay; no extra audio libs in v1. Full runtime in <a href="PRD.html#audio"><code>PRD.html</code> §5.3</a>.
       <br /><br />
       Change picks anytime in <a href="stack-deck.html"><code>stack-deck.html</code></a>.
     </div>

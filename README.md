@@ -1,20 +1,17 @@
-# Block Drop
+# Beatlane
 
-Play-to-earn block-placement puzzle on Celo (Block Blast / 1010!-style).
+Four-lane rhythm tap (Piano Tiles–style) on Celo — web-only, MiniPay-ready, cUSD continues & song packs.
+
+GitHub: [`yinkscss/Beatlane`](https://github.com/yinkscss/Beatlane) (private).
 
 ## Docs
 
 ```bash
 open docs/PRD.html
 open docs/design-pack.html
-open docs/blast-pitch.html
-open docs/stack-deck.html
+open docs/beat-pitch.html
 open docs/STACK.html
-open docs/ROADMAP.html
+open docs/stack-deck.html
 ```
 
-Or serve locally:
-
-```bash
-npx --yes serve docs
-```
+Archived Block Drop materials: `docs/archive/block-drop/`.

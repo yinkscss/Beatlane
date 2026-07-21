@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beatlane — Beat Pitch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1424;
+      --soft: #5c5368;
+      --paper: #f7f2eb;
+      --white: #fffdf9;
+      --line: #e4dcd2;
+      --accent: #ff8a3d;
+      --accent-deep: #e85d04;
+      --sky: #7ec8ff;
+      --lav: #b8a0e8;
+      --tile: #0d0d12;
+      --great: #7dd3fc;
+      --perfect: #ffd54a;
+      --ok: #3ecf8e;
+      --bad: #ff5c7a;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 560px at 8% -8%, #d8ecff 0%, transparent 48%),
+        radial-gradient(900px 500px at 100% 0%, #e8dcf8 0%, transparent 46%),
+        radial-gradient(700px 420px at 50% 110%, #ffe4c8 0%, transparent 42%),
+        var(--paper);
+      overflow-x: hidden;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .logo span { color: var(--accent); }
+    .links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .links a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--soft);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid var(--line);
+    }
+    .links a:hover { color: var(--accent-deep); background: #fff; }
+
+    .stage {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px 24px 64px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 40px;
+      align-items: center;
+    }
+    @media (max-width: 900px) {
+      .stage { grid-template-columns: 1fr; gap: 28px; }
+    }
+
+    .pitch h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2.35rem, 5vw, 3.5rem);
+      letter-spacing: -0.045em;
+      line-height: 1.02;
+      margin: 0 0 16px;
+    }
+    .pitch h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .pitch .lede {
+      font-size: 1.12rem;
+      line-height: 1.55;
+      color: var(--soft);
+      max-width: 40ch;
+      margin: 0 0 22px;
+    }
+    .beats {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .beats li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      align-items: start;
+      font-size: 0.98rem;
+      line-height: 1.4;
+    }
+    .beats .n {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      color: var(--accent-deep);
+      font-size: 0.85rem;
+      padding-top: 2px;
+    }
+    .beats strong { color: var(--ink); }
+
+    .cta-row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #e07a45, var(--accent));
+      color: #fff;
+      box-shadow: 0 4px 0 var(--accent-deep);
+    }
+    .btn-primary:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--accent-deep); }
+    .btn-ghost {
+      background: var(--white);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      box-shadow: 0 2px 0 #ddd5c8;
+    }
+
+    .tagline {
+      margin-top: 22px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.65);
+      border: 1px solid var(--line);
+      font-size: 0.95rem;
+      line-height: 1.45;
+      color: var(--soft);
+      max-width: 44ch;
+    }
+    .tagline strong { color: var(--ink); }
+
+    /* Phone demo */
+    .demo-shell {
+      position: relative;
+      max-width: 340px;
+      margin: 0 auto;
+      background: #0c0a12;
+      border-radius: 36px;
+      padding: 12px;
+      box-shadow:
+        0 0 0 2px #2a2438,
+        0 28px 56px rgba(26, 20, 36, 0.3);
+    }
+    .notch {
+      width: 96px; height: 10px;
+      margin: 0 auto 8px;
+      background: #0c0a12;
+      border-radius: 0 0 12px 12px;
+    }
+    .playfield {
+      position: relative;
+      height: 560px;
+      border-radius: 22px;
+      overflow: hidden;
+      background: linear-gradient(165deg, #c4b0f0 0%, #8ec8ff 42%, #a8d4ff 70%, #d4b8f5 100%);
+      color: #fff;
+    }
+    .hud {
+      position: absolute;
+      inset: 0 0 auto 0;
+      z-index: 8;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 14px 14px 0;
+      pointer-events: none;
+    }
+    .hud .mode {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      background: rgba(255,255,255,.22);
+      backdrop-filter: blur(6px);
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .hud .score .lbl {
+      font-size: 9px;
+      opacity: .75;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      text-align: right;
+    }
+    .hud .score .val {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+      text-shadow: 0 2px 10px rgba(40,30,80,.35);
+      transition: transform .15s ease;
+    }
+    .stars {
+      position: absolute;
+      top: 48px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 8;
+      display: flex;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .stars i {
+      width: 14px; height: 14px;
+      background: rgba(255,255,255,.35);
+      clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+      transition: background .25s ease, transform .25s ease;
+    }
+    .stars i.on {
+      background: var(--perfect);
+      transform: scale(1.15);
+      filter: drop-shadow(0 0 6px rgba(255,213,74,.8));
+    }
+
+    .lanes {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      z-index: 1;
+    }
+    .lane {
+      position: relative;
+      border-right: 1.5px solid rgba(255,255,255,.55);
+    }
+    .lane:last-child { border-right: 0; }
+
+    .hit-line {
+      position: absolute;
+      left: 8%; right: 8%;
+      bottom: 18%;
+      height: 3px;
+      border-radius: 99px;
+      background: #fff;
+      box-shadow: 0 0 10px #fff, 0 0 22px rgba(255,255,255,.55);
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .tile {
+      position: absolute;
+      left: 8%;
+      width: 84%;
+      height: 14%;
+      background: var(--tile);
+      border-radius: 4px 4px 2px 2px;
+      box-shadow: inset 0 -3px 0 rgba(255,255,255,.06);
+      z-index: 3;
+      will-change: transform, opacity;
+    }
+    .tile.long { height: 28%; background: linear-gradient(180deg, #1a1a22, #0d0d12); }
+    .tile.hold::after {
+      content: "";
+      position: absolute;
+      left: 50%; top: 10px;
+      width: 10px; height: 10px;
+      margin-left: -5px;
+      border-radius: 50%;
+      background: var(--sky);
+      box-shadow: 0 0 10px var(--sky);
+      z-index: 2;
+    }
+    .tile.hold .fill {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 0%;
+      background: linear-gradient(180deg, rgba(126,200,255,.55), rgba(126,200,255,.25));
+      border-radius: inherit;
+      z-index: 1;
+      pointer-events: none;
+    }
+    .tile.holding {
+      box-shadow: 0 0 18px #7ec8ff, inset 0 -3px 0 rgba(255,255,255,.08);
+    }
+    .finger {
+      position: absolute;
+      width: 36px; height: 36px;
+      margin: -18px 0 0 -18px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.35);
+      border: 2px solid #fff;
+      z-index: 11;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(.6);
+    }
+    .finger.on {
+      opacity: 1;
+      transform: scale(1);
+      box-shadow: 0 0 16px rgba(255,255,255,.6);
+    }
+    .tile.bomb {
+      background: repeating-linear-gradient(45deg, #ff5c7a, #ff5c7a 6px, #0d0d12 6px, #0d0d12 12px);
+    }
+    .tile.gold {
+      background: linear-gradient(180deg, #ffe08a, #ffb703);
+    }
+    .tile.shatter-prep {
+      animation: glassCrack .1s ease-out forwards;
+    }
+    .tile.shatter-gone {
+      opacity: 0 !important;
+      transition: opacity .05s linear;
+      pointer-events: none;
+    }
+    .tile.miss-out {
+      animation: tileMiss .4s ease-in forwards;
+    }
+    @keyframes glassCrack {
+      0% { filter: brightness(1) contrast(1); transform: scale(1); }
+      40% { filter: brightness(2.4) contrast(1.15); transform: scale(1.04); }
+      100% { filter: brightness(1.6) contrast(1.1); transform: scale(1.02); }
+    }
+    @keyframes tileMiss {
+      to { transform: translateY(40px) scale(.9); opacity: 0; filter: brightness(.4); }
+    }
+
+    .glass-burst {
+      position: absolute;
+      pointer-events: none;
+      z-index: 7;
+      overflow: visible;
+    }
+    .glass-shard {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.55) 0%, rgba(200,230,255,.22) 35%, rgba(13,13,18,.75) 36%, rgba(13,13,18,.55) 100%);
+      border: 1px solid rgba(255,255,255,.45);
+      box-shadow:
+        inset 0 0 8px rgba(255,255,255,.25),
+        0 0 6px rgba(180,220,255,.35);
+      opacity: 1;
+      transform: translate(-50%, -50%) rotate(var(--rot0, 0deg));
+      clip-path: polygon(var(--clip));
+      animation: shardFly var(--dur, .55s) cubic-bezier(.15,.7,.25,1) forwards;
+      animation-delay: var(--delay, 0ms);
+    }
+    .glass-shard.perfect {
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.7) 0%, rgba(255,230,120,.35) 32%, rgba(20,16,8,.7) 34%, rgba(13,13,18,.5) 100%);
+      border-color: rgba(255,213,74,.65);
+      box-shadow:
+        inset 0 0 10px rgba(255,255,220,.4),
+        0 0 10px rgba(255,213,74,.45);
+    }
+    .glass-flash {
+      position: absolute;
+      inset: -8%;
+      border-radius: 6px;
+      background:
+        radial-gradient(circle at 40% 35%, rgba(255,255,255,.85), transparent 55%),
+        linear-gradient(120deg, transparent 40%, rgba(255,255,255,.35) 50%, transparent 60%);
+      opacity: 0;
+      z-index: 8;
+      pointer-events: none;
+      animation: glassFlash .28s ease-out forwards;
+    }
+    .glass-flash.perfect {
+      background:
+        radial-gradient(circle at 45% 40%, rgba(255,245,180,.95), transparent 55%),
+        linear-gradient(120deg, transparent 38%, rgba(255,213,74,.5) 50%, transparent 62%);
+    }
+    .crack-lines {
+      position: absolute;
+      inset: 0;
+      z-index: 7;
+      pointer-events: none;
+      opacity: 0;
+      background:
+        linear-gradient(28deg, transparent 48%, rgba(255,255,255,.7) 49.5%, transparent 51%),
+        linear-gradient(-42deg, transparent 46%, rgba(255,255,255,.55) 49%, transparent 52%),
+        linear-gradient(78deg, transparent 47%, rgba(200,230,255,.5) 50%, transparent 53%),
+        linear-gradient(-12deg, transparent 49%, rgba(255,255,255,.4) 50.5%, transparent 52%);
+      mix-blend-mode: screen;
+      animation: crackIn .12s ease-out forwards;
+    }
+    @keyframes crackIn {
+      0% { opacity: 0; transform: scale(.96); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes glassFlash {
+      0% { opacity: .95; transform: scale(.9); }
+      100% { opacity: 0; transform: scale(1.35); }
+    }
+    @keyframes shardFly {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(var(--rot0, 0deg)) scale(1);
+        filter: brightness(1.4);
+      }
+      35% {
+        opacity: 1;
+        filter: brightness(1.1);
+      }
+      100% {
+        opacity: 0;
+        transform:
+          translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+          rotate(var(--rot1, 120deg))
+          scale(.35);
+        filter: brightness(.8) blur(.4px);
+      }
+    }
+
+    .judge {
+      position: absolute;
+      left: 50%;
+      bottom: 28%;
+      transform: translateX(-50%) scale(.6);
+      z-index: 10;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.55rem;
+      letter-spacing: -0.04em;
+      padding: 6px 16px;
+      border-radius: 12px;
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .judge.show { animation: judgePop .55s cubic-bezier(.15,1.35,.3,1) forwards; }
+    .judge.great { background: rgba(125,211,252,.95); color: #0b3a55; }
+    .judge.perfect { background: rgba(255,213,74,.95); color: #5a3d00; }
+    .judge.miss { background: rgba(255,92,122,.95); color: #fff; }
+    @keyframes judgePop {
+      0% { opacity: 0; transform: translateX(-50%) translateY(12px) scale(.5); }
+      45% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.08); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(-8px) scale(1); }
+    }
+
+    .banner {
+      position: absolute;
+      left: 50%;
+      top: 38%;
+      transform: translate(-50%, -50%) scale(.7);
+      z-index: 12;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: clamp(1.6rem, 6vw, 2.1rem);
+      letter-spacing: -0.04em;
+      color: #fff;
+      text-shadow: 0 3px 0 rgba(80,60,140,.45), 0 10px 28px rgba(0,0,0,.35);
+      opacity: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .banner.show { animation: bannerIn .85s cubic-bezier(.15,1.3,.3,1) forwards; }
+    .banner.countdown {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 3.2rem;
+      text-shadow: 0 4px 0 rgba(80,60,140,.5), 0 12px 32px rgba(0,0,0,.4);
+    }
+    @keyframes bannerIn {
+      0% { opacity: 0; transform: translate(-50%, -40%) scale(.4); }
+      35% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+      70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -60%) scale(1.05); }
+    }
+
+    .combo {
+      position: absolute;
+      right: 14px;
+      bottom: 22%;
+      z-index: 9;
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700;
+      font-size: 0.95rem;
+      opacity: 0;
+      pointer-events: none;
+      text-shadow: 0 2px 8px rgba(40,30,80,.4);
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .combo.on { opacity: 1; transform: scale(1.08); }
+
+    .ripple {
+      position: absolute;
+      width: 48px; height: 48px;
+      margin: -24px 0 0 -24px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      opacity: 0;
+      z-index: 6;
+      pointer-events: none;
+      animation: ripple .45s ease-out forwards;
+    }
+    @keyframes ripple {
+      0% { opacity: .9; transform: scale(.4); }
+      100% { opacity: 0; transform: scale(1.6); }
+    }
+
+    .save-card {
+      position: absolute;
+      inset: auto 10% 12% 10%;
+      z-index: 14;
+      background: rgba(20,15,28,.88);
+      backdrop-filter: blur(10px);
+      border-radius: 18px;
+      padding: 16px 14px;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(24px) scale(.94);
+      pointer-events: none;
+      border: 1px solid rgba(255,255,255,.12);
+    }
+    .save-card.show {
+      animation: saveIn .45s cubic-bezier(.2,1.1,.3,1) forwards;
+      pointer-events: auto;
+    }
+    @keyframes saveIn {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .save-card h3 {
+      margin: 0 0 4px;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -.03em;
+    }
+    .save-card p {
+      margin: 0 0 12px;
+      font-size: 12px;
+      color: rgba(255,255,255,.7);
+    }
+    .save-card .pay {
+      display: inline-block;
+      background: linear-gradient(180deg, #e07a45, var(--accent));
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      box-shadow: 0 3px 0 var(--accent-deep);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .controls button {
+      flex: 1 1 auto;
+      min-width: 64px;
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 8px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 11px;
+      cursor: pointer;
+      background: #1e1830;
+      color: #f7f2eb;
+      border: 1px solid #342a4a;
+    }
+    .controls button:hover { background: #2a223f; }
+    .controls button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .controls button.warn { color: #ffb4c0; }
+    .hint {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(247,242,235,.45);
+      margin-top: 8px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="logo" href="design-pack.html">BEAT<span>LANE</span></a>
+    <div class="links">
+      <a href="PRD.html">PRD</a>
+      <a href="design-pack.html">Design pack</a>
+      <a href="STACK.html">Stack</a>
+    </div>
+  </div>
+
+  <div class="stage">
+    <section class="pitch">
+      <h1>Four lanes.<br>One beat.<br><em>Don’t miss.</em></h1>
+      <p class="lede">
+        Beatlane is the classic Piano Tiles loop on the open web — black tiles,
+        soft sky, timing that feels unfair until you’re in the pocket.
+        Continues and song packs in cUSD. No ads. No skins.
+      </p>
+      <ol class="beats">
+        <li><span class="n">01</span><span><strong>The thumb loop.</strong> Tap the black tile. Miss and it’s over — until Second Chance.</span></li>
+        <li><span class="n">02</span><span><strong>Feedback that sells skill.</strong> GREAT whispers. PERFECT pops. Combos climb the stars.</span></li>
+        <li><span class="n">03</span><span><strong>Obstacles that twist the chart.</strong> SPEED UP. Hold. Don’t tap. Bridges &amp; fakes on Hard.</span></li>
+        <li><span class="n">04</span><span><strong>Pay at the miss.</strong> Second Chance $0.49 → $0.99 cUSD. Song packs are real content.</span></li>
+      </ol>
+      <div class="cta-row">
+        <button class="btn btn-primary" id="autoDemo">Play the beat reel</button>
+        <button class="btn btn-ghost" id="resetDemo">Reset</button>
+      </div>
+      <div class="tagline">
+        <strong>Pitch in one line:</strong> Piano Tiles muscle memory, settled in stablecoins —
+        a continue costs pocket change, not a token thesis.
+      </div>
+    </section>
+
+    <section class="demo-shell" aria-label="Beatlane animation demo">
+      <div class="notch"></div>
+      <div class="playfield" id="playfield">
+        <div class="hud">
+          <div class="mode">CLASSIC · DEMO</div>
+          <div class="score">
+            <div class="lbl">Score</div>
+            <div class="val" id="scoreVal">0</div>
+          </div>
+        </div>
+        <div class="stars" id="stars" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="lanes" id="lanes">
+          <div class="lane" data-lane="0"></div>
+          <div class="lane" data-lane="1"></div>
+          <div class="lane" data-lane="2"></div>
+          <div class="lane" data-lane="3"></div>
+        </div>
+        <div class="hit-line"></div>
+        <div class="judge" id="judge"></div>
+        <div class="banner" id="banner"></div>
+        <div class="combo" id="combo">×0</div>
+        <div class="save-card" id="saveCard">
+          <h3>Second Chance</h3>
+          <p>Keep your score · revive this run</p>
+          <span class="pay">Continue · $0.49 cUSD</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button data-beat="tap">Tap</button>
+        <button data-beat="perfect">Perfect</button>
+        <button data-beat="speed">Speed Up</button>
+        <button data-beat="hold">Hold</button>
+        <button data-beat="bomb" class="warn">Don’t Tap</button>
+        <button data-beat="miss" class="warn">Miss</button>
+      </div>
+      <div class="hint">Tap a beat · or run the full pitch reel</div>
+    </section>
+  </div>
+
+  <script>
+    const playfield = document.getElementById("playfield");
+    const lanes = [...document.querySelectorAll(".lane")];
+    const judgeEl = document.getElementById("judge");
+    const bannerEl = document.getElementById("banner");
+    const comboEl = document.getElementById("combo");
+    const scoreEl = document.getElementById("scoreVal");
+    const saveCard = document.getElementById("saveCard");
+    const starEls = [...document.querySelectorAll("#stars i")];
+
+    let score = 0;
+    let combo = 0;
+    let busy = false;
+    let activeTiles = [];
+
+    function wait(ms) {
+      return new Promise((r) => setTimeout(r, ms));
+    }
+
+    function addScore(n) {
+      score += n;
+      scoreEl.textContent = score.toLocaleString();
+      scoreEl.style.transform = "scale(1.18)";
+      setTimeout(() => { scoreEl.style.transform = "scale(1)"; }, 160);
+    }
+
+    function setCombo(n) {
+      combo = n;
+      comboEl.textContent = "×" + combo;
+      comboEl.classList.toggle("on", combo > 0);
+      const lit = Math.min(5, Math.floor(combo / 4));
+      starEls.forEach((s, i) => s.classList.toggle("on", i < lit));
+    }
+
+    function showJudge(text, cls) {
+      judgeEl.className = "judge " + cls;
+      judgeEl.textContent = text;
+      void judgeEl.offsetWidth;
+      judgeEl.classList.add("show");
+      setTimeout(() => judgeEl.classList.remove("show"), 520);
+    }
+
+    async function showBanner(text, countdown) {
+      bannerEl.className = "banner" + (countdown ? " countdown" : "");
+      bannerEl.textContent = text;
+      void bannerEl.offsetWidth;
+      bannerEl.classList.add("show");
+      await wait(countdown ? 700 : 900);
+      bannerEl.classList.remove("show");
+    }
+
+    function spawnRipple(laneIndex) {
+      const lane = lanes[laneIndex];
+      const rect = lane.getBoundingClientRect();
+      const field = playfield.getBoundingClientRect();
+      const r = document.createElement("div");
+      r.className = "ripple";
+      r.style.left = (rect.left - field.left + rect.width / 2) + "px";
+      r.style.top = (field.height * 0.82) + "px";
+      playfield.appendChild(r);
+      setTimeout(() => r.remove(), 480);
+    }
+
+    function clearTiles() {
+      activeTiles.forEach((t) => t.remove());
+      activeTiles = [];
+      saveCard.classList.remove("show");
+    }
+
+    function spawnTile(laneIndex, opts = {}) {
+      const lane = lanes[laneIndex];
+      const el = document.createElement("div");
+      el.className = "tile" + (opts.long ? " long" : "") + (opts.hold ? " hold" : "") + (opts.bomb ? " bomb" : "") + (opts.gold ? " gold" : "");
+      el.style.top = (opts.top ?? -18) + "%";
+      lane.appendChild(el);
+      activeTiles.push(el);
+      return el;
+    }
+
+    async function slideTile(el, toPercent, duration) {
+      const from = parseFloat(el.style.top) || -18;
+      const start = performance.now();
+      return new Promise((resolve) => {
+        function frame(now) {
+          const t = Math.min(1, (now - start) / duration);
+          const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+          el.style.top = (from + (toPercent - from) * eased) + "%";
+          if (t < 1) requestAnimationFrame(frame);
+          else resolve();
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    const SHARD_CLIPS = [
+      "50% 0%, 100% 35%, 70% 100%, 20% 80%",
+      "0% 20%, 55% 0%, 100% 50%, 40% 100%, 0% 70%",
+      "15% 0%, 100% 10%, 85% 100%, 0% 60%",
+      "0% 0%, 100% 0%, 60% 100%, 0% 80%",
+      "30% 0%, 100% 40%, 80% 100%, 0% 100%, 10% 40%",
+      "0% 40%, 70% 0%, 100% 70%, 45% 100%",
+      "20% 0%, 100% 0%, 100% 100%, 50% 70%, 0% 100%",
+      "0% 0%, 80% 20%, 100% 100%, 10% 90%",
+    ];
+
+    function shatterTile(el, grade) {
+      const lane = el.parentElement;
+      const tileRect = el.getBoundingClientRect();
+      const fieldRect = playfield.getBoundingClientRect();
+      const cx = tileRect.left - fieldRect.left + tileRect.width / 2;
+      const cy = tileRect.top - fieldRect.top + tileRect.height / 2;
+
+      const cracks = document.createElement("div");
+      cracks.className = "crack-lines";
+      el.appendChild(cracks);
+
+      const flash = document.createElement("div");
+      flash.className = "glass-flash" + (grade === "perfect" ? " perfect" : "");
+      flash.style.left = (tileRect.left - fieldRect.left) + "px";
+      flash.style.top = (tileRect.top - fieldRect.top) + "px";
+      flash.style.width = tileRect.width + "px";
+      flash.style.height = tileRect.height + "px";
+      playfield.appendChild(flash);
+      setTimeout(() => flash.remove(), 300);
+
+      el.classList.add("shatter-prep");
+
+      const burst = document.createElement("div");
+      burst.className = "glass-burst";
+      burst.style.left = cx + "px";
+      burst.style.top = cy + "px";
+      burst.style.width = "0";
+      burst.style.height = "0";
+      playfield.appendChild(burst);
+
+      const count = grade === "perfect" ? 11 : 8;
+      for (let i = 0; i < count; i++) {
+        const shard = document.createElement("div");
+        shard.className = "glass-shard" + (grade === "perfect" ? " perfect" : "");
+        const ang = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2);
+        const dist = 36 + Math.random() * (grade === "perfect" ? 70 : 52);
+        const w = 10 + Math.random() * 16;
+        const h = 12 + Math.random() * 20;
+        shard.style.width = w + "px";
+        shard.style.height = h + "px";
+        shard.style.setProperty("--clip", SHARD_CLIPS[i % SHARD_CLIPS.length]);
+        shard.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+        shard.style.setProperty("--dy", (Math.sin(ang) * dist - 12 - Math.random() * 28) + "px");
+        shard.style.setProperty("--rot0", (Math.random() * 40 - 20) + "deg");
+        shard.style.setProperty("--rot1", (140 + Math.random() * 220) + "deg");
+        shard.style.setProperty("--dur", (0.42 + Math.random() * 0.28) + "s");
+        shard.style.setProperty("--delay", (i * 8) + "ms");
+        burst.appendChild(shard);
+      }
+
+      // brief crack, then tile fades while shards fly
+      setTimeout(() => {
+        el.classList.add("shatter-gone");
+      }, 70);
+
+      setTimeout(() => burst.remove(), 750);
+    }
+
+    async function hitTile(el, grade) {
+      const laneIndex = lanes.indexOf(el.parentElement);
+      spawnRipple(laneIndex);
+      shatterTile(el, grade);
+      showJudge(grade === "perfect" ? "PERFECT" : "GREAT", grade);
+      setCombo(combo + 1);
+      addScore(grade === "perfect" ? 320 : 180);
+      await wait(420);
+      el.remove();
+      activeTiles = activeTiles.filter((t) => t !== el);
+    }
+
+    async function runBeat(type) {
+      if (busy) return;
+      busy = true;
+      document.querySelectorAll(".controls button").forEach((b) => {
+        b.classList.toggle("active", b.dataset.beat === type);
+      });
+      saveCard.classList.remove("show");
+
+      try {
+        if (type === "tap") {
+          clearTiles();
+          const lane = 1;
+          const tile = spawnTile(lane);
+          await slideTile(tile, 68, 520);
+          await hitTile(tile, "great");
+        } else if (type === "perfect") {
+          clearTiles();
+          const tile = spawnTile(2, { gold: true });
+          await slideTile(tile, 70, 480);
+          await hitTile(tile, "perfect");
+          await wait(120);
+          const t2 = spawnTile(0);
+          await slideTile(t2, 70, 420);
+          await hitTile(t2, "perfect");
+        } else if (type === "speed") {
+          clearTiles();
+          await showBanner("SPEED UP");
+          for (let i = 0; i < 3; i++) {
+            bannerEl.className = "banner countdown";
+            bannerEl.textContent = String(3 - i);
+            void bannerEl.offsetWidth;
+            bannerEl.classList.add("show");
+            await wait(420);
+            bannerEl.classList.remove("show");
+            await wait(60);
+          }
+          const seq = [0, 2, 1, 3];
+          for (const lane of seq) {
+            const tile = spawnTile(lane);
+            await slideTile(tile, 70, 280);
+            await hitTile(tile, lane % 2 ? "perfect" : "great");
+            await wait(40);
+          }
+        } else if (type === "hold") {
+          clearTiles();
+          await showBanner("HOLD");
+          const tile = spawnTile(1, { long: true, hold: true });
+          const fill = document.createElement("div");
+          fill.className = "fill";
+          tile.appendChild(fill);
+
+          // Slide into the hit band, then hold through the full length
+          await slideTile(tile, 48, 520);
+
+          const finger = document.createElement("div");
+          finger.className = "finger";
+          const laneRect = lanes[1].getBoundingClientRect();
+          const fieldRect = playfield.getBoundingClientRect();
+          finger.style.left = (laneRect.left - fieldRect.left + laneRect.width / 2) + "px";
+          finger.style.top = (fieldRect.height * 0.78) + "px";
+          playfield.appendChild(finger);
+          void finger.offsetWidth;
+          finger.classList.add("on");
+          tile.classList.add("holding");
+
+          const holdMs = 1100;
+          const start = performance.now();
+          const fromTop = 48;
+          const toTop = 78;
+          await new Promise((resolve) => {
+            function frame(now) {
+              const t = Math.min(1, (now - start) / holdMs);
+              fill.style.height = (t * 100) + "%";
+              tile.style.top = (fromTop + (toTop - fromTop) * t) + "%";
+              if (t < 1) requestAnimationFrame(frame);
+              else resolve();
+            }
+            requestAnimationFrame(frame);
+          });
+
+          finger.classList.remove("on");
+          setTimeout(() => finger.remove(), 200);
+          await hitTile(tile, "perfect");
+        } else if (type === "bomb") {
+          clearTiles();
+          await showBanner("DON'T TAP");
+          const bomb = spawnTile(2, { bomb: true });
+          const safe = spawnTile(0);
+          await Promise.all([
+            slideTile(bomb, 72, 700),
+            slideTile(safe, 70, 700),
+          ]);
+          await hitTile(safe, "great");
+          bomb.classList.add("miss-out");
+          await wait(350);
+          bomb.remove();
+          activeTiles = activeTiles.filter((t) => t !== bomb);
+        } else if (type === "miss") {
+          clearTiles();
+          setCombo(0);
+          const tile = spawnTile(3);
+          await slideTile(tile, 78, 560);
+          tile.classList.add("miss-out");
+          showJudge("MISS", "miss");
+          await wait(380);
+          tile.remove();
+          activeTiles = activeTiles.filter((t) => t !== tile);
+          saveCard.classList.add("show");
+        }
+      } finally {
+        busy = false;
+      }
+    }
+
+    async function autoDemo() {
+      score = 0;
+      scoreEl.textContent = "0";
+      setCombo(0);
+      clearTiles();
+      const seq = ["tap", "perfect", "hold", "speed", "bomb", "miss"];
+      for (const step of seq) {
+        await runBeat(step);
+        await wait(step === "miss" ? 1100 : 550);
+      }
+    }
+
+    document.querySelectorAll(".controls button").forEach((btn) => {
+      btn.addEventListener("click", () => runBeat(btn.dataset.beat));
+    });
+    document.getElementById("autoDemo").addEventListener("click", autoDemo);
+    document.getElementById("resetDemo").addEventListener("click", () => {
+      score = 0;
+      scoreEl.textContent = "0";
+      setCombo(0);
+      clearTiles();
+    });
+
+    setTimeout(() => runBeat("perfect"), 500);
+  </script>
+</body>
+</html>

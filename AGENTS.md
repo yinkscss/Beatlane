@@ -1,17 +1,20 @@
 ## Learned User Preferences
 
-- Block Drop is web-only (browser); no app stores or native wrappers in scope
-- Monetization is session saves (Second Chance, Reshuffle, Undo/swap), not cosmetics or skins
-- No ads (no interstitials, rewarded video, or ad SDKs)
+- Prefers reviewing product and UI as HTML under `docs/` (PRD → design pack → stack → roadmap)
+- Keep process and free-first stack across greenfield pivots when possible
+- Celo + MiniPay is a hard product constraint for consumer games
 - Player-facing prices use cUSD (stablecoin), not native CELO
-- Prefers cheaper impulse microspends for continues/reshuffles over mid-casual IAP price points
-- Wallet auth: Magic.link for now
-- No jurisdiction / geo legal scope in the PRD for now
-- Prefers reviewing product and UI as HTML under `docs/` (PRD + full-screen design pack)
+- Prefers impulse microspends (continues/helpers) and real content packs over cosmetic skins
+- No ads (no interstitials, rewarded video, or ad SDKs)
+- Wallet auth: Magic.link for now; MiniPay path when on Celo
+- Web-only distribution (no app stores / native wrappers in v1)
+- Working title for current product: Beatlane (piano-tiles / four-lane rhythm tap); Block Drop abandoned as taken
+- Beatlane playfield should match classic Piano Tiles look (soft sky→lavender gradient, light lanes), not dark stage chrome
+- Beatlane should include hard/tricky obstacles (long holds, multi-lane bridges/hooks, fakes), not only basic black-tile taps
 
 ## Learned Workspace Facts
 
-- Workspace root is `~/Projects/block-drop`
-- Product source of truth lives under `docs/`: `PRD.html`, `ROADMAP.html`, `design-pack.html`, `blast-pitch.html`, `stack-deck.html`, `STACK.html`
-- Game is a Celo-rail web puzzle with on-chain checkout for session saves; no cosmetic shop in v1
-- Locked free-first stack: Vite+React+TS, PixiJS, CSS Modules, Zustand, Supabase (Postgres + Edge Functions + Storage), Upstash Redis, Magic.link, Celo+cUSD, Foundry, app writes+chain receipt, HTTP polling leaderboards, Vercel Hobby web, GitHub Actions, Sentry, PostHog
+- Workspace root is `~/Projects/beatlane` (GitHub: `yinkscss/Beatlane`, private)
+- Current product docs: `docs/PRD.html`, `docs/design-pack.html`, `docs/beat-pitch.html`, `docs/STACK.html`, `docs/stack-deck.html` (Beatlane)
+- Prior Block Drop docs archived under `docs/archive/block-drop/`
+- Last locked stack (pending Beatlane re-select via `stack-deck.html`): Vite+React+TS, PixiJS (+ Web Audio), CSS Modules, Zustand, Supabase (Postgres + Edge Functions + Storage), Upstash Redis, Magic.link, Celo+cUSD, Foundry, app writes+chain receipt, HTTP polling, Vercel Hobby, GitHub Actions, Sentry, PostHog
