@@ -5,7 +5,11 @@ import {
   Graphics,
   Rectangle,
 } from 'pixi.js'
-import type { Chart } from '@/charts/schema'
+import {
+  clampBannerDuration,
+  type Chart,
+  type ChartNote,
+} from '@/charts/schema'
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
 import { pointsForGrade } from '@/game/judging'
@@ -25,6 +29,12 @@ export type SpeedUpPhase =
   | { phase: 'apply'; mult: number }
   | { phase: 'clear' }
 
+export type ObstacleBannerKind = 'hold' | 'dont_tap' | 'double'
+
+export type ObstacleBannerPhase =
+  | { phase: 'show'; kind: ObstacleBannerKind; durationSec: number }
+  | { phase: 'clear' }
+
 /** Song time in seconds from music start (before chart.offset). Null if music not ready. */
 export type SongClock = () => number | null
 
@@ -32,19 +42,29 @@ export type ClassicPlayfieldHandlers = {
   onHit?: (grade: HitGrade, score: number, combo: number) => void
   onFail?: (reason: FailReason, score: number, combo: number) => void
   onSpeedUp?: (ev: SpeedUpPhase) => void
+  onObstacleBanner?: (ev: ObstacleBannerPhase) => void
   onChartComplete?: (score: number, combo: number) => void
 }
+
+type TileKind = 'tap' | 'hold' | 'bomb'
 
 type Tile = {
   root: Container
   body: Graphics
+  fill: Graphics | null
   lane: number
+  kind: TileKind
+  /** Hold length in seconds (0 for non-hold). */
+  length: number
+  /** Chart press/start time (song clock + offset). */
+  noteT: number
   /** Top edge Y in playfield coords. */
   y: number
   w: number
   h: number
   hit: boolean
   dying: boolean
+  holding: boolean
 }
 
 type FxJob = { update: (dtMs: number) => boolean; destroy: () => void }
@@ -52,9 +72,14 @@ type FxJob = { update: (dtMs: number) => boolean; destroy: () => void }
 const SPEED_BANNER_MS = 900
 const SPEED_COUNT_MS = 480
 const DEFAULT_SPEED_MULT = 1.35
+/** Slight forgiveness: release after this fraction of hold length. */
+const HOLD_FORGIVE_FRAC = 0.08
+const HOLD_MARKER = 0x7ec8ff
+const BOMB_STRIPE_A = 0xff5c7a
+const BOMB_STRIPE_B = 0x0d0d12
 
 /**
- * Classic playfield: four lanes, chart-scheduled tiles (G5), glass shatter + sparkles.
+ * Classic playfield: four lanes, chart-scheduled tiles (G5/G6), glass shatter + sparkles.
  * Timing = chart + music clock (not waveform analysis). Audio stays in `@/audio/runtime`.
  */
 export class ClassicPlayfield {
@@ -76,7 +101,8 @@ export class ClassicPlayfield {
   private w = 0
   private h = 0
   private resizeObs: ResizeObserver | null = null
-  private onKey: ((e: KeyboardEvent) => void) | null = null
+  private onKeyDown: ((e: KeyboardEvent) => void) | null = null
+  private onKeyUp: ((e: KeyboardEvent) => void) | null = null
   private gradient: FillGradient | null = null
 
   private chart: Chart | null = null
@@ -88,6 +114,12 @@ export class ClassicPlayfield {
   private localStartMs = 0
   private chartDone = false
   private speedTimers: number[] = []
+  private bannerTimers: number[] = []
+
+  /** pointerId → hold tile */
+  private pointerHolds = new Map<number, Tile>()
+  /** lane → hold tile (keyboard) */
+  private keyHolds = new Map<number, Tile>()
 
   constructor(handlers: ClassicPlayfieldHandlers = {}) {
     this.handlers = handlers
@@ -148,30 +180,28 @@ export class ClassicPlayfield {
 
     this.inputLayer.eventMode = 'static'
     this.inputLayer.cursor = 'pointer'
-    this.inputLayer.on('pointerdown', this.onPointer)
+    this.inputLayer.on('pointerdown', this.onPointerDown)
+    this.inputLayer.on('pointerup', this.onPointerUp)
+    this.inputLayer.on('pointerupoutside', this.onPointerUp)
+    this.inputLayer.on('pointercancel', this.onPointerUp)
 
-    this.onKey = (e: KeyboardEvent) => {
+    this.onKeyDown = (e: KeyboardEvent) => {
       if (this.failed || !this.running) return
-      const map: Record<string, number> = {
-        '1': 0,
-        '2': 1,
-        '3': 2,
-        '4': 3,
-        d: 0,
-        f: 1,
-        j: 2,
-        k: 3,
-        D: 0,
-        F: 1,
-        J: 2,
-        K: 3,
-      }
-      const lane = map[e.key]
+      const lane = this.laneFromKey(e.key)
       if (lane === undefined) return
       e.preventDefault()
-      this.tapLane(lane)
+      if (e.repeat) return
+      this.pressLane(lane, { source: 'key' })
     }
-    window.addEventListener('keydown', this.onKey)
+    this.onKeyUp = (e: KeyboardEvent) => {
+      if (this.failed || !this.running) return
+      const lane = this.laneFromKey(e.key)
+      if (lane === undefined) return
+      e.preventDefault()
+      this.releaseKeyHold(lane)
+    }
+    window.addEventListener('keydown', this.onKeyDown)
+    window.addEventListener('keyup', this.onKeyUp)
 
     this.resizeObs = new ResizeObserver(() => this.layout())
     this.resizeObs.observe(host)
@@ -192,19 +222,14 @@ export class ClassicPlayfield {
     }
   }
 
-  /** DEV/test: lanes with a currently hittable tile. */
+  /** DEV/test: lanes with a currently hittable non-bomb tile. */
   getHittableLanes(): number[] {
     if (this.failed || !this.running) return []
     const hitY = this.h * PLAYFIELD.hitLineY
     const lanes: number[] = []
     for (const t of this.tiles) {
-      if (t.hit || t.dying) continue
-      const window = t.h * HIT_WINDOW_TILES
-      const top = t.y
-      const bottom = t.y + t.h
-      if (bottom >= hitY - window && top <= hitY + window * 0.35) {
-        lanes.push(t.lane)
-      }
+      if (t.hit || t.dying || t.kind === 'bomb') continue
+      if (this.inHitWindow(t, hitY)) lanes.push(t.lane)
     }
     return lanes
   }
@@ -216,7 +241,10 @@ export class ClassicPlayfield {
 
   restart(): void {
     this.clearSpeedTimers()
+    this.clearBannerTimers()
+    this.clearActiveHolds()
     this.handlers.onSpeedUp?.({ phase: 'clear' })
+    this.handlers.onObstacleBanner?.({ phase: 'clear' })
     this.clearTiles()
     this.clearFx()
     this.failed = false
@@ -230,8 +258,12 @@ export class ClassicPlayfield {
   destroy(): void {
     this.running = false
     this.clearSpeedTimers()
-    if (this.onKey) window.removeEventListener('keydown', this.onKey)
-    this.onKey = null
+    this.clearBannerTimers()
+    this.clearActiveHolds()
+    if (this.onKeyDown) window.removeEventListener('keydown', this.onKeyDown)
+    if (this.onKeyUp) window.removeEventListener('keyup', this.onKeyUp)
+    this.onKeyDown = null
+    this.onKeyUp = null
     this.resizeObs?.disconnect()
     this.resizeObs = null
     this.clearTiles()
@@ -240,7 +272,10 @@ export class ClassicPlayfield {
     this.gradient = null
     if (this.app) {
       this.app.ticker.remove(this.tick)
-      this.inputLayer.off('pointerdown', this.onPointer)
+      this.inputLayer.off('pointerdown', this.onPointerDown)
+      this.inputLayer.off('pointerup', this.onPointerUp)
+      this.inputLayer.off('pointerupoutside', this.onPointerUp)
+      this.inputLayer.off('pointercancel', this.onPointerUp)
       this.app.destroy(true, { children: true })
       this.app = null
     }
@@ -250,6 +285,24 @@ export class ClassicPlayfield {
       const w = window as unknown as { __beatlane?: ClassicPlayfield }
       if (w.__beatlane === this) delete w.__beatlane
     }
+  }
+
+  private laneFromKey(key: string): number | undefined {
+    const map: Record<string, number> = {
+      '1': 0,
+      '2': 1,
+      '3': 2,
+      '4': 3,
+      d: 0,
+      f: 1,
+      j: 2,
+      k: 3,
+      D: 0,
+      F: 1,
+      J: 2,
+      K: 3,
+    }
+    return map[key]
   }
 
   private resetChartCursor() {
@@ -266,6 +319,16 @@ export class ClassicPlayfield {
     this.speedTimers = []
   }
 
+  private clearBannerTimers() {
+    for (const id of this.bannerTimers) window.clearTimeout(id)
+    this.bannerTimers = []
+  }
+
+  private clearActiveHolds() {
+    this.pointerHolds.clear()
+    this.keyHolds.clear()
+  }
+
   /**
    * Song clock + chart.offset. When a music clock is wired, returns null until
    * `getMusicStartTime()` is available so we never mix local + audio clocks.
@@ -280,15 +343,34 @@ export class ClassicPlayfield {
     return (performance.now() - this.localStartMs) / 1000 + offset
   }
 
+  private scrollSpeed(): number {
+    return this.h * this.baseHeightsPerSec * this.speedMult
+  }
+
   private travelTimeSec(): number {
     if (this.h <= 0) return 1.2
     const { h: tileH } = this.tileSize()
     const hitY = this.h * PLAYFIELD.hitLineY
-    const speed = this.h * this.baseHeightsPerSec * this.speedMult
+    const speed = this.scrollSpeed()
     if (speed <= 0) return 1.2
     // Spawn top at -tileH; center crosses hit line at y = hitY - tileH/2
     const dist = hitY - tileH / 2 - -tileH
     return dist / speed
+  }
+
+  /** Lead time so hold leading edge (bottom) reaches hit line at note.t. */
+  private holdTravelTimeSec(_length: number): number {
+    if (this.h <= 0) return 1.2
+    const speed = this.scrollSpeed()
+    if (speed <= 0) return 1.2
+    const hitY = this.h * PLAYFIELD.hitLineY
+    // Spawn at y=-h; bottom at hitY when y = hitY - h → dist = hitY
+    return hitY / speed
+  }
+
+  private leadForNote(note: ChartNote): number {
+    if (note.type === 'hold') return this.holdTravelTimeSec(note.length)
+    return this.travelTimeSec()
   }
 
   private layout = () => {
@@ -373,20 +455,109 @@ export class ClassicPlayfield {
     return { w, h }
   }
 
-  private spawnTile(lane: number) {
-    const { w, h } = this.tileSize()
-    const laneW = this.laneWidth()
-    const x = lane * laneW + laneW * PLAYFIELD.tileInsetX
-    const root = new Container()
-    root.position.set(x, -h)
-    const body = new Graphics()
+  private holdTileHeight(length: number): number {
+    const base = this.tileSize().h
+    const fromLength = length * this.scrollSpeed()
+    return Math.max(base * 1.85, fromLength)
+  }
+
+  private drawTapBody(body: Graphics, w: number, h: number) {
+    body.clear()
     body.roundRect(0, 0, w, h, 4).fill({ color: PLAYFIELD.tile })
     body
       .rect(0, h - 3, w, 3)
       .fill({ color: PLAYFIELD.tileInsetHighlight, alpha: 0.06 })
+  }
+
+  private drawHoldBody(body: Graphics, w: number, h: number, holding: boolean) {
+    body.clear()
+    body
+      .roundRect(0, 0, w, h, 4)
+      .fill({ color: holding ? 0x151520 : 0x12121a })
+    // Leading-edge cue (sky dot)
+    body.circle(w / 2, 12, 5).fill({ color: HOLD_MARKER, alpha: 1 })
+    if (holding) {
+      body
+        .roundRect(0, 0, w, h, 4)
+        .stroke({ width: 2, color: HOLD_MARKER, alpha: 0.85 })
+    }
+  }
+
+  private drawBombBody(body: Graphics, w: number, h: number) {
+    body.clear()
+    body.roundRect(0, 0, w, h, 4).fill({ color: BOMB_STRIPE_B })
+    const stripe = 7
+    body.setStrokeStyle({ width: 0 })
+    for (let i = -h; i < w + h; i += stripe * 2) {
+      body
+        .poly([
+          i,
+          0,
+          i + stripe,
+          0,
+          i + stripe + h,
+          h,
+          i + h,
+          h,
+        ])
+        .fill({ color: BOMB_STRIPE_A })
+    }
+    // Re-clip to rounded rect via overlay mask edges
+    body
+      .roundRect(0, 0, w, h, 4)
+      .stroke({ width: 2, color: BOMB_STRIPE_A, alpha: 0.9 })
+  }
+
+  private updateHoldFill(tile: Tile, progress: number) {
+    if (!tile.fill) return
+    const p = Math.max(0, Math.min(1, progress))
+    tile.fill.clear()
+    if (p <= 0) return
+    const fh = tile.h * p
+    tile.fill
+      .rect(0, tile.h - fh, tile.w, fh)
+      .fill({ color: HOLD_MARKER, alpha: 0.4 })
+  }
+
+  private spawnNote(note: ChartNote) {
+    const { w } = this.tileSize()
+    const laneW = this.laneWidth()
+    const x = note.lane * laneW + laneW * PLAYFIELD.tileInsetX
+    const kind: TileKind = note.type
+    const length = note.type === 'hold' ? note.length : 0
+    const h =
+      kind === 'hold' ? this.holdTileHeight(length) : this.tileSize().h
+
+    const root = new Container()
+    root.position.set(x, -h)
+    const body = new Graphics()
+    if (kind === 'bomb') this.drawBombBody(body, w, h)
+    else if (kind === 'hold') this.drawHoldBody(body, w, h, false)
+    else this.drawTapBody(body, w, h)
     root.addChild(body)
+
+    let fill: Graphics | null = null
+    if (kind === 'hold') {
+      fill = new Graphics()
+      root.addChild(fill)
+    }
+
     this.tilesLayer.addChild(root)
-    this.tiles.push({ root, body, lane, y: -h, w, h, hit: false, dying: false })
+    this.tiles.push({
+      root,
+      body,
+      fill,
+      lane: note.lane,
+      kind,
+      length,
+      noteT: note.t,
+      y: -h,
+      w,
+      h,
+      hit: false,
+      dying: false,
+      holding: false,
+    })
   }
 
   private beginSpeedUp(mult: number) {
@@ -415,6 +586,20 @@ export class ClassicPlayfield {
     this.speedTimers.push(applyId)
   }
 
+  private beginObstacleBanner(kind: ObstacleBannerKind, durationRaw?: number) {
+    const durationSec = clampBannerDuration(durationRaw)
+    this.handlers.onObstacleBanner?.({
+      phase: 'show',
+      kind,
+      durationSec,
+    })
+    const id = window.setTimeout(() => {
+      if (this.failed || !this.running) return
+      this.handlers.onObstacleBanner?.({ phase: 'clear' })
+    }, durationSec * 1000)
+    this.bannerTimers.push(id)
+  }
+
   private scheduleFromChart(songTime: number) {
     const chart = this.chart
     if (!chart) return
@@ -426,16 +611,21 @@ export class ClassicPlayfield {
       const ev = chart.events[this.eventIndex++]
       if (ev.type === 'speed_up') {
         this.beginSpeedUp(ev.mult ?? DEFAULT_SPEED_MULT)
+      } else if (
+        ev.type === 'hold' ||
+        ev.type === 'dont_tap' ||
+        ev.type === 'double'
+      ) {
+        this.beginObstacleBanner(ev.type, ev.duration)
       }
     }
 
-    const lead = this.travelTimeSec()
-    while (
-      this.noteIndex < chart.notes.length &&
-      songTime >= chart.notes[this.noteIndex].t - lead
-    ) {
-      const note = chart.notes[this.noteIndex++]
-      this.spawnTile(note.lane)
+    while (this.noteIndex < chart.notes.length) {
+      const note = chart.notes[this.noteIndex]
+      const lead = this.leadForNote(note)
+      if (songTime < note.t - lead) break
+      this.noteIndex++
+      this.spawnNote(note)
     }
 
     if (
@@ -446,6 +636,29 @@ export class ClassicPlayfield {
       this.chartDone = true
       this.handlers.onChartComplete?.(this.score, this.combo)
     }
+  }
+
+  private holdProgress(tile: Tile, songTime: number | null): number {
+    if (tile.kind !== 'hold' || tile.length <= 0) return 0
+    if (songTime == null) {
+      const hitY = this.h * PLAYFIELD.hitLineY
+      // Visual fallback: fraction of tile past hit line
+      return Math.max(0, Math.min(1, (hitY - tile.y) / tile.h))
+    }
+    return Math.max(0, Math.min(1, (songTime - tile.noteT) / tile.length))
+  }
+
+  private inHitWindow(tile: Tile, hitY: number): boolean {
+    if (tile.kind === 'hold') {
+      // Leading edge (bottom) near hit band, or already overlapping while holding
+      const window = Math.max(tile.h * 0.12, this.tileSize().h * HIT_WINDOW_TILES)
+      const bottom = tile.y + tile.h
+      return bottom >= hitY - window && tile.y <= hitY + window * 0.25
+    }
+    const window = tile.h * HIT_WINDOW_TILES
+    const top = tile.y
+    const bottom = tile.y + tile.h
+    return bottom >= hitY - window && top <= hitY + window * 0.35
   }
 
   private tick = () => {
@@ -467,13 +680,44 @@ export class ClassicPlayfield {
       this.scheduleFromChart(songTime)
     }
 
-    const speed = this.h * this.baseHeightsPerSec * this.speedMult
+    const speed = this.scrollSpeed()
     const hitY = this.h * PLAYFIELD.hitLineY
     const still: Tile[] = []
     for (const tile of this.tiles) {
       if (tile.dying) continue
       tile.y += speed * dt
       tile.root.y = tile.y
+
+      if (tile.kind === 'hold' && tile.holding) {
+        const progress = this.holdProgress(tile, songTime)
+        this.updateHoldFill(tile, progress)
+        if (progress >= 1 - HOLD_FORGIVE_FRAC) {
+          this.completeHold(tile)
+          continue
+        }
+      }
+
+      if (tile.kind === 'bomb') {
+        // Bomb passes safely if never pressed
+        if (tile.y > hitY + tile.h * 0.55) {
+          tile.root.destroy({ children: true })
+          continue
+        }
+        still.push(tile)
+        continue
+      }
+
+      if (tile.kind === 'hold') {
+        // Miss if hold fully past window without being held to completion
+        if (!tile.hit && !tile.holding && tile.y > hitY + tile.h * 0.15) {
+          this.fail('miss')
+          tile.root.alpha = 0.35
+          still.push(tile)
+          continue
+        }
+        still.push(tile)
+        continue
+      }
 
       const window = tile.h * HIT_WINDOW_TILES
       if (!tile.hit && tile.y > hitY + window * 0.55) {
@@ -503,17 +747,33 @@ export class ClassicPlayfield {
     this.fxJobs = next
   }
 
-  private onPointer = (e: { global: { x: number; y: number } }) => {
+  private onPointerDown = (e: {
+    global: { x: number; y: number }
+    pointerId?: number
+  }) => {
     if (this.failed || !this.running || !this.app) return
     const local = this.app.stage.toLocal(e.global)
     const lane = Math.min(
       PLAYFIELD.lanes - 1,
       Math.max(0, Math.floor(local.x / this.laneWidth())),
     )
-    this.tapLane(lane)
+    const pointerId = e.pointerId ?? 0
+    this.pressLane(lane, { source: 'pointer', pointerId })
   }
 
-  private tapLane(lane: number) {
+  private onPointerUp = (e: { pointerId?: number }) => {
+    if (this.failed || !this.running) return
+    const pointerId = e.pointerId ?? 0
+    const tile = this.pointerHolds.get(pointerId)
+    if (!tile) return
+    this.pointerHolds.delete(pointerId)
+    this.releaseHold(tile)
+  }
+
+  private pressLane(
+    lane: number,
+    opts: { source: 'pointer'; pointerId: number } | { source: 'key' },
+  ) {
     if (this.failed || !this.running) return
     // Wait for music clock — unlock gestures must not count as Classic wrong-taps.
     if (this.chart && this.songTimeSec() == null) return
@@ -521,10 +781,8 @@ export class ClassicPlayfield {
     const hitY = this.h * PLAYFIELD.hitLineY
     const candidates = this.tiles.filter((t) => {
       if (t.lane !== lane || t.hit || t.dying) return false
-      const window = t.h * HIT_WINDOW_TILES
-      const top = t.y
-      const bottom = t.y + t.h
-      return bottom >= hitY - window && top <= hitY + window * 0.35
+      if (t.kind === 'hold' && t.holding) return false
+      return this.inHitWindow(t, hitY)
     })
 
     if (candidates.length === 0) {
@@ -532,21 +790,89 @@ export class ClassicPlayfield {
       return
     }
 
-    candidates.sort(
-      (a, b) =>
-        Math.abs(a.y + a.h / 2 - hitY) - Math.abs(b.y + b.h / 2 - hitY),
-    )
+    candidates.sort((a, b) => {
+      if (a.kind === 'hold' && b.kind !== 'hold') return -1
+      if (b.kind === 'hold' && a.kind !== 'hold') return 1
+      const ca = a.y + a.h / 2
+      const cb = b.y + b.h / 2
+      return Math.abs(ca - hitY) - Math.abs(cb - hitY)
+    })
     const tile = candidates[0]
+
+    if (tile.kind === 'bomb') {
+      this.fail('wrong')
+      return
+    }
+
+    if (tile.kind === 'hold') {
+      this.startHold(tile)
+      if (opts.source === 'pointer') {
+        this.pointerHolds.set(opts.pointerId, tile)
+      } else {
+        this.keyHolds.set(lane, tile)
+      }
+      return
+    }
+
+    this.hitTile(tile)
+  }
+
+  private releaseKeyHold(lane: number) {
+    const tile = this.keyHolds.get(lane)
+    if (!tile) return
+    this.keyHolds.delete(lane)
+    this.releaseHold(tile)
+  }
+
+  private startHold(tile: Tile) {
+    tile.holding = true
+    this.drawHoldBody(tile.body, tile.w, tile.h, true)
+    const songTime = this.songTimeSec()
+    this.updateHoldFill(tile, this.holdProgress(tile, songTime))
+  }
+
+  private releaseHold(tile: Tile) {
+    if (tile.hit || tile.dying || !tile.holding) return
+    const songTime = this.songTimeSec()
+    const progress = this.holdProgress(tile, songTime)
+    if (progress >= 1 - HOLD_FORGIVE_FRAC) {
+      this.completeHold(tile)
+      return
+    }
+    // Early release ≈ miss (product lock: hold until length completes)
+    this.fail('miss')
+    tile.holding = false
+    tile.root.alpha = 0.35
+  }
+
+  private completeHold(tile: Tile) {
+    if (tile.hit || tile.dying) return
+    tile.holding = false
+    // Detach from input maps
+    for (const [id, t] of this.pointerHolds) {
+      if (t === tile) this.pointerHolds.delete(id)
+    }
+    for (const [lane, t] of this.keyHolds) {
+      if (t === tile) this.keyHolds.delete(lane)
+    }
     this.hitTile(tile)
   }
 
   private hitTile(tile: Tile) {
     tile.hit = true
     tile.dying = true
+    tile.holding = false
     const hitY = this.h * PLAYFIELD.hitLineY
-    const dist = Math.abs(tile.y + tile.h / 2 - hitY)
+    const dist =
+      tile.kind === 'hold'
+        ? 0
+        : Math.abs(tile.y + tile.h / 2 - hitY)
     const grade: HitGrade =
-      dist <= tile.h * PERFECT_WINDOW_TILES ? 'perfect' : 'great'
+      tile.kind === 'hold'
+        ? 'perfect'
+        : dist <= tile.h * PERFECT_WINDOW_TILES
+          ? 'perfect'
+          : 'great'
 
     this.combo += 1
     this.score += pointsForGrade(grade)
@@ -557,7 +883,7 @@ export class ClassicPlayfield {
       fxLayer: this.fxLayer,
       grade,
       tileW: tile.w,
-      tileH: tile.h,
+      tileH: Math.min(tile.h, this.tileSize().h * 1.4),
     })
     this.fxJobs.push(job)
 
@@ -566,7 +892,7 @@ export class ClassicPlayfield {
     const sparkles = playHitSparkles({
       fxLayer: this.fxLayer,
       x: local.x + tile.w / 2,
-      y: local.y + tile.h / 2,
+      y: local.y + Math.min(tile.h, this.tileSize().h) / 2,
       perfect: grade === 'perfect',
     })
     this.fxJobs.push(sparkles)
@@ -582,7 +908,10 @@ export class ClassicPlayfield {
     this.failed = true
     this.running = false
     this.clearSpeedTimers()
+    this.clearBannerTimers()
+    this.clearActiveHolds()
     this.handlers.onSpeedUp?.({ phase: 'clear' })
+    this.handlers.onObstacleBanner?.({ phase: 'clear' })
     const endedCombo = this.combo
     this.combo = 0
     this.handlers.onFail?.(reason, this.score, endedCombo)

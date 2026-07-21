@@ -1,4 +1,4 @@
-/** In-repo sample charts (G5). Storage catalog arrives in G12. */
+/** In-repo sample charts (G5–G6). Storage catalog arrives in G12. */
 
 export type SampleChartMeta = {
   id: string

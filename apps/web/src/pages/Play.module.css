@@ -395,6 +395,38 @@
   }
 }
 
+.obstacleBanner {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  pointer-events: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.15rem, 5.5vw, 1.85rem);
+  letter-spacing: 0.06em;
+  color: #fffdf9;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+  animation: speedBannerIn 0.45s cubic-bezier(0.15, 1.3, 0.3, 1) both;
+  white-space: nowrap;
+}
+
+.bannerHold {
+  background: rgba(80, 140, 255, 0.9);
+}
+
+.bannerDontTap {
+  background: rgba(255, 70, 100, 0.92);
+}
+
+.bannerDouble {
+  background: rgba(140, 90, 220, 0.9);
+}
+
 .failSub {
   margin: 0 0 12px;
   font-size: 13px;

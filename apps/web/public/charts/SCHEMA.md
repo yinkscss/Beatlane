@@ -23,17 +23,21 @@ Loaded from `public/charts/*.json` (G5). Storage signed URLs land in G12.
 
 | Field | Type | Notes |
 |-------|------|--------|
-| `t` | number | Hit time in seconds from music start (after `offset`) |
+| `t` | number | Hit time in seconds from music start (after `offset`). For `hold`, press/start time. |
 | `lane` | `0`–`3` | Left → right |
-| `type` | `"tap"` | G6+ adds `hold` / bomb types |
+| `type` | `"tap"` \| `"hold"` \| `"bomb"` | G6: hold until length completes; bomb fails if pressed |
+| `length` | number | **Required for `hold`**. Hold duration in seconds (press until complete; slight forgiveness OK). |
 
 ## Event
 
 | Field | Type | Notes |
 |-------|------|--------|
 | `t` | number | Event time (same clock as notes) |
-| `type` | `"speed_up"` | G5; more event types in G6+ |
-| `mult` | number | Optional scroll multiplier (default `1.35`) |
+| `type` | `"speed_up"` \| `"hold"` \| `"dont_tap"` \| `"double"` | SPEED UP countdown; obstacle banners for HOLD / DON'T TAP / DOUBLE |
+| `mult` | number | Optional scroll multiplier for `speed_up` (default `1.35`) |
+| `duration` | number | Obstacle banner seconds; clamped to **3–8** (default `4`) |
+
+**DOUBLE rows:** author two (or more) notes with the same `t` in different lanes, plus a `double` banner event. Dual-lane rows are obstacle events — not every row.
 
 ## Clock
 
@@ -41,4 +45,4 @@ Loaded from `public/charts/*.json` (G5). Storage signed URLs land in G12.
 songTime = AudioContext.currentTime - musicStartTime + chart.offset
 ```
 
-Tiles spawn so their centers cross the hit line near `note.t`. `SPEED UP` shows a banner + countdown, then multiplies scroll rate.
+Tiles spawn so their centers (taps/bombs) or leading edges (holds) cross the hit line near `note.t`. `SPEED UP` shows a banner + countdown, then multiplies scroll rate. Obstacle banners (`hold` / `dont_tap` / `double`) display for 3–8s.

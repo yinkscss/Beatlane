@@ -7,6 +7,8 @@ import {
   ClassicPlayfield,
   type FailReason,
   type HitGrade,
+  type ObstacleBannerKind,
+  type ObstacleBannerPhase,
   type SpeedUpPhase,
 } from '@/game/classicPlayfield'
 import {
@@ -30,7 +32,18 @@ type SpeedUi =
   | { kind: 'countdown'; n: number }
   | null
 
-/** G5 chart engine + G3 HUD + G4 Web Audio over Classic playfield. */
+type ObstacleUi = {
+  kind: ObstacleBannerKind
+  durationSec: number
+} | null
+
+const OBSTACLE_LABEL: Record<ObstacleBannerKind, string> = {
+  hold: 'HOLD',
+  dont_tap: "DON'T TAP",
+  double: 'DOUBLE',
+}
+
+/** G5/G6 chart engine + G3 HUD + G4 Web Audio over Classic playfield. */
 export default function PlayPage() {
   const hostRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<ClassicPlayfield | null>(null)
@@ -53,6 +66,7 @@ export default function PlayPage() {
   const [failCombo, setFailCombo] = useState(0)
   const [cleared, setCleared] = useState(false)
   const [speedUi, setSpeedUi] = useState<SpeedUi>(null)
+  const [obstacleUi, setObstacleUi] = useState<ObstacleUi>(null)
 
   const showJudge = (grade: JudgeGrade) => {
     if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
@@ -75,6 +89,7 @@ export default function PlayPage() {
     setScore(0)
     setCombo(0)
     setSpeedUi(null)
+    setObstacleUi(null)
     setChartError(null)
 
     const songClock = () => {
@@ -104,6 +119,7 @@ export default function PlayPage() {
         setFailCombo(endedCombo)
         setFail(reason)
         setSpeedUi(null)
+        setObstacleUi(null)
         setCleared(false)
         showJudge('miss')
         setMissFlash(true)
@@ -116,6 +132,14 @@ export default function PlayPage() {
           setSpeedUi({ kind: 'countdown', n: ev.n })
         else setSpeedUi(null)
       },
+      onObstacleBanner: (ev: ObstacleBannerPhase) => {
+        if (cancelled) return
+        if (ev.phase === 'show') {
+          setObstacleUi({ kind: ev.kind, durationSec: ev.durationSec })
+        } else {
+          setObstacleUi(null)
+        }
+      },
       onChartComplete: (nextScore, nextCombo) => {
         if (cancelled) return
         bedArmedRef.current = false
@@ -124,6 +148,7 @@ export default function PlayPage() {
         setCombo(nextCombo)
         setCleared(true)
         setSpeedUi(null)
+        setObstacleUi(null)
       },
     })
     gameRef.current = game
@@ -183,6 +208,7 @@ export default function PlayPage() {
     setJudge(null)
     setMissFlash(false)
     setSpeedUi(null)
+    setObstacleUi(null)
     bedArmedRef.current = true
     gameRef.current?.restart()
     void audioRuntime.startBed({ restart: true }).catch((err) => {
@@ -307,6 +333,23 @@ export default function PlayPage() {
             </div>
           </div>
         ) : null}
+
+        {obstacleUi ? (
+          <div
+            className={`${styles.obstacleBanner} ${
+              obstacleUi.kind === 'hold'
+                ? styles.bannerHold
+                : obstacleUi.kind === 'dont_tap'
+                  ? styles.bannerDontTap
+                  : styles.bannerDouble
+            }`}
+            role="status"
+            aria-live="polite"
+            data-duration={obstacleUi.durationSec}
+          >
+            {OBSTACLE_LABEL[obstacleUi.kind]}
+          </div>
+        ) : null}
       </div>
 
       {missFlash ? <div className={styles.missFlash} aria-hidden="true" /> : null}
@@ -345,7 +388,7 @@ export default function PlayPage() {
       ) : null}
 
       <p className={styles.hint}>
-        Chart clock · DFJK / 1–4 · Easy / Normal samples
+        Chart clock · DFJK / 1–4 · hold · Easy / Normal samples
       </p>
     </div>
   )
