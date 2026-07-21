@@ -38,3 +38,14 @@ node apps/web/scripts/verify-g13.mjs
 ```bash
 node apps/web/scripts/verify-g14.mjs
 ```
+
+### Boast (G15)
+
+- Results → **Boast streak · $0.29 cUSD** → mint sheet → share card (`/b/:slug`).
+- Contract: `contracts/src/BoastAttestation.sol` on **Celo Sepolia** (not Mainnet continues).
+- Set `VITE_BOAST_CONTRACT_ADDRESS` after `forge script` deploy (see `contracts/README.md`).
+- Receipt: `purchases.tx_hash` + `boasts` row (`receipt_hash`, `share_slug`).
+
+```bash
+node apps/web/scripts/verify-g15.mjs
+```

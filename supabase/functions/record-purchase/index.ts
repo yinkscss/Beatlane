@@ -1,10 +1,12 @@
 /**
- * G10/G12/G14: Record cUSD purchase receipt after on-chain transfer.
+ * G10/G12/G14/G15: Record cUSD purchase receipt after on-chain transfer.
  *
  * Client sends Magic DID + sku/amount/txHash.
  * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
  * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks / helpers.
- * Network metadata: Celo Mainnet (chainId 42220) — locked Q07.
+ * Boast (sku=boast): also inserts public.boasts + returns shareSlug.
+ * Network metadata: Celo Mainnet (chainId 42220) for shop SKUs — locked Q07.
+ * Boast mint is Celo Sepolia (11142220) — Alfajores 44787 sunset Sep 2025.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -29,6 +31,14 @@ const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/
 const HELPER_PRICES: Record<string, number> = {
   slow_mo: 0.19,
   shield: 0.29,
+}
+
+/** G15 Boast mint price (cUSD) — Celo Sepolia attestation. */
+const BOAST_PRICE = 0.29
+
+function shareSlugFromTx(txHash: string): string {
+  // Short share id from tx hash (design-pack style /b/4c2…).
+  return txHash.slice(2, 10).toLowerCase()
 }
 
 Deno.serve(async (req: Request) => {
@@ -101,8 +111,16 @@ Deno.serve(async (req: Request) => {
     )
     if (profileErr) throw profileErr
 
-    // Price check for catalog / helper SKUs.
-    if (sku in HELPER_PRICES) {
+    // Price check for catalog / helper / boast SKUs.
+    if (sku === 'boast') {
+      if (BOAST_PRICE.toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match boast price' },
+          400,
+          req,
+        )
+      }
+    } else if (sku in HELPER_PRICES) {
       const want = HELPER_PRICES[sku]
       if (want.toFixed(2) !== amountCusd.toFixed(2)) {
         return jsonResponse(
@@ -151,10 +169,11 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const isBoast = sku === 'boast'
     const metadata = {
       ...(body.metadata ?? {}),
-      network: 'celo-mainnet',
-      chainId: 42220,
+      network: isBoast ? 'celo-sepolia' : 'celo-mainnet',
+      chainId: isBoast ? 11142220 : 42220,
     }
 
     const { data: purchase, error: purchaseErr } = await admin
@@ -224,6 +243,70 @@ Deno.serve(async (req: Request) => {
           source_purchase_id: purchase.id,
         },
         { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+    }
+
+    if (isBoast) {
+      const meta = (body.metadata ?? {}) as Record<string, unknown>
+      const combo = Number(meta.combo ?? 0)
+      const score = Number(meta.score ?? 0)
+      const chartTitle =
+        typeof meta.chartTitle === 'string' ? meta.chartTitle : null
+      const mode = typeof meta.mode === 'string' ? meta.mode : 'classic'
+      const onChainId =
+        meta.onChainId != null && meta.onChainId !== ''
+          ? Number(meta.onChainId)
+          : null
+      const receiptHash =
+        typeof meta.receiptHash === 'string' ? meta.receiptHash : null
+      const slug =
+        typeof meta.shareSlug === 'string' && meta.shareSlug.length >= 4
+          ? meta.shareSlug
+          : shareSlugFromTx(txHash)
+
+      const { data: boast, error: boastErr } = await admin
+        .from('boasts')
+        .insert({
+          user_id: userId,
+          purchase_id: purchase.id,
+          combo: Number.isFinite(combo) ? Math.max(0, Math.floor(combo)) : 0,
+          score: Number.isFinite(score) ? Math.max(0, Math.floor(score)) : 0,
+          chart_title: chartTitle,
+          mode,
+          on_chain_id: onChainId,
+          tx_hash: txHash.toLowerCase(),
+          receipt_hash: receiptHash,
+          share_slug: slug,
+          metadata,
+        })
+        .select(
+          'id, share_slug, tx_hash, receipt_hash, combo, score, chart_title, mode, on_chain_id, created_at',
+        )
+        .single()
+
+      if (boastErr) {
+        if (boastErr.code === '23505') {
+          // Duplicate tx — return existing boast if present.
+          const { data: existing } = await admin
+            .from('boasts')
+            .select(
+              'id, share_slug, tx_hash, receipt_hash, combo, score, chart_title, mode, on_chain_id, created_at',
+            )
+            .eq('tx_hash', txHash.toLowerCase())
+            .maybeSingle()
+          return jsonResponse(
+            { ok: true, purchase, boast: existing, shareSlug: existing?.share_slug },
+            200,
+            req,
+          )
+        }
+        throw boastErr
+      }
+
+      return jsonResponse(
+        { ok: true, purchase, boast, shareSlug: boast.share_slug },
+        200,
+        req,
       )
     }
 

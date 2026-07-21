@@ -72,6 +72,36 @@ Do not invent a successful purchase without an on-chain transfer.
 node apps/web/scripts/verify-g14.mjs
 ```
 
+## G15 Boast (Celo Sepolia testnet)
+
+ROADMAP/prompt-pack put Boast on **testnet**; Q07 locks **payments** (continues) to Mainnet.
+**Alfajores (44787) sunset Sep 2025** — G15 deploys to **Celo Sepolia** (11142220).
+
+| Surface | Network |
+|---|---|
+| Second Chance / helpers / packs | Celo Mainnet |
+| Boast attestation contract (G15) | **Celo Sepolia** |
+| Player-facing price label | always **cUSD** |
+
+```bash
+cd contracts
+forge install   # or clone forge-std into lib/ (see contracts/README.md)
+forge test -vv
+# set contracts/.env DEPLOYER_PRIVATE_KEY + TREASURY_ADDRESS (gitignored)
+# AC2+AC3 smoke (Mock cUSD + mint):
+forge script script/DeployBoastSmoke.s.sol:DeployBoastSmoke \
+  --rpc-url https://forno.celo-sepolia.celo-testnet.org \
+  --broadcast --private-key "$DEPLOYER_PRIVATE_KEY"
+```
+
+Then set `VITE_BOAST_CONTRACT_ADDRESS` in `apps/web/.env`. Results → **Boast streak · $0.29 cUSD** mints on Sepolia and stores `purchases.tx_hash` + `boasts` share card at `/b/:slug`.
+
+```bash
+node apps/web/scripts/verify-g15.mjs
+```
+
+**Deploy status:** see `contracts/README.md` (address + broadcast path after forge script).
+
 ## G13 Upstash Redis (rate limits)
 
 Q16: create a free Upstash Redis DB when G13 starts. Dashboard login is required (no CLI creds in this environment).

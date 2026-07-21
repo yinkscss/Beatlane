@@ -8,10 +8,25 @@ import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 
 export type PurchaseRow = Database['public']['Tables']['purchases']['Row']
+export type BoastRow = Database['public']['Tables']['boasts']['Row']
 
 type RecordResponse = {
   ok: boolean
   purchase?: PurchaseRow
+  boast?: Pick<
+    BoastRow,
+    | 'id'
+    | 'share_slug'
+    | 'tx_hash'
+    | 'receipt_hash'
+    | 'combo'
+    | 'score'
+    | 'chart_title'
+    | 'mode'
+    | 'on_chain_id'
+    | 'created_at'
+  >
+  shareSlug?: string
   error?: string
 }
 
@@ -22,9 +37,15 @@ export type RecordPurchaseInput = {
   metadata?: Record<string, unknown>
 }
 
+export type RecordPurchaseResult = {
+  purchase: PurchaseRow
+  boast?: RecordResponse['boast']
+  shareSlug?: string
+}
+
 export async function recordPurchaseReceipt(
   input: RecordPurchaseInput,
-): Promise<PurchaseRow> {
+): Promise<RecordPurchaseResult> {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured')
   }
@@ -55,5 +76,9 @@ export async function recordPurchaseReceipt(
   if (!data?.ok || !data.purchase) {
     throw new Error(data?.error ?? 'Purchase receipt failed')
   }
-  return data.purchase
+  return {
+    purchase: data.purchase,
+    boast: data.boast,
+    shareSlug: data.shareSlug ?? data.boast?.share_slug,
+  }
 }

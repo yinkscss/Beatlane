@@ -269,6 +269,54 @@ export type Database = {
         }
         Relationships: []
       }
+      boasts: {
+        Row: {
+          id: string
+          user_id: string
+          purchase_id: string | null
+          combo: number
+          score: number
+          chart_title: string | null
+          mode: string
+          on_chain_id: number | null
+          tx_hash: string
+          receipt_hash: string | null
+          share_slug: string
+          metadata: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          purchase_id?: string | null
+          combo: number
+          score: number
+          chart_title?: string | null
+          mode?: string
+          on_chain_id?: number | null
+          tx_hash: string
+          receipt_hash?: string | null
+          share_slug: string
+          metadata?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          purchase_id?: string | null
+          combo?: number
+          score?: number
+          chart_title?: string | null
+          mode?: string
+          on_chain_id?: number | null
+          tx_hash?: string
+          receipt_hash?: string | null
+          share_slug?: string
+          metadata?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

@@ -1,0 +1,17 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.24"
+optimizer = true
+optimizer_runs = 200
+ffi = false
+fs_permissions = [{ access = "read", path = "./" }]
+
+[rpc_endpoints]
+alfajores = "${CELO_ALFAJORES_RPC_URL}"
+celo = "${CELO_MAINNET_RPC_URL}"
+
+[etherscan]
+# CeloScan / Blockscout — optional verify
+alfajores = { key = "${CELOSCAN_API_KEY}", url = "https://api-alfajores.celoscan.io/api" }

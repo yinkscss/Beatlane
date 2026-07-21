@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import styles from '@/App.module.css'
+import BoastPage from '@/pages/Boast'
 import HomePage from '@/pages/Home'
 import LeaderboardPage from '@/pages/Leaderboard'
 import MusicPage from '@/pages/Music'
@@ -36,6 +37,7 @@ export default function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/results" element={<ResultsPage />} />
+          <Route path="/b/:slug" element={<BoastPage />} />
         </Routes>
       </main>
       <nav className={styles.nav} aria-label="Primary">

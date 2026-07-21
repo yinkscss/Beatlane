@@ -1,0 +1,13 @@
+# Foundry
+cache/
+out/
+broadcast/
+lib/
+
+# Secrets — never commit deployer keys
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+deployer.key
