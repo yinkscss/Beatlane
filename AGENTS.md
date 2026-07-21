@@ -27,3 +27,4 @@
 - Boast attestation deploys via Foundry to Celo Sepolia (testnet; Alfajores sunset); player payments remain Celo Mainnet cUSD
 - G16 Blitz cups: Mainnet cUSD entry fees + app/edge payout stub; optional TournamentVault on Celo Sepolia; rake 15%
 - G17 Season Pass: $2.99 cUSD Mainnet; 4 weeks; continues + track unlocks only (no cosmetics); Edge `season-pass` grant schedule
+- G18 Observability: Sentry (`VITE_SENTRY_DSN` + Edge `SENTRY_DSN`) + PostHog funnels (`start_run`, `miss`, `purchase_continue`, `unlock_pack`); `VITE_POSTHOG_KEY` must be `phc_` (not personal `phx_`); CI job `ci` runs lint/typecheck/vitest; live prove via `apps/web/scripts/prove-g18-cloud.mjs`

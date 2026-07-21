@@ -11,6 +11,7 @@
     "build": "npm run build -w web",
     "lint": "npm run lint -w web",
     "typecheck": "npm run typecheck -w web",
+    "test": "npm run test -w web",
     "preview": "npm run preview -w web"
   },
   "engines": {

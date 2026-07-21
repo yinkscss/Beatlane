@@ -6,6 +6,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
+import { captureEdgeException } from '../_shared/sentry.ts'
 import { utcDayString } from '../_shared/dailySeed.ts'
 import {
   assertDidClaim,
@@ -286,6 +287,7 @@ Deno.serve(async (req: Request) => {
     )
   } catch (err) {
     console.error('submit-run error', err)
+    void captureEdgeException(err, { function: 'submit-run' })
     return jsonResponse(
       { ok: false, error: err instanceof Error ? err.message : String(err) },
       400,

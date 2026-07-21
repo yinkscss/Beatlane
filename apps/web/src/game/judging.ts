@@ -1,9 +1,17 @@
 /** Hit grades, score fantasy, and star→crown rail — design-pack + beat-pitch. */
 
+import {
+  HIT_WINDOW_TILES,
+  PERFECT_WINDOW_TILES,
+} from '@/game/playfieldTheme'
+
 export type JudgeGrade = 'perfect' | 'great' | 'miss'
 
 export const SCORE_PERFECT = 320
 export const SCORE_GREAT = 180
+
+/** Re-export windows so unit tests + playfield share one source of truth. */
+export { HIT_WINDOW_TILES, PERFECT_WINDOW_TILES }
 
 /** Combo hits needed to light each of 3 stars then 3 crowns (flag sits mid-rail). */
 export const COMBO_PER_MARK = 4
@@ -15,6 +23,30 @@ export const COMBO_FULL_RAIL = TOTAL_MARKS * COMBO_PER_MARK
 
 export function pointsForGrade(grade: Exclude<JudgeGrade, 'miss'>): number {
   return grade === 'perfect' ? SCORE_PERFECT : SCORE_GREAT
+}
+
+/**
+ * Spatial tap grade from |tileCenterY − hitLineY| vs tile height.
+ * Hold-like / bridge / triple force PERFECT (progress already validated).
+ */
+export function gradeSpatialHit(opts: {
+  dist: number
+  tileH: number
+  alwaysPerfect?: boolean
+  perfectWindowFrac?: number
+}): Exclude<JudgeGrade, 'miss'> {
+  if (opts.alwaysPerfect) return 'perfect'
+  const frac = opts.perfectWindowFrac ?? PERFECT_WINDOW_TILES
+  return opts.dist <= opts.tileH * frac ? 'perfect' : 'great'
+}
+
+/** True when distance is inside the GREAT hit window (fraction of tile height). */
+export function withinHitWindow(
+  dist: number,
+  tileH: number,
+  hitWindowFrac = HIT_WINDOW_TILES,
+): boolean {
+  return dist <= tileH * hitWindowFrac
 }
 
 /** How many of the 6 star/crown marks are lit (flag is always the midpoint marker). */

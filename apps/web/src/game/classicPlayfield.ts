@@ -13,10 +13,9 @@ import {
 } from '@/charts/schema'
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
-import { pointsForGrade } from '@/game/judging'
+import { gradeSpatialHit, pointsForGrade } from '@/game/judging'
 import {
   HIT_WINDOW_TILES,
-  PERFECT_WINDOW_TILES,
   PLAYFIELD,
   SCROLL,
 } from '@/game/playfieldTheme'
@@ -1529,14 +1528,14 @@ export class ClassicPlayfield {
       tile.kind === 'triple'
         ? 0
         : Math.abs(tile.y + tile.h / 2 - hitY)
-    const grade: HitGrade =
-      this.isHoldLike(tile.kind) ||
-      tile.kind === 'bridge' ||
-      tile.kind === 'triple'
-        ? 'perfect'
-        : dist <= tile.h * PERFECT_WINDOW_TILES
-          ? 'perfect'
-          : 'great'
+    const grade: HitGrade = gradeSpatialHit({
+      dist,
+      tileH: tile.h,
+      alwaysPerfect:
+        this.isHoldLike(tile.kind) ||
+        tile.kind === 'bridge' ||
+        tile.kind === 'triple',
+    })
 
     // Blitz cups score most tiles (design-pack), not grade points.
     let pts = this.mode === 'blitz' ? 1 : pointsForGrade(grade)

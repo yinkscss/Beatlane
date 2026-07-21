@@ -13,6 +13,7 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
+import { captureEdgeException } from '../_shared/sentry.ts'
 import {
   assertDidClaim,
   parseDidClaim,
@@ -515,6 +516,7 @@ Deno.serve(async (req: Request) => {
 
     return jsonResponse({ ok: true, purchase }, 200, req)
   } catch (err) {
+    void captureEdgeException(err, { function: 'record-purchase' })
     const message = err instanceof Error ? err.message : 'Record failed'
     const status =
       message.includes('DID') ||

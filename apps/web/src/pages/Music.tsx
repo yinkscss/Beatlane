@@ -14,8 +14,10 @@ import {
   type PackRow,
   type UnlockRow,
 } from '@/lib/catalog'
+import { trackUnlockPack } from '@/lib/analytics'
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import { captureException } from '@/lib/sentry'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import type { ChartDifficulty } from '@/lib/database.types'
 import { useAppStore } from '@/store/appStore'
@@ -176,9 +178,13 @@ export default function MusicPage() {
         txHash,
         metadata: meta,
       })
+      if (meta.product === 'pack' && typeof meta.packId === 'string') {
+        trackUnlockPack({ packId: meta.packId, sku, amountCusd })
+      }
       await reload()
       setSheet(null)
     } catch (err) {
+      captureException(err, { surface: 'unlock_pack', sku })
       setBuyError(err instanceof Error ? err.message : 'Purchase failed')
     } finally {
       setBusy(false)

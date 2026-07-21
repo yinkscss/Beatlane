@@ -5,8 +5,12 @@ on:
     branches: [master, main]
   pull_request:
 
+# Required checks (branch protection): enable job "ci" on master.
+# Settings → Branches → Branch protection → Require status checks → "ci"
+
 jobs:
-  lint-typecheck:
+  ci:
+    name: ci
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,3 +30,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Unit tests (judge + obstacles + observability)
+        run: npm test

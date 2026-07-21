@@ -43,7 +43,7 @@ Audio: Web Audio only in v1 — songs are Storage audio + JSON charts; the chart
 
 ## Status
 
-Scaffold started (G0) — Vite + React + TS at `apps/web`; PixiJS + Zustand deps; CI lint/typecheck.
+Gates G0–G17 on master; G18 adds Sentry/PostHog + CI unit tests (judge/obstacles).
 
 ```bash
 npm install
@@ -51,6 +51,7 @@ npm run dev        # apps/web → http://localhost:5173
 npm run build
 npm run lint
 npm run typecheck
+npm test           # vitest — judge + obstacle rules + observability smoke
 ```
 
 Copy `apps/web/.env.example` → `apps/web/.env` (never commit secrets).
@@ -135,6 +136,28 @@ Optional vault: set `VITE_TOURNAMENT_CONTRACT_ADDRESS` after Sepolia deploy (`co
 # Home → Pass → /pass → Get Pass · $2.99 cUSD → progress nodes unlock on schedule
 node apps/web/scripts/verify-g17.mjs
 ```
+
+## G18 Observability
+
+Sentry (errors) + PostHog (funnels: `start_run`, `miss`, `purchase_continue`, `unlock_pack`).
+SDKs are **env-gated** — empty keys mean no network calls and no throws.
+`VITE_POSTHOG_KEY` must be a **project** API key (`phc_…`). Personal tokens (`phx_…`) go in `POSTHOG_PERSONAL_API_KEY` (setup/scripts only — never `VITE_`).
+
+### Local keys (gitignored `apps/web/.env`)
+
+1. **Sentry** — React project DSN → `VITE_SENTRY_DSN=`  
+   - Edge (optional): `supabase secrets set SENTRY_DSN=… --project-ref zxtwshhlicditrvqafzo`
+2. **PostHog** — project API key → `VITE_POSTHOG_KEY=phc_…` + `VITE_POSTHOG_HOST=` (US or EU ingest)
+3. **GitHub required check** — protect `master` → require status check **`ci`**
+4. Live prove (does not print secrets):
+
+```bash
+npm test
+node apps/web/scripts/verify-g18.mjs
+node apps/web/scripts/prove-g18-cloud.mjs
+```
+
+Never commit real DSNs/keys — placeholders stay in `.env.example`.
 
 ## G13 Upstash Redis (rate limits)
 

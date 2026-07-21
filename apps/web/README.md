@@ -8,9 +8,10 @@ npm run dev      # http://localhost:5173
 npm run build
 npm run lint
 npm run typecheck
+npm test
 ```
 
-Copy `.env.example` → `.env` and fill placeholders (Magic / Supabase / treasury). Never commit `.env`.
+Copy `.env.example` → `.env` and fill placeholders (Magic / Supabase / treasury / Sentry / PostHog). Never commit `.env`.
 
 ### Second Chance (G10)
 
@@ -71,4 +72,15 @@ node apps/web/scripts/verify-g16.mjs
 
 ```bash
 node apps/web/scripts/verify-g17.mjs
+```
+
+### Observability (G18)
+
+- Sentry: `src/lib/sentry.ts` + Edge `_shared/sentry.ts` (secret `SENTRY_DSN`).
+- PostHog funnels: `start_run`, `miss`, `purchase_continue`, `unlock_pack` via `src/lib/analytics.ts`.
+- Without keys, init/capture are no-ops (unit-tested). Human creates cloud projects — see root README.
+
+```bash
+npm test
+node apps/web/scripts/verify-g18.mjs
 ```

@@ -40,7 +40,13 @@ import {
   helpersAllowed,
   type HelperSku,
 } from '@/lib/helpers'
+import {
+  trackMiss,
+  trackPurchaseContinue,
+  trackStartRun,
+} from '@/lib/analytics'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import { captureException } from '@/lib/sentry'
 import {
   BLITZ_DURATION_MS,
   DEFAULT_CUP_SLUG,
@@ -376,6 +382,7 @@ export default function PlayPage() {
         showJudge('miss')
         setMissFlash(true)
         window.setTimeout(() => setMissFlash(false), 450)
+        trackMiss({ mode, reason, score: nextScore })
 
         if (mode === 'zen' || mode === 'blitz') {
           // Miss breaks combo only — run continues (Blitz is timed).
@@ -405,6 +412,7 @@ export default function PlayPage() {
         showJudge('miss')
         setMissFlash(true)
         window.setTimeout(() => setMissFlash(false), 450)
+        trackMiss({ mode, reason: 'miss', score: nextScore })
         const g = gameRef.current
         if (g?.isShieldActive()) {
           // Timed post-revive window still active after consume? shouldn't happen.
@@ -506,6 +514,7 @@ export default function PlayPage() {
 
         await game.mount(host)
         if (cancelled) return
+        trackStartRun({ mode, chartId })
         kickBed()
 
         if (mode === 'blitz') {
@@ -542,6 +551,7 @@ export default function PlayPage() {
         }
       } catch (err) {
         console.error('Playfield / chart failed to start', err)
+        captureException(err, { surface: 'play_mount', mode, chartId })
         if (!cancelled) {
           setChartError(err instanceof Error ? err.message : 'Chart load failed')
         }
@@ -705,6 +715,11 @@ export default function PlayPage() {
           chartId,
         },
       })
+      trackPurchaseContinue({
+        sku,
+        amountCusd: price,
+        reviveIndex: reviveCount,
+      })
 
       const shieldMs = SECOND_CHANCE_SHIELD_DEFAULT_ON
         ? SECOND_CHANCE_SHIELD_MS
@@ -747,6 +762,7 @@ export default function PlayPage() {
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Second Chance payment failed'
+      captureException(err, { surface: 'purchase_continue', sku })
       setReviveError(msg)
     } finally {
       setReviveBusy(false)
