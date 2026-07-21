@@ -17,7 +17,6 @@ import { playHitSparkles } from '@/game/hitSparkles'
 import {
   gradeSpatialHit,
   holdTileProgress,
-  nearestValidHoldPoint,
   pointsForGrade,
   tileFullyPastBottom,
   tilePartiallyOnPlayfield,
@@ -169,7 +168,6 @@ export class ClassicPlayfield {
   private handlers: ClassicPlayfieldHandlers
   private bg = new Graphics()
   private lanesGfx = new Graphics()
-  private hitBand = new Graphics()
   private fogGfx = new Graphics()
   private tilesLayer = new Container()
   private fxLayer = new Container()
@@ -310,7 +308,6 @@ export class ClassicPlayfield {
     stage.addChild(this.bg)
     stage.addChild(this.lanesGfx)
     stage.addChild(this.tilesLayer)
-    stage.addChild(this.hitBand)
     stage.addChild(this.fogGfx)
     stage.addChild(this.fxLayer)
     stage.addChild(this.inputLayer)
@@ -328,7 +325,7 @@ export class ClassicPlayfield {
       if (lane === undefined) return
       e.preventDefault()
       if (e.repeat) return
-      this.pressLane(lane, { source: 'key', pressY: null })
+      this.pressLane(lane, { source: 'key' })
     }
     this.onKeyUp = (e: KeyboardEvent) => {
       if (this.failed || !this.running) return
@@ -641,7 +638,6 @@ export class ClassicPlayfield {
     this.app.renderer.resize(w, h)
     this.drawBackdrop()
     this.drawLanes()
-    this.drawHitBand()
     this.drawFog()
     this.inputLayer.clear()
     this.inputLayer.rect(0, 0, w, h).fill({ color: 0x000000, alpha: 0.001 })
@@ -689,19 +685,6 @@ export class ClassicPlayfield {
         alpha: laneRuleAlpha,
       })
     }
-  }
-
-  private drawHitBand() {
-    const y = this.h * PLAYFIELD.hitLineY
-    const left = this.w * 0.08
-    const right = this.w * 0.92
-    this.hitBand.clear()
-    this.hitBand
-      .roundRect(left, y - 4, right - left, 8, 4)
-      .fill({ color: 0xffffff, alpha: 0.18 })
-    this.hitBand
-      .roundRect(left, y - 1.5, right - left, 3, 2)
-      .fill({ color: PLAYFIELD.hitLine, alpha: 1 })
   }
 
   private drawFog() {
@@ -1335,11 +1318,7 @@ export class ClassicPlayfield {
     } catch {
       /* ignore — capture is best-effort */
     }
-    this.pressLane(lane, {
-      source: 'pointer',
-      pointerId,
-      pressY: local.y,
-    })
+    this.pressLane(lane, { source: 'pointer', pointerId })
   }
 
   private onPointerUp = (e: { pointerId?: number }) => {
@@ -1369,17 +1348,14 @@ export class ClassicPlayfield {
 
   private pressLane(
     rawLane: number,
-    opts:
-      | { source: 'pointer'; pointerId: number; pressY: number }
-      | { source: 'key'; pressY: null },
+    opts: { source: 'pointer'; pointerId: number } | { source: 'key' },
   ) {
     if (this.failed || !this.running) return
     if (this.chart && this.songTimeSec() == null) return
 
     const lane = this.mapInputLane(rawLane)
     const hitY = this.h * PLAYFIELD.hitLineY
-    // HOLD_TAP_LOCK: earliest_pixel_auto — lane from X; Y assisted to tip/line.
-    const pressY = opts.pressY ?? hitY
+    // HOLD_TAP_LOCK: anywhere_on_tile — start while any part of the hold is on-screen.
     const candidates = this.tiles.filter((t) => {
       if (t.hit || t.dying) return false
       if (!this.tileCoversLane(t, lane)) return false
@@ -1401,11 +1377,6 @@ export class ClassicPlayfield {
     candidates.sort((a, b) => {
       if (this.isHoldLike(a.kind) && !this.isHoldLike(b.kind)) return -1
       if (this.isHoldLike(b.kind) && !this.isHoldLike(a.kind)) return 1
-      if (this.isHoldLike(a.kind) && this.isHoldLike(b.kind)) {
-        const aa = nearestValidHoldPoint(pressY, a.y, a.h, hitY)
-        const bb = nearestValidHoldPoint(pressY, b.y, b.h, hitY)
-        return Math.abs(aa - pressY) - Math.abs(bb - pressY)
-      }
       const ca = a.y + a.h / 2
       const cb = b.y + b.h / 2
       return Math.abs(ca - hitY) - Math.abs(cb - hitY)
