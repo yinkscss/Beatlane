@@ -3,7 +3,11 @@
  */
 
 import { getMagic } from '@/lib/magic'
-import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  edgeFunctionErrorMessage,
+  getSupabase,
+  isSupabaseConfigured,
+} from '@/lib/supabase'
 import type { ChartDifficulty, ChartRow, UnlockType } from '@/lib/database.types'
 
 export type PackRow = {
@@ -140,7 +144,9 @@ export async function fetchMyUnlocks(): Promise<UnlockRow[]> {
     headers: { Authorization: `Bearer ${did}` },
   })
 
-  if (error) throw error
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(error, 'Unlocks fetch failed'))
+  }
   if (!data?.ok) throw new Error(data?.error ?? 'Unlocks fetch failed')
   return data.unlocks ?? []
 }
@@ -181,7 +187,9 @@ export async function resolveChartAssets(
     headers,
   })
 
-  if (error) throw error
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(error, 'Chart resolve failed'))
+  }
   if (
     !data?.ok ||
     !data.audioUrl ||
