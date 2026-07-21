@@ -212,6 +212,46 @@ function requireLength(note: Record<string, unknown>, i: number): number {
   return note.length
 }
 
+/** Lanes a note occupies at chart time `t` (bridge=2, triple=3, l_hook=stem+foot). */
+export function lanesCoveredByNote(note: ChartNote): number[] {
+  if (note.type === 'bridge') return [note.lane, note.lane + 1]
+  if (note.type === 'triple') return [note.lane, note.lane + 1, note.lane + 2]
+  if (note.type === 'l_hook') return [note.lane, note.lane + note.foot]
+  return [note.lane]
+}
+
+/** True when notes at the same `t` would cover all 4 lanes. */
+export function coversAllFourLanesAtSameT(notes: ChartNote[]): boolean {
+  const byT = new Map<number, Set<number>>()
+  for (const note of notes) {
+    let set = byT.get(note.t)
+    if (!set) {
+      set = new Set()
+      byT.set(note.t, set)
+    }
+    for (const lane of lanesCoveredByNote(note)) set.add(lane)
+    if (set.size >= 4) return true
+  }
+  return false
+}
+
+function assertMaxLaneCover(notes: ChartNote[]) {
+  const byT = new Map<number, Set<number>>()
+  for (const note of notes) {
+    let set = byT.get(note.t)
+    if (!set) {
+      set = new Set()
+      byT.set(note.t, set)
+    }
+    for (const lane of lanesCoveredByNote(note)) set.add(lane)
+    if (set.size > 3) {
+      throw new Error(
+        `Chart: at most 3 lanes may be covered at the same t (t=${note.t})`,
+      )
+    }
+  }
+}
+
 /** Lightweight runtime validation for fetched JSON. */
 export function parseChart(raw: unknown): Chart {
   if (!raw || typeof raw !== 'object') {
@@ -365,6 +405,7 @@ export function parseChart(raw: unknown): Chart {
 
   notes.sort((a, b) => a.t - b.t || a.lane - b.lane)
   events.sort((a, b) => a.t - b.t)
+  assertMaxLaneCover(notes)
 
   const chart: Chart = {
     schemaVersion: CHART_SCHEMA_VERSION,

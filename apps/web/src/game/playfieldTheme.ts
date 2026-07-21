@@ -16,7 +16,7 @@ export const PLAYFIELD = {
   /** Hit band Y as fraction from top (beat-pitch hit-line at bottom: 18%). */
   hitLineY: 0.82,
   /** Tile height as fraction of playfield height. */
-  tileHeight: 0.14,
+  tileHeight: 0.18,
   /** Tile width inset within lane (left/right 8% → 84% wide). */
   tileInsetX: 0.08,
   lanes: 4,
