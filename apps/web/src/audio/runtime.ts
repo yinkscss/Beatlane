@@ -19,7 +19,7 @@ const MASTER_GAIN = 1
 const MUSIC_GAIN = 0.42
 const SFX_GAIN = 0.75
 
-class AudioRuntime {
+export class AudioRuntime {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private music: GainNode | null = null
@@ -30,15 +30,19 @@ class AudioRuntime {
   /** AudioContext.currentTime when the bed started (sync ref for G5+). */
   private musicStartTime: number | null = null
   private loadPromise: Promise<void> | null = null
+  /** Serialize starts so overlapping kickBed/startMusic cannot stopBed mid-flight. */
+  private startGate: Promise<void> = Promise.resolve()
 
   /** Lazily create the shared graph. Does not resume a suspended context. */
   ensureGraph(): AudioContext {
     if (this.ctx) return this.ctx
 
-    const Ctx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext
+    const g = globalThis as typeof globalThis & {
+      AudioContext?: typeof AudioContext
+      webkitAudioContext?: typeof AudioContext
+    }
+    const Ctx = g.AudioContext || g.webkitAudioContext
+    if (!Ctx) throw new Error('Web Audio API unavailable')
     const ctx = new Ctx()
     const master = ctx.createGain()
     const music = ctx.createGain()
@@ -119,8 +123,22 @@ class AudioRuntime {
   /**
    * Start (or restart) music from an arbitrary URL (Storage signed URL in G12).
    * Loops short placeholders so the run can finish the chart.
+   * Concurrent callers share one in-flight start (Play kickBed on every tap).
    */
-  async startMusic(
+  startMusic(
+    url: string,
+    opts: { restart?: boolean; loop?: boolean } = {},
+  ): Promise<number> {
+    const run = () => this.startMusicUnlocked(url, opts)
+    const result = this.startGate.then(run, run)
+    this.startGate = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
+  }
+
+  private async startMusicUnlocked(
     url: string,
     opts: { restart?: boolean; loop?: boolean } = {},
   ): Promise<number> {
@@ -139,6 +157,11 @@ class AudioRuntime {
     if (!music) throw new Error('Music gain missing')
 
     const buf = await this.loadBuffer(url)
+    // Another queued start may have won while we awaited decode — don't clobber.
+    if (!restart && this.bedSource && this.musicStartTime != null) {
+      return this.musicStartTime
+    }
+
     const src = ctx.createBufferSource()
     src.buffer = buf
     src.loop = loop
@@ -195,7 +218,7 @@ class AudioRuntime {
 /** Session singleton — one AudioContext for the app. */
 export const audioRuntime = new AudioRuntime()
 
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   ;(window as unknown as { __beatlaneAudio?: AudioRuntime }).__beatlaneAudio =
     audioRuntime
 }

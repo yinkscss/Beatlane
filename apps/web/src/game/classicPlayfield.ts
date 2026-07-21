@@ -1160,11 +1160,8 @@ export class ClassicPlayfield {
     const dt = dtMs / 1000
     const songTime = this.songTimeSec()
 
-    if (this.chart && songTime == null) {
-      this.updateFx(dtMs)
-      return
-    }
-
+    // Schedule only when the song clock is live. Still scroll existing tiles if
+    // the audio clock is briefly null (overlapping startMusic used to stall here).
     if (this.chart && songTime != null) {
       this.scheduleFromChart(songTime)
     }

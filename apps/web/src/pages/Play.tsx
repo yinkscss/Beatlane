@@ -422,6 +422,14 @@ export default function PlayPage() {
 
     const kickBed = () => {
       if (cancelled || !bedArmedRef.current) return
+      // Already playing: only resume AudioContext (every tap used to re-enter
+      // startMusic and could stopBed() mid-flight → empty lanes / frozen clock).
+      if (audioRuntime.getMusicStartTime() != null) {
+        void audioRuntime.unlock().catch((err) => {
+          console.error('Audio unlock failed', err)
+        })
+        return
+      }
       const start = musicUrlBox.current
         ? audioRuntime.startMusic(musicUrlBox.current)
         : audioRuntime.startBed()
