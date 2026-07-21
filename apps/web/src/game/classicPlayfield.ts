@@ -17,6 +17,7 @@ import { playHitSparkles } from '@/game/hitSparkles'
 import {
   gradeSpatialHit,
   holdTileProgress,
+  nearestValidHoldPoint,
   pointsForGrade,
   tileFullyPastBottom,
   tilePartiallyOnPlayfield,
@@ -327,7 +328,7 @@ export class ClassicPlayfield {
       if (lane === undefined) return
       e.preventDefault()
       if (e.repeat) return
-      this.pressLane(lane, { source: 'key' })
+      this.pressLane(lane, { source: 'key', pressY: null })
     }
     this.onKeyUp = (e: KeyboardEvent) => {
       if (this.failed || !this.running) return
@@ -1334,7 +1335,11 @@ export class ClassicPlayfield {
     } catch {
       /* ignore — capture is best-effort */
     }
-    this.pressLane(lane, { source: 'pointer', pointerId })
+    this.pressLane(lane, {
+      source: 'pointer',
+      pointerId,
+      pressY: local.y,
+    })
   }
 
   private onPointerUp = (e: { pointerId?: number }) => {
@@ -1364,13 +1369,17 @@ export class ClassicPlayfield {
 
   private pressLane(
     rawLane: number,
-    opts: { source: 'pointer'; pointerId: number } | { source: 'key' },
+    opts:
+      | { source: 'pointer'; pointerId: number; pressY: number }
+      | { source: 'key'; pressY: null },
   ) {
     if (this.failed || !this.running) return
     if (this.chart && this.songTimeSec() == null) return
 
     const lane = this.mapInputLane(rawLane)
     const hitY = this.h * PLAYFIELD.hitLineY
+    // HOLD_TAP_LOCK: earliest_pixel_auto — lane from X; Y assisted to tip/line.
+    const pressY = opts.pressY ?? hitY
     const candidates = this.tiles.filter((t) => {
       if (t.hit || t.dying) return false
       if (!this.tileCoversLane(t, lane)) return false
@@ -1392,6 +1401,11 @@ export class ClassicPlayfield {
     candidates.sort((a, b) => {
       if (this.isHoldLike(a.kind) && !this.isHoldLike(b.kind)) return -1
       if (this.isHoldLike(b.kind) && !this.isHoldLike(a.kind)) return 1
+      if (this.isHoldLike(a.kind) && this.isHoldLike(b.kind)) {
+        const aa = nearestValidHoldPoint(pressY, a.y, a.h, hitY)
+        const bb = nearestValidHoldPoint(pressY, b.y, b.h, hitY)
+        return Math.abs(aa - pressY) - Math.abs(bb - pressY)
+      }
       const ca = a.y + a.h / 2
       const cb = b.y + b.h / 2
       return Math.abs(ca - hitY) - Math.abs(cb - hitY)

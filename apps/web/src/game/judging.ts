@@ -83,6 +83,45 @@ export function holdTileProgress(
   return Math.max(0, Math.min(1, (tileY + tileH - hitLineY) / tileH))
 }
 
+/**
+ * HOLD_TAP_LOCK: earliest_pixel_auto
+ * Valid Y targets on a hold: leading tip (bottom) and, when the bar crosses it, the hit line.
+ */
+export function holdAssistTargets(
+  tileY: number,
+  tileH: number,
+  hitLineY: number,
+): number[] {
+  const tipY = tileY + tileH
+  const targets = [tipY]
+  if (hitLineY >= tileY && hitLineY <= tipY) targets.push(hitLineY)
+  return targets
+}
+
+/**
+ * Snap press Y to the nearest valid hold point (tip or hit line).
+ * Player aims the lane; Y is assisted. Keyboard / no-Y callers pass hitLineY as pressY.
+ */
+export function nearestValidHoldPoint(
+  pressY: number,
+  tileY: number,
+  tileH: number,
+  hitLineY: number,
+): number {
+  const targets = holdAssistTargets(tileY, tileH, hitLineY)
+  let best = targets[0]!
+  let bestDist = Math.abs(pressY - best)
+  for (let i = 1; i < targets.length; i++) {
+    const p = targets[i]!
+    const d = Math.abs(pressY - p)
+    if (d < bestDist) {
+      best = p
+      bestDist = d
+    }
+  }
+  return best
+}
+
 /** How many of the 6 star/crown marks are lit (flag is always the midpoint marker). */
 export function litMarksFromCombo(combo: number): number {
   if (combo <= 0) return 0
