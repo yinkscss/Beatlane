@@ -30,7 +30,10 @@ export const SCROLL = {
   minSpawnMs: 480,
 } as const
 
-/** Hit window half-height as fraction of tile height. */
+/**
+ * Legacy spatial half-window (fraction of tile height) for `withinHitWindow`.
+ * Tap acceptance / auto-miss use on-screen visibility in classicPlayfield.
+ */
 export const HIT_WINDOW_TILES = 0.85
 
 /** PERFECT if |tileCenterY - hitLineY| < this fraction of tile height. */

@@ -13,12 +13,13 @@ import {
 } from '@/charts/schema'
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
-import { gradeSpatialHit, pointsForGrade } from '@/game/judging'
 import {
-  HIT_WINDOW_TILES,
-  PLAYFIELD,
-  SCROLL,
-} from '@/game/playfieldTheme'
+  gradeSpatialHit,
+  pointsForGrade,
+  tileFullyPastBottom,
+  tilePartiallyOnPlayfield,
+} from '@/game/judging'
+import { PLAYFIELD, SCROLL } from '@/game/playfieldTheme'
 import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
 export type FailReason = 'miss' | 'wrong'
@@ -357,11 +358,10 @@ export class ClassicPlayfield {
   /** DEV/test: lanes with a currently hittable non-bomb tile. */
   getHittableLanes(): number[] {
     if (this.failed || !this.running) return []
-    const hitY = this.h * PLAYFIELD.hitLineY
     const lanes: number[] = []
     for (const t of this.tiles) {
       if (t.hit || t.dying || t.kind === 'bomb') continue
-      if (!this.inHitWindow(t, hitY)) continue
+      if (!this.inHitWindow(t)) continue
       if (t.kind === 'bridge' || t.kind === 'triple') {
         for (let i = 0; i < t.span; i++) lanes.push(t.lane + i)
       } else if (t.kind === 'slide') {
@@ -1136,16 +1136,9 @@ export class ClassicPlayfield {
     tile.root.x = x
   }
 
-  private inHitWindow(tile: Tile, hitY: number): boolean {
-    if (this.isHoldLike(tile.kind)) {
-      const window = Math.max(tile.h * 0.12, this.tileSize().h * HIT_WINDOW_TILES)
-      const bottom = tile.y + tile.h
-      return bottom >= hitY - window && tile.y <= hitY + window * 0.25
-    }
-    const window = tile.h * HIT_WINDOW_TILES
-    const top = tile.y
-    const bottom = tile.y + tile.h
-    return bottom >= hitY - window && top <= hitY + window * 0.35
+  /** Accept tap/HOLD start while any part of the tile is still on-screen. */
+  private inHitWindow(tile: Tile): boolean {
+    return tilePartiallyOnPlayfield(tile.y, tile.h, this.h)
   }
 
   private tileCoversLane(tile: Tile, lane: number): boolean {
@@ -1217,7 +1210,7 @@ export class ClassicPlayfield {
       }
 
       if (this.isHoldLike(tile.kind)) {
-        if (!tile.hit && !tile.holding && tile.y > hitY + tile.h * 0.15) {
+        if (!tile.hit && !tile.holding && tileFullyPastBottom(tile.y, this.h)) {
           this.missTile(tile, 'miss')
           continue
         }
@@ -1237,7 +1230,7 @@ export class ClassicPlayfield {
       }
 
       if (tile.kind === 'bridge' || tile.kind === 'triple') {
-        if (!tile.hit && tile.y > hitY + tile.h * HIT_WINDOW_TILES * 0.55) {
+        if (!tile.hit && tileFullyPastBottom(tile.y, this.h)) {
           this.missTile(tile, 'miss')
           continue
         }
@@ -1245,8 +1238,7 @@ export class ClassicPlayfield {
         continue
       }
 
-      const window = tile.h * HIT_WINDOW_TILES
-      if (!tile.hit && tile.y > hitY + window * 0.55) {
+      if (!tile.hit && tileFullyPastBottom(tile.y, this.h)) {
         this.missTile(tile, 'miss')
         continue
       }
@@ -1341,7 +1333,7 @@ export class ClassicPlayfield {
       if (t.kind === 'l_hook' && t.holding && lane === t.lane + t.foot) {
         return true
       }
-      return this.inHitWindow(t, hitY)
+      return this.inHitWindow(t)
     })
 
     if (candidates.length === 0) {

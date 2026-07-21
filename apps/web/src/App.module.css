@@ -6,6 +6,18 @@
   margin: 0 auto;
 }
 
+/* Play route: full viewport height, no bottom nav chrome. */
+.shellPlay {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+.shellPlay .main {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
 .main {
   flex: 1;
   display: flex;

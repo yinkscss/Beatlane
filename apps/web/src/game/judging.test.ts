@@ -11,6 +11,8 @@ import {
   railMarks,
   SCORE_GREAT,
   SCORE_PERFECT,
+  tileFullyPastBottom,
+  tilePartiallyOnPlayfield,
   withinHitWindow,
 } from '@/game/judging'
 
@@ -41,6 +43,41 @@ describe('chart judge — spatial grade', () => {
     expect(withinHitWindow(perfectEdge + 1, tileH)).toBe(true)
     expect(withinHitWindow(hitEdge, tileH)).toBe(true)
     expect(withinHitWindow(hitEdge + 0.01, tileH)).toBe(false)
+  })
+
+  it('late tiles stay hittable until fully off the bottom', () => {
+    const playfieldH = 800
+    const h = 112
+    // Near hit line (~0.82) — still on screen
+    expect(tilePartiallyOnPlayfield(playfieldH * 0.82, h, playfieldH)).toBe(
+      true,
+    )
+    // Mostly past hit line, bottom still on playfield
+    expect(tilePartiallyOnPlayfield(playfieldH - h * 0.4, h, playfieldH)).toBe(
+      true,
+    )
+    // Top just past bottom edge — gone
+    expect(tilePartiallyOnPlayfield(playfieldH, h, playfieldH)).toBe(false)
+    expect(tileFullyPastBottom(playfieldH - 1, playfieldH)).toBe(false)
+    expect(tileFullyPastBottom(playfieldH, playfieldH)).toBe(true)
+  })
+
+  it('tall HOLD tiles stay startable while any part remains on-screen', () => {
+    const playfieldH = 800
+    const holdH = 420
+    // Bottom edge just entering from top
+    expect(tilePartiallyOnPlayfield(-holdH + 20, holdH, playfieldH)).toBe(true)
+    // Mostly scrolled past hit line, still overlapping playfield
+    expect(
+      tilePartiallyOnPlayfield(playfieldH - holdH * 0.2, holdH, playfieldH),
+    ).toBe(true)
+    // Fully past bottom — auto-miss only
+    expect(tilePartiallyOnPlayfield(playfieldH, holdH, playfieldH)).toBe(false)
+    expect(tileFullyPastBottom(playfieldH, playfieldH)).toBe(true)
+  })
+
+  it('late spatial taps grade GREAT (not miss) when far from hit line', () => {
+    expect(gradeSpatialHit({ dist: tileH * 2, tileH })).toBe('great')
   })
 })
 

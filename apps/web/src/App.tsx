@@ -1,4 +1,4 @@
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import styles from '@/App.module.css'
 import BoastPage from '@/pages/Boast'
@@ -15,6 +15,8 @@ import { useAppStore } from '@/store/appStore'
 export default function App() {
   const playMode = useAppStore((s) => s.playMode)
   const { status } = useAuth()
+  const { pathname } = useLocation()
+  const playFullscreen = pathname === '/play'
   const playTo =
     status === 'authenticated'
       ? `/play?mode=${playMode}`
@@ -30,7 +32,11 @@ export default function App() {
   ]
 
   return (
-    <div className={styles.shell}>
+    <div
+      className={
+        playFullscreen ? `${styles.shell} ${styles.shellPlay}` : styles.shell
+      }
+    >
       <main className={styles.main}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -44,20 +50,24 @@ export default function App() {
           <Route path="/b/:slug" element={<BoastPage />} />
         </Routes>
       </main>
-      <nav className={styles.nav} aria-label="Primary">
-        {nav.map(({ to, label, end }) => (
-          <NavLink
-            key={label}
-            to={to}
-            end={end}
-            className={({ isActive }) =>
-              isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
-            }
-          >
-            {label}
-          </NavLink>
-        ))}
-      </nav>
+      {playFullscreen ? null : (
+        <nav className={styles.nav} aria-label="Primary">
+          {nav.map(({ to, label, end }) => (
+            <NavLink
+              key={label}
+              to={to}
+              end={end}
+              className={({ isActive }) =>
+                isActive
+                  ? `${styles.navLink} ${styles.navLinkActive}`
+                  : styles.navLink
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+        </nav>
+      )}
     </div>
   )
 }

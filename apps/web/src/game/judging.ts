@@ -49,6 +49,26 @@ export function withinHitWindow(
   return dist <= tileH * hitWindowFrac
 }
 
+/**
+ * Piano Tiles–style: a tile (y = top) is hittable while any part remains on the
+ * playfield. Tiles scroll downward.
+ */
+export function tilePartiallyOnPlayfield(
+  tileY: number,
+  tileH: number,
+  playfieldH: number,
+): boolean {
+  return tileY < playfieldH && tileY + tileH > 0
+}
+
+/** Auto-miss only once the tile top has fully left the bottom edge. */
+export function tileFullyPastBottom(
+  tileY: number,
+  playfieldH: number,
+): boolean {
+  return tileY >= playfieldH
+}
+
 /** How many of the 6 star/crown marks are lit (flag is always the midpoint marker). */
 export function litMarksFromCombo(combo: number): number {
   if (combo <= 0) return 0
