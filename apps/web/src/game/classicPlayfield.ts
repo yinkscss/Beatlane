@@ -15,6 +15,7 @@ import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
 import {
   gradeSpatialHit,
+  holdTileProgress,
   pointsForGrade,
   tileFullyPastBottom,
   tilePartiallyOnPlayfield,
@@ -1100,13 +1101,11 @@ export class ClassicPlayfield {
     }
   }
 
-  private holdProgress(tile: Tile, songTime: number | null): number {
-    if (!this.isHoldLike(tile.kind) || tile.length <= 0) return 0
-    if (songTime == null) {
-      const hitY = this.h * PLAYFIELD.hitLineY
-      return Math.max(0, Math.min(1, (hitY - tile.y) / tile.h))
-    }
-    return Math.max(0, Math.min(1, (songTime - tile.noteT) / tile.length))
+  /** Fraction of hold consumed as the tile scrolls through the hit band. */
+  private holdProgress(tile: Tile): number {
+    if (!this.isHoldLike(tile.kind) || tile.length <= 0 || tile.h <= 0) return 0
+    const hitY = this.h * PLAYFIELD.hitLineY
+    return holdTileProgress(tile.y, tile.h, hitY)
   }
 
   private slideLane(tile: Tile): number {
@@ -1180,7 +1179,7 @@ export class ClassicPlayfield {
       if (tile.kind === 'slide') this.updateSlideX(tile)
 
       if (this.isHoldLike(tile.kind) && tile.holding) {
-        const progress = this.holdProgress(tile, songTime)
+        const progress = this.holdProgress(tile)
         this.updateHoldFill(tile, progress)
 
         if (tile.kind === 'fake_gap') {
@@ -1218,7 +1217,7 @@ export class ClassicPlayfield {
         if (
           tile.kind === 'l_hook' &&
           tile.holding &&
-          this.holdProgress(tile, songTime) >= 1 - HOLD_FORGIVE_FRAC &&
+          this.holdProgress(tile) >= 1 - HOLD_FORGIVE_FRAC &&
           !tile.footHit
         ) {
           tile.holding = false
@@ -1295,12 +1294,27 @@ export class ClassicPlayfield {
       Math.max(0, Math.floor(local.x / this.laneWidth())),
     )
     const pointerId = e.pointerId ?? 0
+    // Keep the long-tap alive even if the finger drifts slightly off-canvas.
+    try {
+      ;(this.app.canvas as HTMLCanvasElement).setPointerCapture?.(pointerId)
+    } catch {
+      /* ignore — capture is best-effort */
+    }
     this.pressLane(lane, { source: 'pointer', pointerId })
   }
 
   private onPointerUp = (e: { pointerId?: number }) => {
     if (this.failed || !this.running) return
     const pointerId = e.pointerId ?? 0
+    if (this.app) {
+      try {
+        ;(this.app.canvas as HTMLCanvasElement).releasePointerCapture?.(
+          pointerId,
+        )
+      } catch {
+        /* already released */
+      }
+    }
     const hold = this.pointerHolds.get(pointerId)
     if (hold) {
       this.pointerHolds.delete(pointerId)
@@ -1385,7 +1399,7 @@ export class ClassicPlayfield {
     }
 
     if (tile.kind === 'fake_gap') {
-      const progress = this.holdProgress(tile, this.songTimeSec())
+      const progress = this.holdProgress(tile)
       if (progress >= tile.gapAt && progress < tile.gapAt + tile.gapLen) {
         // Pressing in the white gap fails
         this.fail('wrong')
@@ -1450,14 +1464,12 @@ export class ClassicPlayfield {
     this.drawHoldBody(tile.body, tile.w, tile.h, true, tile.mod)
     if (tile.kind === 'fake_gap') this.drawFakeGapVisual(tile)
     if (tile.kind === 'l_hook') this.drawLHookFoot(tile)
-    const songTime = this.songTimeSec()
-    this.updateHoldFill(tile, this.holdProgress(tile, songTime))
+    this.updateHoldFill(tile, this.holdProgress(tile))
   }
 
   private releaseHold(tile: Tile) {
     if (tile.hit || tile.dying || !tile.holding) return
-    const songTime = this.songTimeSec()
-    const progress = this.holdProgress(tile, songTime)
+    const progress = this.holdProgress(tile)
 
     if (tile.kind === 'fake_gap') {
       const gapEnd = tile.gapAt + tile.gapLen

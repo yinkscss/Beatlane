@@ -69,6 +69,20 @@ export function tileFullyPastBottom(
   return tileY >= playfieldH
 }
 
+/**
+ * HOLD progress while the tile scrolls through the hit band (0→1).
+ * 0 = bottom of tile at hit line (press window); 1 = top at hit line (tile finished).
+ * Finger-down until this reaches ~1 — a simple long tap, not a timed short press.
+ */
+export function holdTileProgress(
+  tileY: number,
+  tileH: number,
+  hitLineY: number,
+): number {
+  if (tileH <= 0) return 0
+  return Math.max(0, Math.min(1, (tileY + tileH - hitLineY) / tileH))
+}
+
 /** How many of the 6 star/crown marks are lit (flag is always the midpoint marker). */
 export function litMarksFromCombo(combo: number): number {
   if (combo <= 0) return 0

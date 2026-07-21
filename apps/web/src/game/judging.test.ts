@@ -11,6 +11,7 @@ import {
   railMarks,
   SCORE_GREAT,
   SCORE_PERFECT,
+  holdTileProgress,
   tileFullyPastBottom,
   tilePartiallyOnPlayfield,
   withinHitWindow,
@@ -74,6 +75,19 @@ describe('chart judge — spatial grade', () => {
     // Fully past bottom — auto-miss only
     expect(tilePartiallyOnPlayfield(playfieldH, holdH, playfieldH)).toBe(false)
     expect(tileFullyPastBottom(playfieldH, playfieldH)).toBe(true)
+  })
+
+  it('HOLD progress is geometric through the hit band (long tap until tile finishes)', () => {
+    const hitY = 656
+    const holdH = 200
+    // Bottom at hit line → just started
+    expect(holdTileProgress(hitY - holdH, holdH, hitY)).toBe(0)
+    // Halfway through
+    expect(holdTileProgress(hitY - holdH / 2, holdH, hitY)).toBeCloseTo(0.5)
+    // Top at hit line → finished
+    expect(holdTileProgress(hitY, holdH, hitY)).toBe(1)
+    // Still approaching — not started
+    expect(holdTileProgress(hitY - holdH - 40, holdH, hitY)).toBe(0)
   })
 
   it('late spatial taps grade GREAT (not miss) when far from hit line', () => {
