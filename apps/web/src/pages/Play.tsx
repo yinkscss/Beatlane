@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { audioRuntime } from '@/audio/runtime'
+import { elapsedSongTimeSec } from '@/audio/songClock'
 import { SAMPLE_CHARTS, sampleChartById } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
 import type { Chart } from '@/charts/schema'
@@ -326,13 +327,6 @@ export default function PlayPage() {
       startCountdownTimerRef.current = null
     }
 
-    const songClock = () => {
-      const ctx = audioRuntime.getContext()
-      const start = audioRuntime.getMusicStartTime()
-      if (!ctx || start == null) return null
-      return ctx.currentTime - start
-    }
-
     const game = new ClassicPlayfield({
       onHit: (grade: HitGrade, nextScore, nextCombo) => {
         if (cancelled) return
@@ -430,7 +424,6 @@ export default function PlayPage() {
     })
     game.setMode(mode)
     gameRef.current = game
-    game.setSongClock(songClock)
 
     const musicUrlBox = { current: null as string | null }
 
@@ -481,18 +474,36 @@ export default function PlayPage() {
       }, 100)
     }
 
-    /** Begin tiles immediately — never await audio (mobile can hang after gesture expires). */
+    /**
+     * Begin tiles immediately — never await audio (mobile can hang after gesture expires).
+     * Chart clock anchors at beginRun, not at the Play-tap music arm (3s countdown),
+     * otherwise songTime is already ~3s and opening notes never appear.
+     */
     startRunRef.current = async () => {
       if (cancelled) return
       bedArmedRef.current = true
       runStartedAtRef.current = performance.now()
-      // Kick audio in parallel; do not block beginRun on it.
-      void startMusic().catch((err) => {
-        console.error('Music start failed', err)
-      })
+
+      // Keep music that was armed on the Play gesture (Safari). Restarting here
+      // (outside the gesture) often fails on iOS and leaves the run silent.
       if (audioRuntime.getMusicStartTime() == null) {
-        game.setSongClock(null)
+        void startMusic().catch((err) => {
+          console.error('Music start failed', err)
+        })
+      } else {
+        void audioRuntime.resumeContext().catch(() => {})
       }
+
+      const perfAnchor = performance.now()
+      const audioAnchor = audioRuntime.getContext()?.currentTime ?? null
+      game.setSongClock(() =>
+        elapsedSongTimeSec({
+          perfNow: performance.now(),
+          perfAnchor,
+          audioNow: audioRuntime.getContext()?.currentTime ?? null,
+          audioAnchor,
+        }),
+      )
       game.beginRun()
       trackStartRun({ mode, chartId })
       startBlitzClock()
