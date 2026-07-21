@@ -43,7 +43,7 @@ Audio: Web Audio only in v1 — songs are Storage audio + JSON charts; the chart
 
 ## Status
 
-Gates G0–G17 on master; G18 adds Sentry/PostHog + CI unit tests (judge/obstacles).
+Gates G0–G18 on master; G19 launch polish (Vercel Hobby, MiniPay stub, spend caps, perf).
 
 ```bash
 npm install
@@ -158,6 +158,35 @@ node apps/web/scripts/prove-g18-cloud.mjs
 ```
 
 Never commit real DSNs/keys — placeholders stay in `.env.example`.
+
+## G19 Launch polish
+
+Vercel Hobby production deploy, MiniPay stub CTA (Q21), soft spend caps, mute persistence, empty/error states, mid-tier perf budget.
+
+| Item | Location |
+|---|---|
+| Vercel config | `vercel.json` (build `apps/web`) |
+| MiniPay stub | Home + Wallet → `MiniPayCta` |
+| Spend caps | `apps/web/src/lib/spendCaps.ts` (UTC day, localStorage) |
+| Mute defaults | `apps/web/src/lib/mutePref.ts` (persisted) |
+| Perf budget | `docs/g19-perf-budget.md` |
+| Mainnet checklist | `docs/mainnet-cutover-checklist.md` |
+
+### Deploy (never print secrets)
+
+**Production:** https://beatlane.vercel.app (Vercel Hobby · project `beatlane`)
+
+```bash
+npx vercel login                          # interactive — once
+node apps/web/scripts/deploy-g19-vercel.mjs
+# syncs VITE_* from apps/web/.env → Vercel production, then --prod
+node apps/web/scripts/verify-g19.mjs
+BEATLANE_PROD_URL=https://beatlane.vercel.app node apps/web/scripts/verify-g19.mjs
+```
+
+Set `VITE_TREASURY_ADDRESS` in local `.env` + Vercel Production before Mainnet continues/helpers/packs work.
+
+Manual env (if CLI blocked): Vercel project → Settings → Environment Variables → Production — copy keys from local `apps/web/.env` (values never committed). Required: `VITE_MAGIC_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_TREASURY_ADDRESS`, plus Celo / Sentry / PostHog as used locally. Supabase project: **blockblast** (`zxtwshhlicditrvqafzo`).
 
 ## G13 Upstash Redis (rate limits)
 

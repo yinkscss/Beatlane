@@ -18,6 +18,7 @@ import { trackUnlockPack } from '@/lib/analytics'
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import { captureException } from '@/lib/sentry'
+import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import type { ChartDifficulty } from '@/lib/database.types'
 import { useAppStore } from '@/store/appStore'
@@ -73,6 +74,7 @@ export default function MusicPage() {
   const [packs, setPacks] = useState<PackRow[]>([])
   const [unlocks, setUnlocks] = useState<UnlockRow[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [diffPick, setDiffPick] = useState<ChartDifficulty>('normal')
   const [busy, setBusy] = useState(false)
@@ -81,9 +83,11 @@ export default function MusicPage() {
   const reload = useCallback(async () => {
     if (!isSupabaseConfigured()) {
       setError('Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in apps/web/.env')
+      setLoading(false)
       return
     }
     setError(null)
+    setLoading(true)
     const [charts, packRows] = await Promise.all([
       fetchListedCharts(),
       fetchPacks(),
@@ -101,6 +105,7 @@ export default function MusicPage() {
     } else {
       setUnlocks([])
     }
+    setLoading(false)
   }, [status])
 
   useEffect(() => {
@@ -109,6 +114,7 @@ export default function MusicPage() {
       .catch((err: unknown) => {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Catalog fetch failed')
+          setLoading(false)
         }
       })
     return () => {
@@ -168,6 +174,11 @@ export default function MusicPage() {
       navigate(`/wallet?next=${encodeURIComponent('/music')}`)
       return
     }
+    const spendGate = assertSpendAllowed('pack', amountCusd)
+    if (!spendGate.ok) {
+      setBuyError(spendGate.reason)
+      return
+    }
     setBusy(true)
     setBuyError(null)
     try {
@@ -178,6 +189,7 @@ export default function MusicPage() {
         txHash,
         metadata: meta,
       })
+      recordSpend('pack', amountCusd)
       if (meta.product === 'pack' && typeof meta.packId === 'string') {
         trackUnlockPack({ packId: meta.packId, sku, amountCusd })
       }
@@ -231,9 +243,21 @@ export default function MusicPage() {
         </p>
       ) : null}
 
-      {!error && tracks.length === 0 ? (
+      {!error && loading ? (
         <p className={styles.muted}>Loading catalog…</p>
-      ) : (
+      ) : null}
+
+      {!error && !loading && tracks.length === 0 ? (
+        <div className={styles.empty} role="status">
+          <strong>No tracks yet</strong>
+          <p>Catalog is empty — check Supabase charts seed or try again later.</p>
+          <button type="button" className={styles.retry} onClick={() => void reload()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {!error && !loading && tracks.length > 0 ? (
         <div className={styles.list}>
           {tracks.map((track) => {
             const unlocked = isTrackUnlocked(track, unlocks)
@@ -272,7 +296,7 @@ export default function MusicPage() {
             )
           })}
         </div>
-      )}
+      ) : null}
 
       {sheet?.kind === 'difficulty' ? (
         <div className={styles.sheet} role="dialog" aria-modal>

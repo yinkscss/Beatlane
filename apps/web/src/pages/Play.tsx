@@ -46,6 +46,7 @@ import {
   trackStartRun,
 } from '@/lib/analytics'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import { captureException } from '@/lib/sentry'
 import {
   BLITZ_DURATION_MS,
@@ -696,6 +697,11 @@ export default function PlayPage() {
 
     const price = secondChancePrice(reviveCount)
     const sku = secondChanceSku(reviveCount)
+    const spendGate = assertSpendAllowed('continue', price)
+    if (!spendGate.ok) {
+      setReviveError(spendGate.reason)
+      return
+    }
     const scoreBefore = score
     const speedBefore = speedAtFailRef.current
 
@@ -715,6 +721,7 @@ export default function PlayPage() {
           chartId,
         },
       })
+      recordSpend('continue', price)
       trackPurchaseContinue({
         sku,
         amountCusd: price,
@@ -782,6 +789,11 @@ export default function PlayPage() {
     }
 
     const price = sku === SLOW_MO_SKU ? SLOW_MO_PRICE : SHIELD_PRICE
+    const spendGate = assertSpendAllowed('helper', price)
+    if (!spendGate.ok) {
+      setHelperError(spendGate.reason)
+      return
+    }
     setHelperBusy(true)
     setHelperError(null)
     try {
@@ -798,6 +810,7 @@ export default function PlayPage() {
           chainId: 42220,
         },
       })
+      recordSpend('helper', price)
 
       if (sku === SLOW_MO_SKU) {
         game.activateSlowMo(SLOW_MO_MS)

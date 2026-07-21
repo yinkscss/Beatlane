@@ -13,4 +13,22 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    // G19 mid-tier budget: split heavy vendors (see docs/g19-perf-budget.md)
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/pixi.js')) return 'pixi'
+          if (
+            id.includes('node_modules/react-dom') ||
+            id.includes('node_modules/react-router') ||
+            id.includes('node_modules/react/')
+          ) {
+            return 'react-vendor'
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
+  },
 })

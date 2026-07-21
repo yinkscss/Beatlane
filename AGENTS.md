@@ -28,3 +28,4 @@
 - G16 Blitz cups: Mainnet cUSD entry fees + app/edge payout stub; optional TournamentVault on Celo Sepolia; rake 15%
 - G17 Season Pass: $2.99 cUSD Mainnet; 4 weeks; continues + track unlocks only (no cosmetics); Edge `season-pass` grant schedule
 - G18 Observability: Sentry (`VITE_SENTRY_DSN` + Edge `SENTRY_DSN`) + PostHog funnels (`start_run`, `miss`, `purchase_continue`, `unlock_pack`); `VITE_POSTHOG_KEY` must be `phc_` (not personal `phx_`); CI job `ci` runs lint/typecheck/vitest; live prove via `apps/web/scripts/prove-g18-cloud.mjs`
+- G19 Launch polish: `vercel.json` (apps/web); MiniPay CTA stub (Q21) on Home/Wallet; soft spend caps + mute persistence; perf budget `docs/g19-perf-budget.md`; Mainnet cutover `docs/mainnet-cutover-checklist.md`; deploy via `apps/web/scripts/deploy-g19-vercel.mjs` (needs `vercel login`; never print secrets)

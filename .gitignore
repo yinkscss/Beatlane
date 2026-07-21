@@ -10,3 +10,4 @@ dist/
 .vite/
 coverage/
 apps/web/.g12-seed/
+.vercel

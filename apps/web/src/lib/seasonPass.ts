@@ -6,6 +6,7 @@
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { getMagic } from '@/lib/magic'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 
 export const SEASON_PASS_PRICE = 2.99
@@ -94,6 +95,8 @@ export async function purchaseSeasonPass(
   if (amountCusd.toFixed(2) !== SEASON_PASS_PRICE.toFixed(2)) {
     throw new Error('Season Pass price mismatch')
   }
+  const spendGate = assertSpendAllowed('pass', amountCusd)
+  if (!spendGate.ok) throw new Error(spendGate.reason)
   const { txHash } = await transferCusdToTreasury(amountCusd)
   await recordPurchaseReceipt({
     sku: status.sku,
@@ -107,4 +110,5 @@ export async function purchaseSeasonPass(
       noCosmetics: true,
     },
   })
+  recordSpend('pass', amountCusd)
 }

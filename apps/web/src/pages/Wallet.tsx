@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import MiniPayCta from '@/components/MiniPayCta'
 import { fetchMyUnlocks } from '@/lib/catalog'
 import { countHelperUnlocks } from '@/lib/helpers'
+import { formatSpendSummary } from '@/lib/spendCaps'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Wallet.module.css'
 
@@ -153,12 +155,17 @@ export default function WalletPage() {
             ) : null}
           </div>
 
+          <p className={styles.spendCap} role="status">
+            {formatSpendSummary()}
+          </p>
+
           <Link
             to={`/play?mode=${playMode}`}
             className={`${styles.btn} ${styles.btnPrimary}`}
           >
             Start tapping
           </Link>
+          <MiniPayCta variant="wallet" />
           <button
             type="button"
             className={`${styles.btn} ${styles.btnLight}`}
@@ -170,7 +177,7 @@ export default function WalletPage() {
           <p className={styles.minipayHint}>
             Fund this Magic address with cUSD + a little CELO (gas) on Celo
             Mainnet for Second Chance, Slow-mo ($0.19), and Shield ($0.29).
-            MiniPay path stubs in G17.
+            MiniPay CTA is a stub until tester docs (Q21).
           </p>
         </div>
       </div>
@@ -226,9 +233,7 @@ export default function WalletPage() {
         <button type="button" className={`${styles.btn} ${styles.btnLight}`} disabled>
           G Continue with Google
         </button>
-        <button type="button" className={`${styles.btn} ${styles.btnDark}`} disabled>
-          Open MiniPay
-        </button>
+        <MiniPayCta variant="wallet" />
       </div>
 
       {(formError || error) && (

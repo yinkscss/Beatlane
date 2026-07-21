@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import MiniPayCta from '@/components/MiniPayCta'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Home.module.css'
 
@@ -134,10 +135,13 @@ export default function HomePage() {
         )}
       </div>
 
+      <p className={styles.celoHint}>On Celo · MiniPay ready</p>
+
       <div className={styles.actions}>
         <Link to="/music" className={`${styles.btn} ${styles.btnLight}`}>
           Music
         </Link>
+        <MiniPayCta variant="home" className={`${styles.btn} ${styles.btnDark}`} />
         <Link
           to={
             authed
@@ -147,9 +151,6 @@ export default function HomePage() {
           className={`${styles.btn} ${styles.btnLight}`}
         >
           Pass
-        </Link>
-        <Link to="/wallet" className={`${styles.btn} ${styles.btnDark}`}>
-          {authed ? 'Wallet' : 'Sign in'}
         </Link>
       </div>
     </div>

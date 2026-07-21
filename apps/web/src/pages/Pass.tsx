@@ -113,17 +113,23 @@ export default function PassPage() {
       </div>
 
       <div className={styles.track} role="list" aria-label="Pass rewards">
-        {(pass?.nodes ?? []).map((node) => (
-          <div
-            key={node.id}
-            className={nodeClass(node)}
-            role="listitem"
-            title={nodeHint(node)}
-            aria-label={`${node.label}: ${nodeHint(node)} (${node.state})`}
-          >
-            {node.label}
-          </div>
-        ))}
+        {(pass?.nodes ?? []).length === 0 ? (
+          <p className={styles.empty} role="status">
+            No reward nodes yet — check Season Pass seed or retry later.
+          </p>
+        ) : (
+          (pass?.nodes ?? []).map((node) => (
+            <div
+              key={node.id}
+              className={nodeClass(node)}
+              role="listitem"
+              title={nodeHint(node)}
+              aria-label={`${node.label}: ${nodeHint(node)} (${node.state})`}
+            >
+              {node.label}
+            </div>
+          ))
+        )}
       </div>
 
       <div className={styles.card}>

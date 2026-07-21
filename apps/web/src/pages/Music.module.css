@@ -111,6 +111,40 @@
   padding: 0 16px;
 }
 
+.empty {
+  margin: 16px;
+  padding: 20px 16px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  text-align: center;
+  color: var(--soft);
+}
+
+.empty strong {
+  display: block;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  margin-bottom: 6px;
+}
+
+.empty p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.retry {
+  border: 0;
+  border-radius: var(--radius-btn);
+  padding: 10px 16px;
+  font-weight: 700;
+  font-size: 12px;
+  background: var(--stage);
+  color: #fff;
+  cursor: pointer;
+}
+
 .warn {
   margin: 8px 16px 0;
   color: var(--bad);

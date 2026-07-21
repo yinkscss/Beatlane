@@ -1,0 +1,19 @@
+# Keep Hobby uploads lean — only source + lockfile needed for build
+.git
+.github
+.cursor
+.playwright-mcp
+docs
+contracts
+supabase/.temp
+**/node_modules
+**/dist
+**/.vite
+**/.g12-seed
+coverage
+*.tsbuildinfo
+.env
+.env.*
+!**/.env.example
+apps/web/scripts/prove-*.mjs
+AGENTS.md

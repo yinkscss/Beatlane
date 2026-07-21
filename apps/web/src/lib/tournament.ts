@@ -9,6 +9,7 @@
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { getMagic } from '@/lib/magic'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import { getSupabase, isSupabaseConfigured } from '@/lib/supabase'
 
 export const TOURNAMENT_RAKE_BPS = 1500
@@ -184,6 +185,8 @@ export async function enterTournament(lobby: TournamentLobby): Promise<{
     )
   }
   const entryFee = Number(lobby.tournament.entry_fee_cusd)
+  const spendGate = assertSpendAllowed('tournament', entryFee)
+  if (!spendGate.ok) throw new Error(spendGate.reason)
   const sku = tournamentEntrySku(lobby.tournament.slug)
   const { txHash } = await transferCusdToTreasury(entryFee)
   await recordPurchaseReceipt({
@@ -197,6 +200,7 @@ export async function enterTournament(lobby: TournamentLobby): Promise<{
       product: 'tournament_entry',
     },
   })
+  recordSpend('tournament', entryFee)
   return { txHash, entryFee }
 }
 

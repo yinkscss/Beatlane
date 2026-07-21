@@ -83,6 +83,17 @@ function drawFlash(w: number, h: number, perfect: boolean): Graphics {
  * Crack → flash → shard burst matching beat-pitch.html shatterTile aesthetics.
  * Mutates `tile` (hides after crack), adds VFX under `fxLayer`, returns ticker updater + cleanup.
  */
+function prefersReducedMotion(): boolean {
+  try {
+    return (
+      typeof matchMedia !== 'undefined' &&
+      matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+  } catch {
+    return false
+  }
+}
+
 export function playGlassShatter(opts: {
   tile: Container
   fxLayer: Container
@@ -92,6 +103,7 @@ export function playGlassShatter(opts: {
 }): { update: (dtMs: number) => boolean; destroy: () => void } {
   const { tile, fxLayer, grade, tileW, tileH } = opts
   const perfect = grade === 'perfect'
+  const reduceMotion = prefersReducedMotion()
   const world = tile.getGlobalPosition()
   // Tile pivot is top-left within its parent; get bounds center in fxLayer space
   const parent = fxLayer
@@ -112,14 +124,16 @@ export function playGlassShatter(opts: {
   tile.alpha = 1
 
   const shards: ShardAnim[] = []
-  const count = perfect ? 11 : 8
+  // Mid-tier / a11y: fewer shards when reduced motion (G19 perf)
+  const count = reduceMotion ? (perfect ? 4 : 3) : perfect ? 11 : 8
   const burst = new Container()
   burst.position.set(cx, cy)
   fxLayer.addChild(burst)
 
   for (let i = 0; i < count; i++) {
     const ang = (Math.PI * 2 * i) / count + (Math.random() * 0.4 - 0.2)
-    const dist = 36 + Math.random() * (perfect ? 70 : 52)
+    const dist =
+      (reduceMotion ? 18 : 36) + Math.random() * (perfect ? (reduceMotion ? 28 : 70) : reduceMotion ? 22 : 52)
     const w = 10 + Math.random() * 16
     const h = 12 + Math.random() * 20
     const g = new Graphics()

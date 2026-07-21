@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { audioRuntime } from '@/audio/runtime'
 import type { PlayMode } from '@/game/classicPlayfield'
+import { readMutedDefault, writeMutedPref } from '@/lib/mutePref'
+
+const initialMuted = readMutedDefault()
+audioRuntime.setMuted(initialMuted)
 
 export type RunOutcome = 'fail' | 'clear' | 'quit'
 
@@ -39,17 +43,19 @@ type AppState = {
 /** Minimal client store — gameplay state arrives in later gates. */
 export const useAppStore = create<AppState>((set, get) => ({
   ready: true,
-  muted: false,
+  muted: initialMuted,
   playMode: 'classic',
   bestCombo: 0,
   lastRun: null,
   setMuted: (muted) => {
     audioRuntime.setMuted(muted)
+    writeMutedPref(muted)
     set({ muted })
   },
   toggleMute: () => {
     const next = !get().muted
     audioRuntime.setMuted(next)
+    writeMutedPref(next)
     set({ muted: next })
   },
   setPlayMode: (mode) => set({ playMode: mode }),

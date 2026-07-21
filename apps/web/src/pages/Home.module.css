@@ -146,6 +146,14 @@
   color: var(--ink);
 }
 
+.celoHint {
+  margin: 12px 16px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--soft);
+  letter-spacing: 0.02em;
+}
+
 .actions {
   margin-top: auto;
   padding: 14px;
