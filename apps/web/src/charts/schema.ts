@@ -12,12 +12,10 @@ export type ChartDifficulty = 'easy' | 'normal' | 'hard'
 /** Optional per-note visual/score modifier (G11). */
 export type ChartNoteMod = 'ice' | 'gold'
 
-/** G5 tap; G6 hold / bomb; G11 hard shapes. */
+/** G5 tap; G6 bomb; G11 hard shapes. (No hold / long_hold — removed.) */
 export type ChartNoteType =
   | 'tap'
-  | 'hold'
   | 'bomb'
-  | 'long_hold'
   | 'bridge'
   | 'triple'
   | 'l_hook'
@@ -31,28 +29,10 @@ export type ChartTapNote = {
   mod?: ChartNoteMod
 }
 
-export type ChartHoldNote = {
-  t: number
-  lane: 0 | 1 | 2 | 3
-  type: 'hold'
-  /** Hold duration in seconds — must press until length finishes. */
-  length: number
-  mod?: ChartNoteMod
-}
-
 export type ChartBombNote = {
   t: number
   lane: 0 | 1 | 2 | 3
   type: 'bomb'
-  mod?: ChartNoteMod
-}
-
-/** Extra-tall hold (~½ screen). Early release = miss. */
-export type ChartLongHoldNote = {
-  t: number
-  lane: 0 | 1 | 2 | 3
-  type: 'long_hold'
-  length: number
   mod?: ChartNoteMod
 }
 
@@ -110,9 +90,7 @@ export type ChartSlideNote = {
 
 export type ChartNote =
   | ChartTapNote
-  | ChartHoldNote
   | ChartBombNote
-  | ChartLongHoldNote
   | ChartBridgeNote
   | ChartTripleNote
   | ChartLHookNote
@@ -128,14 +106,12 @@ export type ChartSpeedUpEvent = {
 
 /** G6 basic + G11 hard/modifier banners. */
 export type ChartObstacleEventType =
-  | 'hold'
   | 'dont_tap'
   | 'double'
   | 'ice'
   | 'gold'
   | 'fog'
   | 'reverse'
-  | 'long_hold'
   | 'bridge'
   | 'triple'
   | 'l_hook'
@@ -171,14 +147,12 @@ export type Chart = {
 }
 
 const OBSTACLE_EVENT_TYPES = new Set<string>([
-  'hold',
   'dont_tap',
   'double',
   'ice',
   'gold',
   'fog',
   'reverse',
-  'long_hold',
   'bridge',
   'triple',
   'l_hook',
@@ -288,18 +262,6 @@ export function parseChart(raw: unknown): Chart {
       return mod
         ? { t: note.t, lane: note.lane, type: 'bomb', mod }
         : { t: note.t, lane: note.lane, type: 'bomb' }
-    }
-    if (note.type === 'hold') {
-      const length = requireLength(note, i)
-      return mod
-        ? { t: note.t, lane: note.lane, type: 'hold', length, mod }
-        : { t: note.t, lane: note.lane, type: 'hold', length }
-    }
-    if (note.type === 'long_hold') {
-      const length = requireLength(note, i)
-      return mod
-        ? { t: note.t, lane: note.lane, type: 'long_hold', length, mod }
-        : { t: note.t, lane: note.lane, type: 'long_hold', length }
     }
     if (note.type === 'bridge') {
       if (note.lane > 2) throw new Error(`Chart: note[${i}] bridge lane must be 0–2`)

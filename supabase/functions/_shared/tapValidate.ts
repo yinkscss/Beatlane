@@ -37,7 +37,7 @@ export type ValidateResult = {
 }
 
 function expectedHitTime(note: ChartNoteLite): number {
-  const holdLike = new Set(['hold', 'long_hold', 'l_hook', 'fake_gap'])
+  const holdLike = new Set(['l_hook', 'fake_gap'])
   if (holdLike.has(note.type) && typeof note.length === 'number') {
     return note.t + note.length
   }

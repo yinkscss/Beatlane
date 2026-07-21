@@ -73,14 +73,12 @@ type ObstacleUi = {
 } | null
 
 const OBSTACLE_LABEL: Record<ObstacleBannerKind, string> = {
-  hold: 'HOLD',
   dont_tap: "DON'T TAP",
   double: 'DOUBLE',
   ice: 'ICE',
   gold: 'GOLD',
   fog: 'FOG',
   reverse: 'REVERSE',
-  long_hold: 'HOLD LONG',
   bridge: 'BRIDGE',
   triple: 'TRIPLE',
   l_hook: 'L-HOOK',
@@ -94,8 +92,6 @@ const OBSTACLE_LABEL: Record<ObstacleBannerKind, string> = {
 
 function bannerClass(kind: ObstacleBannerKind): string {
   switch (kind) {
-    case 'hold':
-    case 'long_hold':
     case 'split':
       return styles.bannerHold
     case 'dont_tap':

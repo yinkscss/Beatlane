@@ -8,82 +8,357 @@
   "audio": "/audio/bed.wav",
   "scrollHeightsPerSec": 0.78,
   "notes": [
-    { "t": 1.0, "lane": 0, "type": "tap" },
-    { "t": 1.7, "lane": 2, "type": "tap" },
-    { "t": 2.4, "lane": 1, "type": "tap" },
-    { "t": 3.1, "lane": 3, "type": "tap" },
-    { "t": 3.8, "lane": 0, "type": "tap" },
-    { "t": 4.5, "lane": 1, "type": "tap" },
-    { "t": 5.2, "lane": 2, "type": "tap" },
-    { "t": 5.9, "lane": 3, "type": "tap" },
-    { "t": 6.6, "lane": 1, "type": "tap" },
-    { "t": 7.3, "lane": 0, "type": "tap" },
-    { "t": 8.0, "lane": 3, "type": "tap" },
-    { "t": 8.7, "lane": 2, "type": "tap" },
-    { "t": 9.4, "lane": 0, "type": "tap" },
-    { "t": 10.1, "lane": 2, "type": "tap" },
-    { "t": 10.8, "lane": 1, "type": "tap" },
-    { "t": 11.5, "lane": 3, "type": "tap" },
-
-    { "t": 13.2, "lane": 1, "type": "hold", "length": 1.15 },
-    { "t": 15.0, "lane": 0, "type": "tap" },
-    { "t": 15.6, "lane": 2, "type": "tap" },
-    { "t": 16.2, "lane": 3, "type": "tap" },
-    { "t": 16.8, "lane": 1, "type": "tap" },
-    { "t": 17.4, "lane": 0, "type": "tap" },
-
-    { "t": 18.8, "lane": 0, "type": "tap" },
-    { "t": 18.8, "lane": 2, "type": "tap" },
-    { "t": 19.5, "lane": 1, "type": "tap" },
-    { "t": 20.1, "lane": 3, "type": "tap" },
-    { "t": 20.7, "lane": 0, "type": "tap" },
-    { "t": 21.3, "lane": 2, "type": "tap" },
-    { "t": 21.9, "lane": 1, "type": "hold", "length": 1.0 },
-    { "t": 23.4, "lane": 3, "type": "tap" },
-    { "t": 24.0, "lane": 0, "type": "tap" },
-    { "t": 24.6, "lane": 2, "type": "tap" },
-
-    { "t": 26.0, "lane": 1, "type": "bridge" },
-    { "t": 27.0, "lane": 0, "type": "tap" },
-    { "t": 27.5, "lane": 3, "type": "tap" },
-    { "t": 28.0, "lane": 2, "type": "tap" },
-    { "t": 28.5, "lane": 1, "type": "tap" },
-    { "t": 29.0, "lane": 0, "type": "tap" },
-    { "t": 29.5, "lane": 3, "type": "tap" },
-    { "t": 30.0, "lane": 1, "type": "tap" },
-    { "t": 30.0, "lane": 2, "type": "tap" },
-    { "t": 30.7, "lane": 0, "type": "tap" },
-    { "t": 31.3, "lane": 3, "type": "tap" },
-
-    { "t": 32.8, "lane": 0, "type": "tap" },
-    { "t": 32.8, "lane": 2, "type": "bomb" },
-    { "t": 33.5, "lane": 1, "type": "tap" },
-    { "t": 34.1, "lane": 3, "type": "tap" },
-    { "t": 34.7, "lane": 0, "type": "tap" },
-    { "t": 35.3, "lane": 2, "type": "tap" },
-    { "t": 35.9, "lane": 1, "type": "hold", "length": 0.95 },
-    { "t": 37.3, "lane": 3, "type": "tap" },
-    { "t": 37.9, "lane": 0, "type": "tap" },
-    { "t": 38.5, "lane": 2, "type": "tap" },
-    { "t": 39.1, "lane": 1, "type": "tap" },
-    { "t": 39.7, "lane": 3, "type": "bomb" },
-    { "t": 39.7, "lane": 0, "type": "tap" },
-    { "t": 40.4, "lane": 2, "type": "tap" },
-    { "t": 41.0, "lane": 1, "type": "tap" },
-    { "t": 41.6, "lane": 3, "type": "tap" },
-    { "t": 42.2, "lane": 0, "type": "tap" },
-    { "t": 42.8, "lane": 2, "type": "tap" },
-    { "t": 43.4, "lane": 1, "type": "tap" },
-    { "t": 44.0, "lane": 3, "type": "tap" },
-    { "t": 44.6, "lane": 0, "type": "tap" },
-    { "t": 45.2, "lane": 2, "type": "tap" }
+    {
+      "t": 1.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 1.7,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 2.4,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 3.1,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 3.8,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 4.5,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 5.2,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 5.9,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 6.6,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 7.3,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 8.0,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 8.7,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 9.4,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 10.1,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 10.8,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 11.5,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 13.2,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 15.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 15.6,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 16.2,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 16.8,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 17.4,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 18.8,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 18.8,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 19.5,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 20.1,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 20.7,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 21.3,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 21.9,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 23.4,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 24.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 24.6,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 26.0,
+      "lane": 1,
+      "type": "bridge"
+    },
+    {
+      "t": 27.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 27.5,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 28.0,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 28.5,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 29.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 29.5,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 30.0,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 30.0,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 30.7,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 31.3,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 32.8,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 32.8,
+      "lane": 2,
+      "type": "bomb"
+    },
+    {
+      "t": 33.5,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 34.1,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 34.7,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 35.3,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 35.9,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 37.3,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 37.9,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 38.5,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 39.1,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 39.7,
+      "lane": 3,
+      "type": "bomb"
+    },
+    {
+      "t": 39.7,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 40.4,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 41.0,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 41.6,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 42.2,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 42.8,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 43.4,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 44.0,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 44.6,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 45.2,
+      "lane": 2,
+      "type": "tap"
+    }
   ],
   "events": [
-    { "t": 12.4, "type": "hold", "duration": 5 },
-    { "t": 18.0, "type": "double", "duration": 4 },
-    { "t": 25.2, "type": "bridge", "duration": 4 },
-    { "t": 29.2, "type": "speed_up", "mult": 1.4 },
-    { "t": 32.0, "type": "dont_tap", "duration": 4 },
-    { "t": 38.9, "type": "trap_double", "duration": 4 }
+    {
+      "t": 18.0,
+      "type": "double",
+      "duration": 4
+    },
+    {
+      "t": 25.2,
+      "type": "bridge",
+      "duration": 4
+    },
+    {
+      "t": 29.2,
+      "type": "speed_up",
+      "mult": 1.4
+    },
+    {
+      "t": 32.0,
+      "type": "dont_tap",
+      "duration": 4
+    },
+    {
+      "t": 38.9,
+      "type": "trap_double",
+      "duration": 4
+    }
   ]
 }

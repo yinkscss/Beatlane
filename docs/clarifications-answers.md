@@ -101,9 +101,7 @@ END CLARIFICATION ANSWERS
 Locked in chat after `docs/hold-tap-pitch.html` (Jul 21, 2026).
 
 ```
-HOLD_TAP_LOCK: anywhere_on_tile
-Title: Anywhere on the visible tile
-Rule: Press anywhere the hold is still on-screen (any part of the black body).
-No visible hit line / hit band on the playfield for obstacles.
-Sustain (already locked): finger-down until hold tile finishes; not a short timed press.
+HOLD / LONG_HOLD: removed from v1 charts + schema (no long press-and-hold tiles).
+L-hook / fake_gap may still use press-and-hold mechanics.
+No visible hit line / hit band on the playfield.
 ```

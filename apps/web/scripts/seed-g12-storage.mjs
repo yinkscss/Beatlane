@@ -96,8 +96,7 @@ function buildNotes(difficulty, bpm) {
       notes.push({
         t: Number((t + baseGap * 0.5).toFixed(3)),
         lane: (lane + 1) % 4,
-        type: 'hold',
-        length: Number((beat * 1.5).toFixed(3)),
+        type: 'tap',
       })
     }
     lane = (lane + 1) % 4
@@ -133,7 +132,7 @@ function buildChart(track, difficulty) {
             { t: 16, type: 'double', duration: 4 },
           ]
         : difficulty === 'normal'
-          ? [{ t: 12, type: 'hold', duration: 4 }]
+          ? [{ t: 12, type: 'double', duration: 4 }]
           : [],
   }
 }

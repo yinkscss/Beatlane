@@ -66,7 +66,7 @@ function validateTaps(notes, taps, clientScore) {
     : Number.POSITIVE_INFINITY
   const expected = all.filter((n) => {
     const wantT =
-      ['hold', 'long_hold', 'l_hook', 'fake_gap'].includes(n.type) &&
+      ['l_hook', 'fake_gap'].includes(n.type) &&
       typeof n.length === 'number'
         ? n.t + n.length
         : n.t
@@ -77,7 +77,7 @@ function validateTaps(notes, taps, clientScore) {
   let matched = 0
   for (const note of expected) {
     const wantT =
-      ['hold', 'long_hold', 'l_hook', 'fake_gap'].includes(note.type) &&
+      ['l_hook', 'fake_gap'].includes(note.type) &&
       typeof note.length === 'number'
         ? note.t + note.length
         : note.t

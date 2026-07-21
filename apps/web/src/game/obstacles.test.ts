@@ -37,20 +37,21 @@ function chart(partial: {
 
 describe('obstacle rules — G11 hard catalog', () => {
   it('lists dedicated hard shapes + banner patterns', () => {
-    expect(HARD_SHAPE_NOTES).toContain('long_hold')
+    expect(HARD_SHAPE_NOTES).toContain('bridge')
     expect(HARD_SHAPE_NOTES).toContain('fake_gap')
+    expect(HARD_SHAPE_NOTES).not.toContain('hold')
+    expect(HARD_SHAPE_NOTES).not.toContain('long_hold')
     expect(HARD_PATTERN_EVENTS).toContain('zig')
     expect(HARD_PATTERN_EVENTS).toContain('trap_double')
     expect(MODIFIER_EVENTS).toEqual(
       expect.arrayContaining(['ice', 'gold', 'fog', 'reverse']),
     )
-    expect(G11_HARD_SET.length).toBe(10)
+    expect(G11_HARD_SET.length).toBe(9)
   })
 
   it('detects hard coverage labels from notes + events', () => {
     const c = chart({
       notes: [
-        { t: 0, lane: 0, type: 'long_hold', length: 1 },
         { t: 1, lane: 0, type: 'bridge' },
         { t: 2, lane: 1, type: 'fake_gap', length: 0.5 },
       ],
@@ -60,7 +61,6 @@ describe('obstacle rules — G11 hard catalog', () => {
       ],
     })
     const cov = hardCoverage(c)
-    expect(cov.labels.has('LONG HOLD')).toBe(true)
     expect(cov.labels.has('BRIDGE')).toBe(true)
     expect(cov.labels.has('FAKE GAP')).toBe(true)
     expect(cov.labels.has('ZIG')).toBe(true)

@@ -11,7 +11,6 @@ const hardPath = join(here, '../public/charts/sample-hard.json')
 const chart = JSON.parse(readFileSync(hardPath, 'utf8'))
 
 const HARD_NOTE = new Set([
-  'long_hold',
   'bridge',
   'triple',
   'l_hook',
@@ -19,7 +18,6 @@ const HARD_NOTE = new Set([
   'slide',
 ])
 const HARD_EVENT = new Set([
-  'long_hold',
   'bridge',
   'triple',
   'l_hook',
@@ -34,7 +32,6 @@ const MODS = ['ice', 'gold', 'fog', 'reverse']
 const BANNED = new Set(['reverse', 'fog', 'fake_gap'])
 
 const NOTE_LABEL = {
-  long_hold: 'LONG HOLD',
   bridge: 'BRIDGE',
   triple: 'TRIPLE',
   l_hook: 'L-HOOK',

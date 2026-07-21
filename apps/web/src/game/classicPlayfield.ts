@@ -47,14 +47,12 @@ export type SpeedUpPhase =
   | { phase: 'clear' }
 
 export type ObstacleBannerKind =
-  | 'hold'
   | 'dont_tap'
   | 'double'
   | 'ice'
   | 'gold'
   | 'fog'
   | 'reverse'
-  | 'long_hold'
   | 'bridge'
   | 'triple'
   | 'l_hook'
@@ -97,9 +95,7 @@ export type ClassicPlayfieldHandlers = {
 
 type TileKind =
   | 'tap'
-  | 'hold'
   | 'bomb'
-  | 'long_hold'
   | 'bridge'
   | 'triple'
   | 'l_hook'
@@ -116,7 +112,7 @@ type Tile = {
   footGfx: Graphics | null
   lane: number
   kind: TileKind
-  /** Hold / long_hold / l_hook / fake_gap length in seconds. */
+  /** l_hook / fake_gap length in seconds. */
   length: number
   span: number
   foot: -1 | 0 | 1
@@ -603,21 +599,11 @@ export class ClassicPlayfield {
   }
 
   private isHoldLike(kind: TileKind): boolean {
-    return (
-      kind === 'hold' ||
-      kind === 'long_hold' ||
-      kind === 'l_hook' ||
-      kind === 'fake_gap'
-    )
+    return kind === 'l_hook' || kind === 'fake_gap'
   }
 
   private leadForNote(note: ChartNote): number {
-    if (
-      note.type === 'hold' ||
-      note.type === 'long_hold' ||
-      note.type === 'l_hook' ||
-      note.type === 'fake_gap'
-    ) {
+    if (note.type === 'l_hook' || note.type === 'fake_gap') {
       return this.holdTravelTimeSec(note.length)
     }
     return this.travelTimeSec()
@@ -890,13 +876,7 @@ export class ClassicPlayfield {
     let w = base.w
     let x = note.lane * laneW + laneW * PLAYFIELD.tileInsetX
 
-    if (note.type === 'hold') {
-      length = note.length
-      h = this.holdTileHeight(length, false)
-    } else if (note.type === 'long_hold') {
-      length = note.length
-      h = this.holdTileHeight(length, true)
-    } else if (note.type === 'bridge') {
+    if (note.type === 'bridge') {
       span = 2
       w =
         span * laneW -
@@ -1355,7 +1335,6 @@ export class ClassicPlayfield {
 
     const lane = this.mapInputLane(rawLane)
     const hitY = this.h * PLAYFIELD.hitLineY
-    // HOLD_TAP_LOCK: anywhere_on_tile — start while any part of the hold is on-screen.
     const candidates = this.tiles.filter((t) => {
       if (t.hit || t.dying) return false
       if (!this.tileCoversLane(t, lane)) return false
@@ -1431,16 +1410,6 @@ export class ClassicPlayfield {
         } else {
           this.keyHolds.set(lane, tile)
         }
-      }
-      return
-    }
-
-    if (this.isHoldLike(tile.kind)) {
-      this.startHold(tile)
-      if (opts.source === 'pointer') {
-        this.pointerHolds.set(opts.pointerId, tile)
-      } else {
-        this.keyHolds.set(lane, tile)
       }
       return
     }
