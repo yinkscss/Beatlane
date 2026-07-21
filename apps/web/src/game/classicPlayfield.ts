@@ -22,6 +22,8 @@ import {
 
 export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
+/** Classic ends the run on miss; Zen breaks combo only. */
+export type PlayMode = 'classic' | 'zen'
 
 export type SpeedUpPhase =
   | { phase: 'banner' }
@@ -40,6 +42,7 @@ export type SongClock = () => number | null
 
 export type ClassicPlayfieldHandlers = {
   onHit?: (grade: HitGrade, score: number, combo: number) => void
+  /** Classic: run ended. Zen: combo broken; run continues. */
   onFail?: (reason: FailReason, score: number, combo: number) => void
   onSpeedUp?: (ev: SpeedUpPhase) => void
   onObstacleBanner?: (ev: ObstacleBannerPhase) => void
@@ -98,6 +101,7 @@ export class ClassicPlayfield {
   private failed = false
   private score = 0
   private combo = 0
+  private mode: PlayMode = 'classic'
   private w = 0
   private h = 0
   private resizeObs: ResizeObserver | null = null
@@ -123,6 +127,14 @@ export class ClassicPlayfield {
 
   constructor(handlers: ClassicPlayfieldHandlers = {}) {
     this.handlers = handlers
+  }
+
+  getMode() {
+    return this.mode
+  }
+
+  setMode(mode: PlayMode) {
+    this.mode = mode
   }
 
   getScore() {
@@ -710,9 +722,7 @@ export class ClassicPlayfield {
       if (tile.kind === 'hold') {
         // Miss if hold fully past window without being held to completion
         if (!tile.hit && !tile.holding && tile.y > hitY + tile.h * 0.15) {
-          this.fail('miss')
-          tile.root.alpha = 0.35
-          still.push(tile)
+          this.missTile(tile, 'miss')
           continue
         }
         still.push(tile)
@@ -721,9 +731,7 @@ export class ClassicPlayfield {
 
       const window = tile.h * HIT_WINDOW_TILES
       if (!tile.hit && tile.y > hitY + window * 0.55) {
-        this.fail('miss')
-        tile.root.alpha = 0.35
-        still.push(tile)
+        this.missTile(tile, 'miss')
         continue
       }
       still.push(tile)
@@ -840,9 +848,8 @@ export class ClassicPlayfield {
       return
     }
     // Early release ≈ miss (product lock: hold until length completes)
-    this.fail('miss')
     tile.holding = false
-    tile.root.alpha = 0.35
+    this.missTile(tile, 'miss')
   }
 
   private completeHold(tile: Tile) {
@@ -903,7 +910,26 @@ export class ClassicPlayfield {
     }, 450)
   }
 
+  /** Fade + drop a missed tile; Classic ends run, Zen only breaks combo. */
+  private missTile(tile: Tile, reason: FailReason) {
+    if (tile.dying || tile.hit) return
+    tile.hit = true
+    tile.dying = true
+    tile.holding = false
+    tile.root.alpha = 0.35
+    window.setTimeout(() => {
+      if (!tile.root.destroyed) tile.root.destroy({ children: true })
+    }, 280)
+    this.fail(reason)
+  }
+
   private fail(reason: FailReason) {
+    if (this.mode === 'zen') {
+      const endedCombo = this.combo
+      this.combo = 0
+      this.handlers.onFail?.(reason, this.score, endedCombo)
+      return
+    }
     if (this.failed) return
     this.failed = true
     this.running = false

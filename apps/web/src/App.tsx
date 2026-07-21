@@ -5,16 +5,20 @@ import MusicPage from '@/pages/Music'
 import PlayPage from '@/pages/Play'
 import ResultsPage from '@/pages/Results'
 import WalletPage from '@/pages/Wallet'
-
-const nav: { to: string; label: string; end?: boolean }[] = [
-  { to: '/', label: 'Home', end: true },
-  { to: '/play', label: 'Play' },
-  { to: '/music', label: 'Music' },
-  { to: '/wallet', label: 'Wallet' },
-  { to: '/results', label: 'Results' },
-]
+import { useAppStore } from '@/store/appStore'
 
 export default function App() {
+  const playMode = useAppStore((s) => s.playMode)
+  const playTo = `/play?mode=${playMode}`
+
+  const nav: { to: string; label: string; end?: boolean }[] = [
+    { to: '/', label: 'Home', end: true },
+    { to: playTo, label: 'Play' },
+    { to: '/music', label: 'Music' },
+    { to: '/wallet', label: 'Wallet' },
+    { to: '/results', label: 'Results' },
+  ]
+
   return (
     <div className={styles.shell}>
       <main className={styles.main}>
@@ -29,7 +33,7 @@ export default function App() {
       <nav className={styles.nav} aria-label="Primary">
         {nav.map(({ to, label, end }) => (
           <NavLink
-            key={to}
+            key={label}
             to={to}
             end={end}
             className={({ isActive }) =>

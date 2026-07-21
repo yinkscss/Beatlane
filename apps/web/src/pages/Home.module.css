@@ -89,6 +89,11 @@
   color: var(--ink);
 }
 
+.modeSoon {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
 .mode strong {
   display: block;
   font-family: var(--font-display);

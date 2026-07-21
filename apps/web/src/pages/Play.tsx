@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { audioRuntime } from '@/audio/runtime'
 import { SAMPLE_CHARTS } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
@@ -9,6 +10,7 @@ import {
   type HitGrade,
   type ObstacleBannerKind,
   type ObstacleBannerPhase,
+  type PlayMode,
   type SpeedUpPhase,
 } from '@/game/classicPlayfield'
 import {
@@ -43,15 +45,25 @@ const OBSTACLE_LABEL: Record<ObstacleBannerKind, string> = {
   double: 'DOUBLE',
 }
 
-/** G5/G6 chart engine + G3 HUD + G4 Web Audio over Classic playfield. */
+function parseMode(raw: string | null): PlayMode {
+  return raw === 'zen' ? 'zen' : 'classic'
+}
+
+/** G5/G6 chart engine + G3 HUD + G4 Web Audio + G7 Classic/Zen modes. */
 export default function PlayPage() {
   const hostRef = useRef<HTMLDivElement>(null)
   const gameRef = useRef<ClassicPlayfield | null>(null)
   const judgeTimer = useRef<number | null>(null)
   const bedArmedRef = useRef(true)
+  const maxComboRef = useRef(0)
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const mode = parseMode(searchParams.get('mode'))
 
   const muted = useAppStore((s) => s.muted)
   const toggleMute = useAppStore((s) => s.toggleMute)
+  const setPlayMode = useAppStore((s) => s.setPlayMode)
+  const setLastRun = useAppStore((s) => s.setLastRun)
 
   const [chartId, setChartId] = useState(SAMPLE_CHARTS[0].id)
   const [chartMeta, setChartMeta] = useState<Chart | null>(null)
@@ -67,6 +79,11 @@ export default function PlayPage() {
   const [cleared, setCleared] = useState(false)
   const [speedUi, setSpeedUi] = useState<SpeedUi>(null)
   const [obstacleUi, setObstacleUi] = useState<ObstacleUi>(null)
+  const [reviveStub, setReviveStub] = useState(false)
+
+  useEffect(() => {
+    setPlayMode(mode)
+  }, [mode, setPlayMode])
 
   const showJudge = (grade: JudgeGrade) => {
     if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
@@ -84,6 +101,7 @@ export default function PlayPage() {
 
     let cancelled = false
     bedArmedRef.current = true
+    maxComboRef.current = 0
     setFail(null)
     setCleared(false)
     setScore(0)
@@ -91,6 +109,7 @@ export default function PlayPage() {
     setSpeedUi(null)
     setObstacleUi(null)
     setChartError(null)
+    setReviveStub(false)
 
     const songClock = () => {
       const ctx = audioRuntime.getContext()
@@ -105,25 +124,34 @@ export default function PlayPage() {
         audioRuntime.playSfx(grade === 'perfect' ? 'perfect' : 'great')
         setScore(nextScore)
         setCombo(nextCombo)
+        if (nextCombo > maxComboRef.current) maxComboRef.current = nextCombo
         setScorePop(true)
         window.setTimeout(() => setScorePop(false), 160)
         showJudge(grade)
       },
       onFail: (reason, nextScore, endedCombo) => {
         if (cancelled) return
-        bedArmedRef.current = false
+        if (endedCombo > maxComboRef.current) maxComboRef.current = endedCombo
         audioRuntime.playSfx('miss')
-        audioRuntime.stopBed()
         setScore(nextScore)
         setCombo(0)
+        showJudge('miss')
+        setMissFlash(true)
+        window.setTimeout(() => setMissFlash(false), 450)
+
+        if (mode === 'zen') {
+          // Miss breaks combo only — run continues.
+          return
+        }
+
+        bedArmedRef.current = false
+        audioRuntime.stopBed()
         setFailCombo(endedCombo)
         setFail(reason)
         setSpeedUi(null)
         setObstacleUi(null)
         setCleared(false)
-        showJudge('miss')
-        setMissFlash(true)
-        window.setTimeout(() => setMissFlash(false), 450)
+        setReviveStub(false)
       },
       onSpeedUp: (ev: SpeedUpPhase) => {
         if (cancelled) return
@@ -146,11 +174,21 @@ export default function PlayPage() {
         audioRuntime.stopBed()
         setScore(nextScore)
         setCombo(nextCombo)
+        if (nextCombo > maxComboRef.current) maxComboRef.current = nextCombo
         setCleared(true)
         setSpeedUi(null)
         setObstacleUi(null)
+        setLastRun({
+          mode,
+          score: nextScore,
+          combo: nextCombo,
+          maxCombo: maxComboRef.current,
+          outcome: 'clear',
+          chartTitle: game.getChart()?.title ?? null,
+        })
       },
     })
+    game.setMode(mode)
     gameRef.current = game
     game.setSongClock(songClock)
 
@@ -197,7 +235,28 @@ export default function PlayPage() {
       game.destroy()
       gameRef.current = null
     }
-  }, [chartId])
+  }, [chartId, mode, setLastRun])
+
+  const goResults = (outcome: 'fail' | 'clear' | 'quit') => {
+    setLastRun({
+      mode,
+      score,
+      combo: outcome === 'fail' ? failCombo : combo,
+      maxCombo: maxComboRef.current,
+      outcome,
+      chartTitle: chartMeta?.title ?? null,
+    })
+    navigate('/results')
+  }
+
+  const endRun = () => {
+    goResults(fail ? 'fail' : cleared ? 'clear' : 'quit')
+  }
+
+  const onReviveStub = () => {
+    // G10 will charge cUSD. Stub promises keep score + same speed.
+    setReviveStub(true)
+  }
 
   const retry = () => {
     setFail(null)
@@ -209,7 +268,10 @@ export default function PlayPage() {
     setMissFlash(false)
     setSpeedUi(null)
     setObstacleUi(null)
+    setReviveStub(false)
+    maxComboRef.current = 0
     bedArmedRef.current = true
+    gameRef.current?.setMode(mode)
     gameRef.current?.restart()
     void audioRuntime.startBed({ restart: true }).catch((err) => {
       console.error('Bed restart failed', err)
@@ -232,6 +294,8 @@ export default function PlayPage() {
           ? 'MISS'
           : null
 
+  const modeLabel = mode === 'zen' ? 'ZEN' : 'CLASSIC'
+
   return (
     <div className={styles.page}>
       <button
@@ -245,6 +309,7 @@ export default function PlayPage() {
       </button>
 
       <div className={styles.chartBar} role="group" aria-label="Chart">
+        <span className={styles.modePill}>{modeLabel}</span>
         {SAMPLE_CHARTS.map((c) => (
           <button
             key={c.id}
@@ -361,34 +426,81 @@ export default function PlayPage() {
         </div>
       ) : null}
 
-      {fail ? (
+      {fail && mode === 'classic' ? (
         <div className={styles.failOverlay}>
-          <p className={styles.failTitle}>
-            {fail === 'miss' ? 'You missed' : 'Wrong tap'}
-          </p>
-          <p className={styles.failSub}>
-            Combo died at {failCombo}. Score {score.toLocaleString()}.
-          </p>
-          <button type="button" className={styles.retry} onClick={retry}>
-            Retry
-          </button>
+          <div className={styles.failSheet} role="dialog" aria-labelledby="fail-title">
+            <h2 id="fail-title" className={styles.sheetTitle}>
+              {fail === 'miss' ? 'You missed' : 'Wrong tap'}
+            </h2>
+            <p className={styles.sheetBody}>
+              Combo died at {failCombo}. Keep this run alive?
+            </p>
+            <div className={styles.sheetRow}>
+              <span className={styles.sheetLabel}>Second Chance</span>
+              <span className={styles.sheetPrice}>$0.49 cUSD</span>
+            </div>
+            <p className={styles.sheetPromise}>
+              Keep your score · same speed
+            </p>
+            <div className={styles.sheetActions}>
+              <button
+                type="button"
+                className={styles.sheetPrimary}
+                onClick={onReviveStub}
+              >
+                Revive run
+              </button>
+              <button
+                type="button"
+                className={styles.sheetSecondary}
+                onClick={endRun}
+              >
+                End run
+              </button>
+            </div>
+            {reviveStub ? (
+              <p className={styles.sheetStub} role="status">
+                Payments in G10 — keeps your score &amp; same speed.
+              </p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
       {cleared && !fail ? (
         <div className={styles.failOverlay}>
-          <p className={styles.clearTitle}>Cleared</p>
-          <p className={styles.failSub}>
-            {chartMeta?.title ?? 'Chart'} · {score.toLocaleString()} pts
-          </p>
-          <button type="button" className={styles.retry} onClick={retry}>
-            Play again
-          </button>
+          <div className={styles.failSheet} role="dialog" aria-labelledby="clear-title">
+            <h2 id="clear-title" className={styles.sheetTitleClear}>
+              Cleared
+            </h2>
+            <p className={styles.sheetBody}>
+              {chartMeta?.title ?? 'Chart'} · {score.toLocaleString()} pts · ×
+              {combo}
+            </p>
+            <div className={styles.sheetActions}>
+              <button
+                type="button"
+                className={styles.sheetPrimary}
+                onClick={() => goResults('clear')}
+              >
+                See results
+              </button>
+              <button
+                type="button"
+                className={styles.sheetSecondary}
+                onClick={retry}
+              >
+                Play again
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
       <p className={styles.hint}>
-        Chart clock · DFJK / 1–4 · hold · Easy / Normal samples
+        {mode === 'zen'
+          ? 'Zen · miss breaks combo only · DFJK / 1–4'
+          : 'Classic · miss ends run · DFJK / 1–4'}
       </p>
     </div>
   )
