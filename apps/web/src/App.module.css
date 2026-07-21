@@ -27,12 +27,15 @@
 
 .nav {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(247, 242, 235, 0.92);
-  backdrop-filter: blur(12px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 2px;
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, rgba(255, 253, 249, 0.72), rgba(247, 242, 235, 0.96));
+  backdrop-filter: blur(16px);
   border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(26, 20, 36, 0.04);
 }
 
 .navLink {
@@ -40,21 +43,81 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 8px 4px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 2px 5px;
+  border-radius: 12px;
   color: var(--soft);
+  transition: color 120ms ease, background 120ms ease, transform 120ms ease;
 }
 
 .navLink:hover {
+  color: var(--ink);
+  background: rgba(255, 253, 249, 0.8);
+}
+
+.navLink:active {
+  transform: scale(0.96);
+}
+
+.iconWrap {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  color: inherit;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.navLinkPrimary .iconWrap {
+  background: linear-gradient(180deg, #ff9a55, var(--accent));
+  color: var(--white);
+  box-shadow: 0 2px 0 var(--accent-deep);
+}
+
+.navLinkPrimary {
   color: var(--accent-deep);
-  background: var(--white);
+}
+
+.navLinkPrimary:hover {
+  color: var(--accent-deep);
+  background: transparent;
 }
 
 .navLinkActive {
   color: var(--accent-deep);
   background: var(--white);
-  box-shadow: 0 1px 0 var(--line);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.navLinkActive .iconWrap {
+  color: var(--accent-deep);
+}
+
+.navLinkPrimary.navLinkActive .iconWrap {
+  background: linear-gradient(180deg, #ff9a55, var(--accent));
+  color: var(--white);
+  box-shadow: 0 2px 0 var(--accent-deep);
+}
+
+.navLinkPrimary.navLinkActive {
+  background: rgba(255, 138, 61, 0.12);
+  box-shadow: none;
 }
