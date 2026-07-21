@@ -5,6 +5,7 @@ import {
   Graphics,
   Rectangle,
 } from 'pixi.js'
+import type { Chart } from '@/charts/schema'
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
 import { pointsForGrade } from '@/game/judging'
@@ -18,9 +19,20 @@ import {
 export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
 
+export type SpeedUpPhase =
+  | { phase: 'banner' }
+  | { phase: 'countdown'; n: number }
+  | { phase: 'apply'; mult: number }
+  | { phase: 'clear' }
+
+/** Song time in seconds from music start (before chart.offset). Null if music not ready. */
+export type SongClock = () => number | null
+
 export type ClassicPlayfieldHandlers = {
   onHit?: (grade: HitGrade, score: number, combo: number) => void
   onFail?: (reason: FailReason, score: number, combo: number) => void
+  onSpeedUp?: (ev: SpeedUpPhase) => void
+  onChartComplete?: (score: number, combo: number) => void
 }
 
 type Tile = {
@@ -37,9 +49,13 @@ type Tile = {
 
 type FxJob = { update: (dtMs: number) => boolean; destroy: () => void }
 
+const SPEED_BANNER_MS = 900
+const SPEED_COUNT_MS = 480
+const DEFAULT_SPEED_MULT = 1.35
+
 /**
- * Classic stub playfield: four lanes, scrolling tiles, glass shatter + sparkles,
- * score/combo for G3 HUD. Audio lives in `@/audio/runtime` (G4), wired from Play.
+ * Classic playfield: four lanes, chart-scheduled tiles (G5), glass shatter + sparkles.
+ * Timing = chart + music clock (not waveform analysis). Audio stays in `@/audio/runtime`.
  */
 export class ClassicPlayfield {
   private app: Application | null = null
@@ -57,14 +73,21 @@ export class ClassicPlayfield {
   private failed = false
   private score = 0
   private combo = 0
-  private spawnAcc = 0
-  private spawnMs: number = SCROLL.spawnMs
-  private lastLane = -1
   private w = 0
   private h = 0
   private resizeObs: ResizeObserver | null = null
   private onKey: ((e: KeyboardEvent) => void) | null = null
   private gradient: FillGradient | null = null
+
+  private chart: Chart | null = null
+  private clock: SongClock | null = null
+  private noteIndex = 0
+  private eventIndex = 0
+  private speedMult = 1
+  private baseHeightsPerSec: number = SCROLL.heightsPerSec
+  private localStartMs = 0
+  private chartDone = false
+  private speedTimers: number[] = []
 
   constructor(handlers: ClassicPlayfieldHandlers = {}) {
     this.handlers = handlers
@@ -80,6 +103,21 @@ export class ClassicPlayfield {
 
   isFailed() {
     return this.failed
+  }
+
+  getChart() {
+    return this.chart
+  }
+
+  setSongClock(clock: SongClock | null) {
+    this.clock = clock
+  }
+
+  setChart(chart: Chart | null) {
+    this.chart = chart
+    this.baseHeightsPerSec =
+      chart?.scrollHeightsPerSec ?? SCROLL.heightsPerSec
+    this.resetChartCursor()
   }
 
   async mount(host: HTMLElement): Promise<void> {
@@ -143,8 +181,8 @@ export class ClassicPlayfield {
     this.failed = false
     this.score = 0
     this.combo = 0
-    this.spawnAcc = 400
-    this.spawnMs = SCROLL.spawnMs
+    this.resetChartCursor()
+    this.localStartMs = performance.now()
 
     app.ticker.add(this.tick)
 
@@ -171,20 +209,27 @@ export class ClassicPlayfield {
     return lanes
   }
 
+  /** DEV: song clock seconds including chart offset (null if waiting on music). */
+  getSongTime(): number | null {
+    return this.songTimeSec()
+  }
+
   restart(): void {
+    this.clearSpeedTimers()
+    this.handlers.onSpeedUp?.({ phase: 'clear' })
     this.clearTiles()
     this.clearFx()
     this.failed = false
     this.running = true
     this.score = 0
     this.combo = 0
-    this.spawnAcc = 400
-    this.spawnMs = SCROLL.spawnMs
-    this.lastLane = -1
+    this.resetChartCursor()
+    this.localStartMs = performance.now()
   }
 
   destroy(): void {
     this.running = false
+    this.clearSpeedTimers()
     if (this.onKey) window.removeEventListener('keydown', this.onKey)
     this.onKey = null
     this.resizeObs?.disconnect()
@@ -205,6 +250,45 @@ export class ClassicPlayfield {
       const w = window as unknown as { __beatlane?: ClassicPlayfield }
       if (w.__beatlane === this) delete w.__beatlane
     }
+  }
+
+  private resetChartCursor() {
+    this.noteIndex = 0
+    this.eventIndex = 0
+    this.speedMult = 1
+    this.chartDone = false
+    this.baseHeightsPerSec =
+      this.chart?.scrollHeightsPerSec ?? SCROLL.heightsPerSec
+  }
+
+  private clearSpeedTimers() {
+    for (const id of this.speedTimers) window.clearTimeout(id)
+    this.speedTimers = []
+  }
+
+  /**
+   * Song clock + chart.offset. When a music clock is wired, returns null until
+   * `getMusicStartTime()` is available so we never mix local + audio clocks.
+   */
+  private songTimeSec(): number | null {
+    const offset = this.chart?.offset ?? 0
+    if (this.clock) {
+      const t = this.clock()
+      if (t == null) return null
+      return t + offset
+    }
+    return (performance.now() - this.localStartMs) / 1000 + offset
+  }
+
+  private travelTimeSec(): number {
+    if (this.h <= 0) return 1.2
+    const { h: tileH } = this.tileSize()
+    const hitY = this.h * PLAYFIELD.hitLineY
+    const speed = this.h * this.baseHeightsPerSec * this.speedMult
+    if (speed <= 0) return 1.2
+    // Spawn top at -tileH; center crosses hit line at y = hitY - tileH/2
+    const dist = hitY - tileH / 2 - -tileH
+    return dist / speed
   }
 
   private layout = () => {
@@ -238,7 +322,6 @@ export class ClassicPlayfield {
     this.bg.clear()
     this.bg.rect(0, 0, this.w, this.h).fill(grad)
 
-    // Faint diamond hatch (PRD §5.1) — light white rules
     const step = 48
     this.bg.setStrokeStyle({ width: 1, color: 0xffffff, alpha: 0.12 })
     for (let i = -this.h; i < this.w + this.h; i += step) {
@@ -271,7 +354,6 @@ export class ClassicPlayfield {
     const left = this.w * 0.08
     const right = this.w * 0.92
     this.hitBand.clear()
-    // Soft glow
     this.hitBand
       .roundRect(left, y - 4, right - left, 8, 4)
       .fill({ color: 0xffffff, alpha: 0.18 })
@@ -299,7 +381,6 @@ export class ClassicPlayfield {
     root.position.set(x, -h)
     const body = new Graphics()
     body.roundRect(0, 0, w, h, 4).fill({ color: PLAYFIELD.tile })
-    // Subtle inset edge like pitch tile
     body
       .rect(0, h - 3, w, 3)
       .fill({ color: PLAYFIELD.tileInsetHighlight, alpha: 0.06 })
@@ -308,13 +389,63 @@ export class ClassicPlayfield {
     this.tiles.push({ root, body, lane, y: -h, w, h, hit: false, dying: false })
   }
 
-  private pickLane(): number {
-    let lane = Math.floor(Math.random() * PLAYFIELD.lanes)
-    if (lane === this.lastLane && Math.random() < 0.7) {
-      lane = (lane + 1 + Math.floor(Math.random() * 3)) % PLAYFIELD.lanes
+  private beginSpeedUp(mult: number) {
+    this.clearSpeedTimers()
+    this.handlers.onSpeedUp?.({ phase: 'banner' })
+
+    let delay = SPEED_BANNER_MS
+    for (const n of [3, 2, 1] as const) {
+      const id = window.setTimeout(() => {
+        if (this.failed || !this.running) return
+        this.handlers.onSpeedUp?.({ phase: 'countdown', n })
+      }, delay)
+      this.speedTimers.push(id)
+      delay += SPEED_COUNT_MS
     }
-    this.lastLane = lane
-    return lane
+
+    const applyId = window.setTimeout(() => {
+      if (this.failed || !this.running) return
+      this.speedMult *= mult
+      this.handlers.onSpeedUp?.({ phase: 'apply', mult: this.speedMult })
+      const clearId = window.setTimeout(() => {
+        this.handlers.onSpeedUp?.({ phase: 'clear' })
+      }, 400)
+      this.speedTimers.push(clearId)
+    }, delay)
+    this.speedTimers.push(applyId)
+  }
+
+  private scheduleFromChart(songTime: number) {
+    const chart = this.chart
+    if (!chart) return
+
+    while (
+      this.eventIndex < chart.events.length &&
+      songTime >= chart.events[this.eventIndex].t
+    ) {
+      const ev = chart.events[this.eventIndex++]
+      if (ev.type === 'speed_up') {
+        this.beginSpeedUp(ev.mult ?? DEFAULT_SPEED_MULT)
+      }
+    }
+
+    const lead = this.travelTimeSec()
+    while (
+      this.noteIndex < chart.notes.length &&
+      songTime >= chart.notes[this.noteIndex].t - lead
+    ) {
+      const note = chart.notes[this.noteIndex++]
+      this.spawnTile(note.lane)
+    }
+
+    if (
+      !this.chartDone &&
+      this.noteIndex >= chart.notes.length &&
+      this.tiles.length === 0
+    ) {
+      this.chartDone = true
+      this.handlers.onChartComplete?.(this.score, this.combo)
+    }
   }
 
   private tick = () => {
@@ -324,19 +455,19 @@ export class ClassicPlayfield {
     }
     const dtMs = this.app.ticker.deltaMS
     const dt = dtMs / 1000
-    const speed = this.h * SCROLL.heightsPerSec
+    const songTime = this.songTimeSec()
 
-    // Spawn
-    this.spawnAcc += dtMs
-    if (this.spawnAcc >= this.spawnMs) {
-      this.spawnAcc = 0
-      this.spawnTile(this.pickLane())
-      this.spawnMs = Math.max(
-        SCROLL.minSpawnMs,
-        this.spawnMs - 4,
-      )
+    // Wait for music start before chart scheduling / scroll (keeps clock authoritative).
+    if (this.chart && songTime == null) {
+      this.updateFx(dtMs)
+      return
     }
 
+    if (this.chart && songTime != null) {
+      this.scheduleFromChart(songTime)
+    }
+
+    const speed = this.h * this.baseHeightsPerSec * this.speedMult
     const hitY = this.h * PLAYFIELD.hitLineY
     const still: Tile[] = []
     for (const tile of this.tiles) {
@@ -384,6 +515,9 @@ export class ClassicPlayfield {
 
   private tapLane(lane: number) {
     if (this.failed || !this.running) return
+    // Wait for music clock — unlock gestures must not count as Classic wrong-taps.
+    if (this.chart && this.songTimeSec() == null) return
+
     const hitY = this.h * PLAYFIELD.hitLineY
     const candidates = this.tiles.filter((t) => {
       if (t.lane !== lane || t.hit || t.dying) return false
@@ -398,7 +532,6 @@ export class ClassicPlayfield {
       return
     }
 
-    // Nearest to hit line
     candidates.sort(
       (a, b) =>
         Math.abs(a.y + a.h / 2 - hitY) - Math.abs(b.y + b.h / 2 - hitY),
@@ -438,7 +571,6 @@ export class ClassicPlayfield {
     })
     this.fxJobs.push(sparkles)
 
-    // Remove tile from active list after shatter starts; visual stays until job hides it
     this.tiles = this.tiles.filter((t) => t !== tile)
     window.setTimeout(() => {
       tile.root.destroy({ children: true })
@@ -449,6 +581,8 @@ export class ClassicPlayfield {
     if (this.failed) return
     this.failed = true
     this.running = false
+    this.clearSpeedTimers()
+    this.handlers.onSpeedUp?.({ phase: 'clear' })
     const endedCombo = this.combo
     this.combo = 0
     this.handlers.onFail?.(reason, this.score, endedCombo)

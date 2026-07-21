@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-easy",
+  "title": "Lane Warmup",
+  "difficulty": "easy",
+  "bpm": 100,
+  "offset": 0,
+  "audio": "/audio/bed.wav",
+  "scrollHeightsPerSec": 0.68,
+  "notes": [
+    {
+      "t": 1.2,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 1.92,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 2.64,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 3.36,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 4.08,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 4.8,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 5.52,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 6.24,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 6.96,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 7.68,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 8.4,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 11.4,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 12.0,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 12.6,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 13.2,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 13.8,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 14.4,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 15.0,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 15.6,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 16.2,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 16.8,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 17.4,
+      "lane": 1,
+      "type": "tap"
+    }
+  ],
+  "events": [
+    {
+      "t": 9.0,
+      "type": "speed_up",
+      "mult": 1.35
+    }
+  ]
+}

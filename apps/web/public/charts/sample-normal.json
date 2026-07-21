@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-normal",
+  "title": "Pulse Run",
+  "difficulty": "normal",
+  "bpm": 120,
+  "offset": 0,
+  "audio": "/audio/bed.wav",
+  "scrollHeightsPerSec": 0.78,
+  "notes": [
+    {
+      "t": 1.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 1.42,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 1.92,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 2.42,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 2.92,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 3.42,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 3.84,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 4.34,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 4.84,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 5.34,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 5.84,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 6.26,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 6.76,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 7.26,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 7.76,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 8.26,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 8.68,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 9.18,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 9.68,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 13.0,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 13.36,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 13.78,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 14.2,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 14.56,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 14.98,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 15.4,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 15.76,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 16.18,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 16.6,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 16.96,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 17.38,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 17.8,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 18.16,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 18.58,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 19.0,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 19.36,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 19.78,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 20.2,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 20.56,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 20.98,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 21.4,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 21.76,
+      "lane": 2,
+      "type": "tap"
+    },
+    {
+      "t": 22.18,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 22.6,
+      "lane": 1,
+      "type": "tap"
+    },
+    {
+      "t": 22.96,
+      "lane": 3,
+      "type": "tap"
+    },
+    {
+      "t": 23.38,
+      "lane": 0,
+      "type": "tap"
+    },
+    {
+      "t": 23.8,
+      "lane": 2,
+      "type": "tap"
+    }
+  ],
+  "events": [
+    {
+      "t": 10.5,
+      "type": "speed_up",
+      "mult": 1.5
+    }
+  ]
+}
