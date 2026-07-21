@@ -8,7 +8,6 @@ import type { Chart, ChartNoteType, ChartObstacleEventType } from '@/charts/sche
 
 /** Hard shape note types that require dedicated playfield logic. */
 export const HARD_SHAPE_NOTES = [
-  'long_hold',
   'bridge',
   'triple',
   'l_hook',
@@ -34,7 +33,6 @@ export const MODIFIER_EVENTS = [
 
 /** Full G11 hard set names for acceptance checks. */
 export const G11_HARD_SET = [
-  'LONG HOLD',
   'BRIDGE',
   'TRIPLE',
   'L-HOOK',
@@ -54,7 +52,6 @@ export type HardCoverage = {
 }
 
 const NOTE_TO_LABEL: Record<string, string> = {
-  long_hold: 'LONG HOLD',
   bridge: 'BRIDGE',
   triple: 'TRIPLE',
   l_hook: 'L-HOOK',
@@ -63,7 +60,6 @@ const NOTE_TO_LABEL: Record<string, string> = {
 }
 
 const EVENT_TO_LABEL: Record<string, string> = {
-  long_hold: 'LONG HOLD',
   bridge: 'BRIDGE',
   triple: 'TRIPLE',
   l_hook: 'L-HOOK',

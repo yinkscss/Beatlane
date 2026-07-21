@@ -26,7 +26,7 @@ Loaded from Supabase Storage signed URLs (G12) via `resolve-chart-assets`, with 
 | `t` | number | Hit time in seconds from music start (after `offset`). For holds, press/start time. |
 | `lane` | `0`–`3` | Left → right. For `bridge`/`triple`, **leftmost** lane. For `slide`, start lane. |
 | `type` | see below | G5/G6 basics + G11 hard shapes |
-| `length` | number | Required for `hold`, `long_hold`, `l_hook`, `fake_gap` |
+| `length` | number | Required for `l_hook`, `fake_gap` |
 | `foot` | `-1` \| `1` | Required for `l_hook` — foot direction into neighbor |
 | `endLane` | `0`–`3` | Required for `slide` — destination lane (≠ `lane`) |
 | `gapAt` | number | Optional for `fake_gap` — gap start fraction of length (default `0.4`) |
@@ -38,9 +38,7 @@ Loaded from Supabase Storage signed URLs (G12) via `resolve-chart-assets`, with 
 | `type` | Behavior |
 |--------|----------|
 | `tap` | Standard black tile |
-| `hold` | Press and hold until `length` completes |
 | `bomb` | Don't tap — press fails |
-| `long_hold` | Extra-tall hold (~½ screen) |
 | `bridge` | 2-wide bar; cover both lanes (two fingers / keys) |
 | `triple` | 3-wide bar; cover all three lanes |
 | `l_hook` | Stem hold in `lane` + foot into neighbor (`foot`) |
@@ -68,12 +66,12 @@ Loaded from Supabase Storage signed URLs (G12) via `resolve-chart-assets`, with 
 | `type` | Role |
 |--------|------|
 | `speed_up` | Banner + countdown, then scroll mult |
-| `hold` / `dont_tap` / `double` | G6 basic banners |
+| `dont_tap` / `double` | G6 basic banners |
 | `ice` | Slow-then-burst tempo modifier |
 | `gold` | Gold-rush window (gold notes score bonus) |
 | `fog` | Low visibility overlay |
 | `reverse` | Lane input flip (0↔3, 1↔2) |
-| `long_hold` / `bridge` / `triple` / `l_hook` / `zig` / `split` / `fake_gap` / `slide` / `cascade` / `trap_double` | Hard shape banners |
+| `bridge` / `triple` / `l_hook` / `zig` / `split` / `fake_gap` / `slide` / `cascade` / `trap_double` | Hard shape banners |
 
 **Tournament Blitz (G16):** Reverse / Fog / Fake Gap are **banned** — see `blitzWhitelist.ts`. Flag only in G11; not forced into Blitz charts.
 
