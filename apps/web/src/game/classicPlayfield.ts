@@ -341,12 +341,12 @@ export class ClassicPlayfield {
     this.resizeObs.observe(host)
     this.layout()
 
-    this.running = true
+    // Idle until Play → countdown → beginRun() (needs a user gesture for audio).
+    this.running = false
     this.failed = false
     this.score = 0
     this.combo = 0
     this.resetChartCursor()
-    this.localStartMs = performance.now()
 
     app.ticker.add(this.tick)
 
@@ -381,7 +381,8 @@ export class ClassicPlayfield {
     return this.songTimeSec()
   }
 
-  restart(): void {
+  /** Reset playfield to idle (drawn lanes, no tiles / no scroll). */
+  prepareIdle(): void {
     this.clearSpeedTimers()
     this.clearBannerTimers()
     this.clearIceTimers()
@@ -392,7 +393,7 @@ export class ClassicPlayfield {
     this.clearTiles()
     this.clearFx()
     this.failed = false
-    this.running = true
+    this.running = false
     this.score = 0
     this.combo = 0
     this.failSongTime = null
@@ -401,7 +402,17 @@ export class ClassicPlayfield {
     this.iceMult = 1
     this.clearHelperSlow()
     this.resetChartCursor()
+  }
+
+  /** Start scrolling + chart schedule after Play countdown. */
+  beginRun(): void {
+    this.prepareIdle()
+    this.running = true
     this.localStartMs = performance.now()
+  }
+
+  restart(): void {
+    this.beginRun()
   }
 
   /**

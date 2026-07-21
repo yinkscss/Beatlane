@@ -70,6 +70,9 @@ type SpeedUi =
   | { kind: 'countdown'; n: number }
   | null
 
+/** Pre-run gate: Play button → 3-2-1 → tiles drop. */
+type RunPhase = 'loading' | 'ready' | 'countdown' | 'playing'
+
 type ObstacleUi = {
   kind: ObstacleBannerKind
   durationSec: number
@@ -196,8 +199,12 @@ export default function PlayPage() {
   const [blitzMsLeft, setBlitzMsLeft] = useState(BLITZ_DURATION_MS)
   const [blitzTimedOut, setBlitzTimedOut] = useState(false)
   const [tournamentId, setTournamentId] = useState<string | null>(null)
+  const [runPhase, setRunPhase] = useState<RunPhase>('loading')
+  const [startCountdown, setStartCountdown] = useState<number | null>(null)
   const speedAtFailRef = useRef(1)
   const blitzTickRef = useRef<number | null>(null)
+  const startCountdownTimerRef = useRef<number | null>(null)
+  const startRunRef = useRef<() => Promise<void>>(async () => {})
   const blitzEndedRef = useRef(false)
 
   useEffect(() => {
@@ -290,7 +297,9 @@ export default function PlayPage() {
     tapsRef.current = []
     perfectsRef.current = 0
     goodsRef.current = 0
-    runStartedAtRef.current = performance.now()
+    runStartedAtRef.current = 0
+    setRunPhase('loading')
+    setStartCountdown(null)
     setFail(null)
     setCleared(false)
     setScore(0)
@@ -310,6 +319,10 @@ export default function PlayPage() {
     if (blitzTickRef.current) {
       window.clearInterval(blitzTickRef.current)
       blitzTickRef.current = null
+    }
+    if (startCountdownTimerRef.current) {
+      window.clearTimeout(startCountdownTimerRef.current)
+      startCountdownTimerRef.current = null
     }
 
     const songClock = () => {
@@ -420,29 +433,72 @@ export default function PlayPage() {
 
     const musicUrlBox = { current: null as string | null }
 
-    const kickBed = () => {
+    const startMusic = async () => {
       if (cancelled || !bedArmedRef.current) return
-      // Already playing: only resume AudioContext (every tap used to re-enter
-      // startMusic and could stopBed() mid-flight → empty lanes / frozen clock).
       if (audioRuntime.getMusicStartTime() != null) {
-        void audioRuntime.unlock().catch((err) => {
-          console.error('Audio unlock failed', err)
-        })
+        await audioRuntime.unlock()
         return
       }
-      const start = musicUrlBox.current
-        ? audioRuntime.startMusic(musicUrlBox.current)
-        : audioRuntime.startBed()
-      void start.catch((err) => {
-        console.error('Music start failed', err)
-      })
+      if (musicUrlBox.current) {
+        await audioRuntime.startMusic(musicUrlBox.current)
+      } else {
+        await audioRuntime.startBed()
+      }
     }
 
-    const onGesture = () => {
-      kickBed()
+    const startBlitzClock = () => {
+      if (mode !== 'blitz' || cancelled) return
+      const started = performance.now()
+      blitzTickRef.current = window.setInterval(() => {
+        if (cancelled || blitzEndedRef.current) return
+        const left = Math.max(0, BLITZ_DURATION_MS - (performance.now() - started))
+        setBlitzMsLeft(left)
+        if (left <= 0) {
+          blitzEndedRef.current = true
+          if (blitzTickRef.current) {
+            window.clearInterval(blitzTickRef.current)
+            blitzTickRef.current = null
+          }
+          bedArmedRef.current = false
+          audioRuntime.stopBed()
+          setBlitzTimedOut(true)
+          setCleared(true)
+          setSpeedUi(null)
+          setObstacleUi(null)
+          const g = gameRef.current
+          setLastRun({
+            mode: 'blitz',
+            score: g?.getScore() ?? 0,
+            combo: g?.getCombo() ?? 0,
+            maxCombo: maxComboRef.current,
+            outcome: 'clear',
+            chartTitle: g?.getChart()?.title ?? null,
+            tournamentSlug: cupSlug,
+            tournamentId,
+          })
+        }
+      }, 100)
     }
-    host.addEventListener('pointerdown', onGesture, { capture: true })
-    window.addEventListener('keydown', onGesture, { capture: true })
+
+    startRunRef.current = async () => {
+      if (cancelled) return
+      bedArmedRef.current = true
+      runStartedAtRef.current = performance.now()
+      try {
+        await startMusic()
+      } catch (err) {
+        console.error('Music start failed', err)
+      }
+      if (cancelled) return
+      // If audio never armed, drop the song clock so local time drives tiles.
+      if (audioRuntime.getMusicStartTime() == null) {
+        game.setSongClock(null)
+      }
+      game.beginRun()
+      trackStartRun({ mode, chartId })
+      startBlitzClock()
+      setRunPhase('playing')
+    }
 
     void (async () => {
       try {
@@ -469,41 +525,7 @@ export default function PlayPage() {
 
         await game.mount(host)
         if (cancelled) return
-        trackStartRun({ mode, chartId })
-        kickBed()
-
-        if (mode === 'blitz') {
-          const started = performance.now()
-          blitzTickRef.current = window.setInterval(() => {
-            if (cancelled || blitzEndedRef.current) return
-            const left = Math.max(0, BLITZ_DURATION_MS - (performance.now() - started))
-            setBlitzMsLeft(left)
-            if (left <= 0) {
-              blitzEndedRef.current = true
-              if (blitzTickRef.current) {
-                window.clearInterval(blitzTickRef.current)
-                blitzTickRef.current = null
-              }
-              bedArmedRef.current = false
-              audioRuntime.stopBed()
-              setBlitzTimedOut(true)
-              setCleared(true)
-              setSpeedUi(null)
-              setObstacleUi(null)
-              const g = gameRef.current
-              setLastRun({
-                mode: 'blitz',
-                score: g?.getScore() ?? 0,
-                combo: g?.getCombo() ?? 0,
-                maxCombo: maxComboRef.current,
-                outcome: 'clear',
-                chartTitle: g?.getChart()?.title ?? null,
-                tournamentSlug: cupSlug,
-                tournamentId,
-              })
-            }
-          }, 100)
-        }
+        setRunPhase('ready')
       } catch (err) {
         console.error('Playfield / chart failed to start', err)
         captureException(err, { surface: 'play_mount', mode, chartId })
@@ -516,12 +538,14 @@ export default function PlayPage() {
     return () => {
       cancelled = true
       bedArmedRef.current = false
-      host.removeEventListener('pointerdown', onGesture, { capture: true })
-      window.removeEventListener('keydown', onGesture, { capture: true })
       if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
       if (blitzTickRef.current) {
         window.clearInterval(blitzTickRef.current)
         blitzTickRef.current = null
+      }
+      if (startCountdownTimerRef.current) {
+        window.clearTimeout(startCountdownTimerRef.current)
+        startCountdownTimerRef.current = null
       }
       audioRuntime.stopBed()
       game.destroy()
@@ -733,16 +757,46 @@ export default function PlayPage() {
     setReviveCount(0)
     setReviveBusy(false)
     setReviveError(null)
+    setStartCountdown(null)
     maxComboRef.current = 0
     bedArmedRef.current = true
+    blitzEndedRef.current = false
+    setBlitzMsLeft(BLITZ_DURATION_MS)
+    setBlitzTimedOut(false)
+    if (blitzTickRef.current) {
+      window.clearInterval(blitzTickRef.current)
+      blitzTickRef.current = null
+    }
+    if (startCountdownTimerRef.current) {
+      window.clearTimeout(startCountdownTimerRef.current)
+      startCountdownTimerRef.current = null
+    }
+    audioRuntime.stopBed()
     gameRef.current?.setMode(mode)
-    gameRef.current?.restart()
-    const restartMusic = musicUrlRef.current
-      ? audioRuntime.startMusic(musicUrlRef.current, { restart: true })
-      : audioRuntime.startBed({ restart: true })
-    void restartMusic.catch((err) => {
-      console.error('Music restart failed', err)
-    })
+    gameRef.current?.prepareIdle()
+    setRunPhase('ready')
+  }
+
+  const onPlayClick = () => {
+    if (runPhase !== 'ready' || fail || cleared || chartError) return
+    setRunPhase('countdown')
+    setStartCountdown(3)
+    if (startCountdownTimerRef.current) {
+      window.clearTimeout(startCountdownTimerRef.current)
+    }
+    let n = 3
+    const step = () => {
+      n -= 1
+      if (n > 0) {
+        setStartCountdown(n)
+        startCountdownTimerRef.current = window.setTimeout(step, 1000)
+        return
+      }
+      setStartCountdown(null)
+      startCountdownTimerRef.current = null
+      void startRunRef.current()
+    }
+    startCountdownTimerRef.current = window.setTimeout(step, 1000)
   }
 
   const onMuteClick = () => {
@@ -893,6 +947,28 @@ export default function PlayPage() {
           role="application"
           aria-label="Beatlane playfield"
         />
+        {runPhase === 'ready' && !fail && !cleared && !chartError ? (
+          <div className={styles.startOverlay}>
+            <button
+              type="button"
+              className={styles.playBtn}
+              onClick={onPlayClick}
+            >
+              Play
+            </button>
+          </div>
+        ) : null}
+        {runPhase === 'countdown' && startCountdown != null ? (
+          <div
+            className={styles.speedCountdown}
+            role="status"
+            aria-live="assertive"
+          >
+            <div className={styles.speedRing}>
+              <span key={startCountdown}>{startCountdown}</span>
+            </div>
+          </div>
+        ) : null}
         {combo > 0 && !fail && !cleared ? (
           <div key={combo} className={styles.comboBadge} aria-live="polite">
             ×{combo}
