@@ -1,6 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { fetchMyUnlocks } from '@/lib/catalog'
+import { countHelperUnlocks } from '@/lib/helpers'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Wallet.module.css'
 
@@ -28,11 +30,39 @@ export default function WalletPage() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [inventory, setInventory] = useState({
+    slowMo: 0,
+    shield: 0,
+    continues: 0,
+  })
+  const [inventoryError, setInventoryError] = useState<string | null>(null)
 
   const walletLabel = useMemo(() => {
     const addr = profile?.wallet_address ?? identity?.walletAddress
     return addr ? truncateAddress(addr) : null
   }, [profile, identity])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const unlocks = await fetchMyUnlocks()
+        if (cancelled) return
+        setInventory(countHelperUnlocks(unlocks))
+        setInventoryError(null)
+      } catch (err) {
+        if (!cancelled) {
+          setInventoryError(
+            err instanceof Error ? err.message : 'Inventory load failed',
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status])
 
   const onLogin = async (e: FormEvent) => {
     e.preventDefault()
@@ -98,6 +128,31 @@ export default function WalletPage() {
             <span>cUSD</span>
             <span className={styles.balanceVal}>—</span>
           </div>
+
+          <div className={styles.inventory} aria-label="Purchases inventory">
+            <h2 className={styles.inventoryTitle}>Purchases</h2>
+            <p className={styles.inventorySub}>
+              Continues &amp; helpers — Celo Mainnet receipts
+            </p>
+            <div className={styles.invRow}>
+              <span>Second Chances</span>
+              <strong className={styles.invVal}>{inventory.continues}</strong>
+            </div>
+            <div className={styles.invRow}>
+              <span>Slow-mos</span>
+              <strong className={styles.invVal}>{inventory.slowMo}</strong>
+            </div>
+            <div className={styles.invRow}>
+              <span>Shields</span>
+              <strong className={styles.invVal}>{inventory.shield}</strong>
+            </div>
+            {inventoryError ? (
+              <p className={styles.warn} role="status">
+                {inventoryError}
+              </p>
+            ) : null}
+          </div>
+
           <Link
             to={`/play?mode=${playMode}`}
             className={`${styles.btn} ${styles.btnPrimary}`}
@@ -114,7 +169,8 @@ export default function WalletPage() {
           </button>
           <p className={styles.minipayHint}>
             Fund this Magic address with cUSD + a little CELO (gas) on Celo
-            Mainnet for Second Chance. MiniPay path stubs in G17.
+            Mainnet for Second Chance, Slow-mo ($0.19), and Shield ($0.29).
+            MiniPay path stubs in G17.
           </p>
         </div>
       </div>

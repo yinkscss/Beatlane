@@ -1,9 +1,10 @@
 /**
- * G10/G12: Record cUSD purchase receipt after on-chain transfer.
+ * G10/G12/G14: Record cUSD purchase receipt after on-chain transfer.
  *
  * Client sends Magic DID + sku/amount/txHash.
  * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
- * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks.
+ * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks / helpers.
+ * Network metadata: Celo Mainnet (chainId 42220) — locked Q07.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -23,6 +24,12 @@ type Body = {
 }
 
 const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/
+
+/** G14 helper catalog prices (cUSD). */
+const HELPER_PRICES: Record<string, number> = {
+  slow_mo: 0.19,
+  shield: 0.29,
+}
 
 Deno.serve(async (req: Request) => {
   const cors = handleCors(req)
@@ -94,8 +101,17 @@ Deno.serve(async (req: Request) => {
     )
     if (profileErr) throw profileErr
 
-    // Price check for catalog SKUs.
-    if (sku.startsWith('pack_')) {
+    // Price check for catalog / helper SKUs.
+    if (sku in HELPER_PRICES) {
+      const want = HELPER_PRICES[sku]
+      if (want.toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match helper price' },
+          400,
+          req,
+        )
+      }
+    } else if (sku.startsWith('pack_')) {
       const packId = sku.slice('pack_'.length)
       const { data: pack, error: packErr } = await admin
         .from('packs')
@@ -173,6 +189,16 @@ Deno.serve(async (req: Request) => {
           user_id: userId,
           unlock_type: 'continue',
           unlock_key: purchase.id,
+          source_purchase_id: purchase.id,
+        },
+        { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+    } else if (sku in HELPER_PRICES) {
+      await admin.from('unlocks').upsert(
+        {
+          user_id: userId,
+          unlock_type: 'helper',
+          unlock_key: `${sku}:${purchase.id}`,
           source_purchase_id: purchase.id,
         },
         { onConflict: 'user_id,unlock_type,unlock_key' },

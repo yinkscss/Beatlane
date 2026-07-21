@@ -26,3 +26,15 @@ Requires `VITE_TREASURY_ADDRESS` and a Magic wallet funded with **cUSD + CELO (g
 ```bash
 node apps/web/scripts/verify-g13.mjs
 ```
+
+### Helpers Slow-mo & Shield (G14)
+
+- Classic / Daily only — `helpersDisabled('blitz')` is true (Blitz stub / G16).
+- Mid-run sheets: **Slow-mo 3s** `$0.19` · **Shield one-miss** `$0.29` (design-pack Saves).
+- Same payment path as Second Chance: Magic wallet → cUSD transfer → `record-purchase`.
+- **Network:** Celo Mainnet (`chainId` 42220). Roadmap AC “testnet” = staging/dev against this configured network (Q07 locked Mainnet — no separate Alfajores deploy).
+- Inventory counts on `/wallet` from `unlocks` (`helper` + `continue`).
+
+```bash
+node apps/web/scripts/verify-g14.mjs
+```

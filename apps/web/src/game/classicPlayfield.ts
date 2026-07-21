@@ -20,6 +20,7 @@ import {
   PLAYFIELD,
   SCROLL,
 } from '@/game/playfieldTheme'
+import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
 export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
@@ -76,6 +77,12 @@ export type ClassicPlayfieldHandlers = {
   onTapRecord?: (tap: TapRecord) => void
   /** Classic/Daily: run ended. Zen: combo broken; run continues. */
   onFail?: (reason: FailReason, score: number, combo: number) => void
+  /** Miss absorbed by timed or charged shield — run continues. */
+  onShieldAbsorb?: (
+    score: number,
+    endedCombo: number,
+    remainingCharges: number,
+  ) => void
   onSpeedUp?: (ev: SpeedUpPhase) => void
   onObstacleBanner?: (ev: ObstacleBannerPhase) => void
   onModifier?: (ev: ModifierPhase) => void
@@ -145,7 +152,6 @@ const ICE_SLOW_MULT = 0.55
 const ICE_BURST_MULT = 1.4
 const ICE_SLOW_MS = 1400
 const ICE_BURST_MS = 1100
-
 /**
  * Classic playfield: four lanes, chart-scheduled tiles (G5–G11), glass shatter + sparkles.
  * Timing = chart + music clock (not waveform analysis). Audio stays in `@/audio/runtime`.
@@ -182,14 +188,19 @@ export class ClassicPlayfield {
   private speedMult = 1
   /** Temporary ICE slow/burst multiplier (stacks with speedMult). */
   private iceMult = 1
+  /** G14 Slow-mo helper multiplier (stacks with iceMult; cleared after ms). */
+  private helperSlowMult = 1
   private baseHeightsPerSec: number = SCROLL.heightsPerSec
   private localStartMs = 0
   private chartDone = false
   private speedTimers: number[] = []
   private bannerTimers: number[] = []
   private iceTimers: number[] = []
+  private helperSlowTimers: number[] = []
   private failSongTime: number | null = null
   private shieldUntilMs = 0
+  /** G14 Shield helper — one miss per charge (distinct from timed post-revive shield). */
+  private shieldCharges = 0
 
   private reverseActive = false
   private fogActive = false
@@ -233,6 +244,18 @@ export class ClassicPlayfield {
 
   isShieldActive() {
     return this.shieldUntilMs > 0 && performance.now() < this.shieldUntilMs
+  }
+
+  getShieldCharges() {
+    return this.shieldCharges
+  }
+
+  hasAnyShield() {
+    return this.isShieldActive() || this.shieldCharges > 0
+  }
+
+  isHelperSlowMoActive() {
+    return this.helperSlowMult < 1
   }
 
   isReverseActive() {
@@ -371,7 +394,9 @@ export class ClassicPlayfield {
     this.combo = 0
     this.failSongTime = null
     this.shieldUntilMs = 0
+    this.shieldCharges = 0
     this.iceMult = 1
+    this.clearHelperSlow()
     this.resetChartCursor()
     this.localStartMs = performance.now()
   }
@@ -412,11 +437,32 @@ export class ClassicPlayfield {
       shieldMs > 0 ? performance.now() + shieldMs : 0
   }
 
+  /**
+   * G14 Slow-mo: temporary scroll crawl for `ms`. Does not change speedMult
+   * (Second Chance same-speed invariant).
+   */
+  activateSlowMo(ms = 3000): void {
+    if (this.failed || !this.running) return
+    this.clearHelperSlow()
+    this.helperSlowMult = SLOW_MO_SCROLL_MULT
+    const id = window.setTimeout(() => {
+      this.helperSlowMult = 1
+    }, ms)
+    this.helperSlowTimers.push(id)
+  }
+
+  /** G14 Shield one-miss: absorb the next fail without ending the run. */
+  activateShieldCharge(charges = 1): void {
+    if (this.failed || !this.running) return
+    this.shieldCharges += Math.max(0, charges)
+  }
+
   destroy(): void {
     this.running = false
     this.clearSpeedTimers()
     this.clearBannerTimers()
     this.clearIceTimers()
+    this.clearHelperSlow()
     this.clearActiveHolds()
     if (this.onKeyDown) window.removeEventListener('keydown', this.onKeyDown)
     if (this.onKeyUp) window.removeEventListener('keyup', this.onKeyUp)
@@ -515,7 +561,13 @@ export class ClassicPlayfield {
   }
 
   private scrollSpeed(): number {
-    return this.h * this.baseHeightsPerSec * this.speedMult * this.iceMult
+    return (
+      this.h *
+      this.baseHeightsPerSec *
+      this.speedMult *
+      this.iceMult *
+      this.helperSlowMult
+    )
   }
 
   private travelTimeSec(): number {
@@ -1536,10 +1588,22 @@ export class ClassicPlayfield {
     this.fail(reason)
   }
 
+  private clearHelperSlow() {
+    for (const id of this.helperSlowTimers) window.clearTimeout(id)
+    this.helperSlowTimers = []
+    this.helperSlowMult = 1
+  }
+
   private consumeShield(): boolean {
-    if (!this.isShieldActive()) return false
-    this.shieldUntilMs = 0
-    return true
+    if (this.isShieldActive()) {
+      this.shieldUntilMs = 0
+      return true
+    }
+    if (this.shieldCharges > 0) {
+      this.shieldCharges -= 1
+      return true
+    }
+    return false
   }
 
   private fail(reason: FailReason) {
@@ -1551,7 +1615,13 @@ export class ClassicPlayfield {
     }
     if (this.failed) return
     if (this.consumeShield()) {
+      const endedCombo = this.combo
       this.combo = 0
+      this.handlers.onShieldAbsorb?.(
+        this.score,
+        endedCombo,
+        this.shieldCharges,
+      )
       return
     }
     const songAtFail = this.songTimeSec()
@@ -1561,8 +1631,10 @@ export class ClassicPlayfield {
     this.clearSpeedTimers()
     this.clearBannerTimers()
     this.clearIceTimers()
+    this.clearHelperSlow()
     this.clearActiveHolds()
     this.iceMult = 1
+    this.shieldCharges = 0
     this.clearModifiers()
     this.handlers.onSpeedUp?.({ phase: 'clear' })
     this.handlers.onObstacleBanner?.({ phase: 'clear' })

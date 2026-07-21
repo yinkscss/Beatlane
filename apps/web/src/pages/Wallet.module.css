@@ -194,6 +194,45 @@
   color: var(--ink);
 }
 
+.inventory {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inventoryTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.inventorySub {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--soft);
+}
+
+.invRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--soft);
+}
+
+.invVal {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent-deep, #e85d04);
+}
+
 .minipayHint {
   margin: 0;
   text-align: center;

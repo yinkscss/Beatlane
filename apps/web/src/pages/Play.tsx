@@ -28,6 +28,15 @@ import {
   submitRun,
   type DailyChallenge,
 } from '@/lib/daily'
+import {
+  SLOW_MO_MS,
+  SLOW_MO_PRICE,
+  SLOW_MO_SKU,
+  SHIELD_PRICE,
+  SHIELD_SKU,
+  helpersAllowed,
+  type HelperSku,
+} from '@/lib/helpers'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import {
   SECOND_CHANCE_SHIELD_DEFAULT_ON,
@@ -38,6 +47,13 @@ import {
 } from '@/lib/secondChance'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Play.module.css'
+
+type ShieldUi =
+  | { kind: 'timed'; label: string }
+  | { kind: 'charge'; charges: number }
+  | null
+
+type HelperSheet = 'slow_mo' | 'shield' | null
 
 const JUDGE_MS = 520
 
@@ -168,9 +184,17 @@ export default function PlayPage() {
   const [reviveCount, setReviveCount] = useState(0)
   const [reviveBusy, setReviveBusy] = useState(false)
   const [reviveError, setReviveError] = useState<string | null>(null)
-  const [shieldUi, setShieldUi] = useState(false)
+  const [shieldUi, setShieldUi] = useState<ShieldUi>(null)
+  const [slowMoUi, setSlowMoUi] = useState(false)
+  const [helperSheet, setHelperSheet] = useState<HelperSheet>(null)
+  const [helperBusy, setHelperBusy] = useState(false)
+  const [helperError, setHelperError] = useState<string | null>(null)
   const [reverseUi, setReverseUi] = useState(false)
   const speedAtFailRef = useRef(1)
+  const slowMoTimerRef = useRef<number | null>(null)
+  const shieldTimerRef = useRef<number | null>(null)
+
+  const helpersOk = helpersAllowed(mode)
 
   useEffect(() => {
     if (mode === 'daily') return
@@ -242,9 +266,21 @@ export default function PlayPage() {
     setReviveCount(0)
     setReviveBusy(false)
     setReviveError(null)
-    setShieldUi(false)
+    setShieldUi(null)
+    setSlowMoUi(false)
+    setHelperSheet(null)
+    setHelperBusy(false)
+    setHelperError(null)
     setReverseUi(false)
     speedAtFailRef.current = 1
+    if (slowMoTimerRef.current) {
+      window.clearTimeout(slowMoTimerRef.current)
+      slowMoTimerRef.current = null
+    }
+    if (shieldTimerRef.current) {
+      window.clearTimeout(shieldTimerRef.current)
+      shieldTimerRef.current = null
+    }
 
     const songClock = () => {
       const ctx = audioRuntime.getContext()
@@ -295,6 +331,32 @@ export default function PlayPage() {
         setReverseUi(false)
         setCleared(false)
         setReviveError(null)
+        setHelperSheet(null)
+        setSlowMoUi(false)
+        setShieldUi(null)
+      },
+      onShieldAbsorb: (nextScore, endedCombo, remainingCharges) => {
+        if (cancelled) return
+        if (endedCombo > maxComboRef.current) maxComboRef.current = endedCombo
+        audioRuntime.playSfx('miss')
+        setScore(nextScore)
+        setCombo(0)
+        showJudge('miss')
+        setMissFlash(true)
+        window.setTimeout(() => setMissFlash(false), 450)
+        const g = gameRef.current
+        if (g?.isShieldActive()) {
+          // Timed post-revive window still active after consume? shouldn't happen.
+          setShieldUi({ kind: 'timed', label: 'Shield · 2s' })
+        } else if (remainingCharges > 0) {
+          setShieldUi({ kind: 'charge', charges: remainingCharges })
+        } else {
+          setShieldUi(null)
+          if (shieldTimerRef.current) {
+            window.clearTimeout(shieldTimerRef.current)
+            shieldTimerRef.current = null
+          }
+        }
       },
       onSpeedUp: (ev: SpeedUpPhase) => {
         if (cancelled) return
@@ -527,8 +589,14 @@ export default function PlayPage() {
       setSpeedUi(null)
       setObstacleUi(null)
       if (shieldMs > 0) {
-        setShieldUi(true)
-        window.setTimeout(() => setShieldUi(false), shieldMs)
+        if (shieldTimerRef.current) window.clearTimeout(shieldTimerRef.current)
+        setShieldUi({ kind: 'timed', label: 'Shield · 2s' })
+        shieldTimerRef.current = window.setTimeout(() => {
+          const g = gameRef.current
+          const charges = g?.getShieldCharges() ?? 0
+          setShieldUi(charges > 0 ? { kind: 'charge', charges } : null)
+          shieldTimerRef.current = null
+        }, shieldMs)
       }
 
       bedArmedRef.current = true
@@ -548,6 +616,61 @@ export default function PlayPage() {
     }
   }
 
+  const onBuyHelper = async (sku: HelperSku) => {
+    if (helperBusy || fail || cleared || !helpersOk) return
+    const game = gameRef.current
+    if (!game || game.isFailed()) return
+
+    if (!isTreasuryConfigured()) {
+      setHelperError(
+        'Set VITE_TREASURY_ADDRESS in apps/web/.env (Celo Mainnet receiver).',
+      )
+      return
+    }
+
+    const price = sku === SLOW_MO_SKU ? SLOW_MO_PRICE : SHIELD_PRICE
+    setHelperBusy(true)
+    setHelperError(null)
+    try {
+      const { txHash } = await transferCusdToTreasury(price)
+      await recordPurchaseReceipt({
+        sku,
+        amountCusd: price,
+        txHash,
+        metadata: {
+          product: sku,
+          mode,
+          chartId,
+          network: 'celo-mainnet',
+          chainId: 42220,
+        },
+      })
+
+      if (sku === SLOW_MO_SKU) {
+        game.activateSlowMo(SLOW_MO_MS)
+        if (slowMoTimerRef.current) window.clearTimeout(slowMoTimerRef.current)
+        setSlowMoUi(true)
+        slowMoTimerRef.current = window.setTimeout(() => {
+          setSlowMoUi(false)
+          slowMoTimerRef.current = null
+        }, SLOW_MO_MS)
+      } else {
+        game.activateShieldCharge(1)
+        const charges = game.getShieldCharges()
+        if (!game.isShieldActive()) {
+          setShieldUi({ kind: 'charge', charges })
+        }
+      }
+      setHelperSheet(null)
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Helper payment failed'
+      setHelperError(msg)
+    } finally {
+      setHelperBusy(false)
+    }
+  }
+
   const retry = () => {
     setFail(null)
     setCleared(false)
@@ -561,7 +684,19 @@ export default function PlayPage() {
     setReviveCount(0)
     setReviveBusy(false)
     setReviveError(null)
-    setShieldUi(false)
+    setShieldUi(null)
+    setSlowMoUi(false)
+    setHelperSheet(null)
+    setHelperBusy(false)
+    setHelperError(null)
+    if (slowMoTimerRef.current) {
+      window.clearTimeout(slowMoTimerRef.current)
+      slowMoTimerRef.current = null
+    }
+    if (shieldTimerRef.current) {
+      window.clearTimeout(shieldTimerRef.current)
+      shieldTimerRef.current = null
+    }
     maxComboRef.current = 0
     bedArmedRef.current = true
     gameRef.current?.setMode(mode)
@@ -732,14 +867,113 @@ export default function PlayPage() {
           </div>
         ) : null}
 
+        {slowMoUi ? (
+          <div className={styles.slowMoBadge} role="status">
+            Slow-mo · 3s
+          </div>
+        ) : null}
+
         {shieldUi ? (
-          <div className={styles.shieldBadge} role="status">
-            Shield · 2s
+          <div
+            className={styles.shieldBadge}
+            style={slowMoUi ? { top: 44 } : undefined}
+            role="status"
+          >
+            {shieldUi.kind === 'timed'
+              ? shieldUi.label
+              : `Shield · ${shieldUi.charges} miss`}
+          </div>
+        ) : null}
+
+        {helpersOk && !fail && !cleared && !helperSheet ? (
+          <div className={styles.helperBar} role="group" aria-label="Helpers">
+            <button
+              type="button"
+              className={styles.helperBtn}
+              onClick={() => {
+                setHelperError(null)
+                setHelperSheet('slow_mo')
+              }}
+              disabled={helperBusy || slowMoUi}
+            >
+              Slow-mo
+            </button>
+            <button
+              type="button"
+              className={styles.helperBtn}
+              onClick={() => {
+                setHelperError(null)
+                setHelperSheet('shield')
+              }}
+              disabled={helperBusy}
+            >
+              Shield
+            </button>
           </div>
         ) : null}
       </div>
 
       {missFlash ? <div className={styles.missFlash} aria-hidden="true" /> : null}
+
+      {helperSheet && helpersOk && !fail && !cleared ? (
+        <div
+          className={`${styles.failOverlay} ${styles.helperOverlay}`}
+          role="presentation"
+        >
+          <div
+            className={styles.failSheet}
+            role="dialog"
+            aria-labelledby="helper-title"
+          >
+            <h2 id="helper-title" className={styles.sheetTitle}>
+              {helperSheet === 'slow_mo' ? 'Slow-mo 3s?' : 'Shield one miss?'}
+            </h2>
+            <p className={styles.sheetBody}>
+              {helperSheet === 'slow_mo'
+                ? 'Tiles crawl. Catch your breath. Classic & Daily only.'
+                : 'Absorb the next miss. Classic & Daily only.'}
+            </p>
+            <div className={styles.sheetActions}>
+              <button
+                type="button"
+                className={styles.sheetPrimary}
+                onClick={() =>
+                  void onBuyHelper(
+                    helperSheet === 'slow_mo' ? SLOW_MO_SKU : SHIELD_SKU,
+                  )
+                }
+                disabled={helperBusy}
+              >
+                {helperBusy
+                  ? 'Confirming cUSD…'
+                  : `Activate · ${formatCusdPrice(
+                      helperSheet === 'slow_mo' ? SLOW_MO_PRICE : SHIELD_PRICE,
+                    )}`}
+              </button>
+              <button
+                type="button"
+                className={styles.sheetSecondary}
+                onClick={() => {
+                  setHelperSheet(null)
+                  setHelperError(null)
+                }}
+                disabled={helperBusy}
+              >
+                Cancel
+              </button>
+            </div>
+            {helperError ? (
+              <p className={styles.sheetError} role="alert">
+                {helperError}
+              </p>
+            ) : (
+              <p className={styles.sheetHint}>
+                Celo Mainnet · cUSD · helpers off in Blitz
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       {chartError ? (
         <div className={styles.failOverlay}>
@@ -870,10 +1104,10 @@ export default function PlayPage() {
 
       <p className={styles.hint}>
         {mode === 'zen'
-          ? 'Zen · miss breaks combo only · DFJK / 1–4'
+          ? 'Zen · miss breaks combo only · helpers off · DFJK / 1–4'
           : mode === 'daily'
-            ? 'Daily · same chart worldwide · taps validated on submit'
-            : 'Classic · miss ends run · DFJK / 1–4'}
+            ? 'Daily · helpers on · taps validated on submit'
+            : 'Classic · Slow-mo & Shield · DFJK / 1–4'}
       </p>
     </div>
   )

@@ -10,7 +10,12 @@ export type Json =
 export type ChartDifficulty = 'easy' | 'normal' | 'hard'
 export type PlayModeDb = 'classic' | 'zen' | 'daily' | 'blitz'
 export type PurchaseStatus = 'pending' | 'confirmed' | 'failed' | 'refunded'
-export type UnlockType = 'chart' | 'pack' | 'continue' | 'season_pass'
+export type UnlockType =
+  | 'chart'
+  | 'pack'
+  | 'continue'
+  | 'season_pass'
+  | 'helper'
 
 export type Database = {
   public: {

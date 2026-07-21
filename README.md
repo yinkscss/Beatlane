@@ -55,16 +55,22 @@ npm run typecheck
 
 Copy `apps/web/.env.example` → `apps/web/.env` (never commit secrets).
 
-## Funding Second Chance (Celo Mainnet)
+## Funding Second Chance & helpers (Celo Mainnet)
 
 Payments are **real cUSD on Celo Mainnet** (Q07/Q08). There is no faucet path.
+G14 helpers reuse this same path (roadmap “testnet” AC = staging against configured Mainnet).
 
-1. Set `VITE_TREASURY_ADDRESS` to the wallet that should receive continues.
+1. Set `VITE_TREASURY_ADDRESS` to the wallet that should receive continues / helpers.
 2. Sign in with Magic — note the embedded wallet address on `/wallet`.
-3. Manually send a small amount of **cUSD** (≥ $0.99 for a few revives) **and** a little **CELO** for gas to that Magic address.
+3. Manually send a small amount of **cUSD** (≥ $0.99 for a few revives, or $0.19 / $0.29 for helpers) **and** a little **CELO** for gas to that Magic address.
 4. Miss in Classic → **Revive run** → confirm the Magic tx → receipt lands in `purchases` with `tx_hash`.
+5. During Classic/Daily → **Slow-mo** / **Shield** HUD → Activate → same receipt + `unlocks` inventory on `/wallet`.
 
 Do not invent a successful purchase without an on-chain transfer.
+
+```bash
+node apps/web/scripts/verify-g14.mjs
+```
 
 ## G13 Upstash Redis (rate limits)
 
