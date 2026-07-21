@@ -119,6 +119,10 @@ export class ClassicPlayfield {
   private chartDone = false
   private speedTimers: number[] = []
   private bannerTimers: number[] = []
+  /** Song time (with chart.offset) at Classic fail — used to resume without rewind. */
+  private failSongTime: number | null = null
+  /** Post-revive miss absorb until this performance.now() (0 = off). */
+  private shieldUntilMs = 0
 
   /** pointerId → hold tile */
   private pointerHolds = new Map<number, Tile>()
@@ -147,6 +151,15 @@ export class ClassicPlayfield {
 
   isFailed() {
     return this.failed
+  }
+
+  /** Current scroll multiplier (Speed Up stacks). Never reduced on revive. */
+  getSpeedMult() {
+    return this.speedMult
+  }
+
+  isShieldActive() {
+    return this.shieldUntilMs > 0 && performance.now() < this.shieldUntilMs
   }
 
   getChart() {
@@ -263,8 +276,49 @@ export class ClassicPlayfield {
     this.running = true
     this.score = 0
     this.combo = 0
+    this.failSongTime = null
+    this.shieldUntilMs = 0
     this.resetChartCursor()
     this.localStartMs = performance.now()
+  }
+
+  /**
+   * Second Chance revive: keep score + speedMult, resume chart time.
+   * Does NOT call resetChartCursor — scroll speed never slows after revive.
+   * @param shieldMs post-revive shield duration (default 2000; 0 disables)
+   */
+  revive(opts: { shieldMs?: number } = {}): void {
+    if (!this.failed) return
+    const shieldMs = opts.shieldMs ?? 2000
+    const offset = this.chart?.offset ?? 0
+    const resumeAt = this.failSongTime ?? offset
+
+    // Drop dying/hit tiles from the miss; keep live tiles scrolling.
+    const keep: Tile[] = []
+    for (const t of this.tiles) {
+      if (t.dying || t.hit) {
+        if (!t.root.destroyed) t.root.destroy({ children: true })
+        continue
+      }
+      keep.push(t)
+    }
+    this.tiles = keep
+
+    this.clearActiveHolds()
+    this.clearBannerTimers()
+    this.handlers.onObstacleBanner?.({ phase: 'clear' })
+
+    // Resume on local clock from fail song time (music may restart independently).
+    this.clock = null
+    this.localStartMs = performance.now() - (resumeAt - offset) * 1000
+
+    this.failed = false
+    this.running = true
+    this.combo = 0
+    this.failSongTime = null
+    this.shieldUntilMs =
+      shieldMs > 0 ? performance.now() + shieldMs : 0
+    // speedMult intentionally untouched — same speed forever after revive.
   }
 
   destroy(): void {
@@ -923,6 +977,13 @@ export class ClassicPlayfield {
     this.fail(reason)
   }
 
+  /** Absorb one miss while post-revive shield is active. */
+  private consumeShield(): boolean {
+    if (!this.isShieldActive()) return false
+    this.shieldUntilMs = 0
+    return true
+  }
+
   private fail(reason: FailReason) {
     if (this.mode === 'zen') {
       const endedCombo = this.combo
@@ -931,6 +992,13 @@ export class ClassicPlayfield {
       return
     }
     if (this.failed) return
+    if (this.consumeShield()) {
+      // Shield ate the miss — combo breaks, run continues at same speed.
+      this.combo = 0
+      return
+    }
+    const songAtFail = this.songTimeSec()
+    this.failSongTime = songAtFail
     this.failed = true
     this.running = false
     this.clearSpeedTimers()
@@ -940,6 +1008,7 @@ export class ClassicPlayfield {
     this.handlers.onObstacleBanner?.({ phase: 'clear' })
     const endedCombo = this.combo
     this.combo = 0
+    // Keep speedMult — Second Chance resumes at same scroll speed.
     this.handlers.onFail?.(reason, this.score, endedCombo)
   }
 

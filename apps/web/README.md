@@ -10,4 +10,8 @@ npm run lint
 npm run typecheck
 ```
 
-Copy `.env.example` → `.env` and fill placeholders (Magic / Supabase / etc.). Never commit `.env`.
+Copy `.env.example` → `.env` and fill placeholders (Magic / Supabase / treasury). Never commit `.env`.
+
+### Second Chance (G10)
+
+Requires `VITE_TREASURY_ADDRESS` and a Magic wallet funded with **cUSD + CELO (gas)** on Celo Mainnet. See root README “Funding Second Chance”.

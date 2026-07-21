@@ -19,6 +19,15 @@ import {
   railMarks,
   type JudgeGrade,
 } from '@/game/judging'
+import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
+import { recordPurchaseReceipt } from '@/lib/purchases'
+import {
+  SECOND_CHANCE_SHIELD_DEFAULT_ON,
+  SECOND_CHANCE_SHIELD_MS,
+  formatCusdPrice,
+  secondChancePrice,
+  secondChanceSku,
+} from '@/lib/secondChance'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Play.module.css'
 
@@ -90,7 +99,12 @@ export default function PlayPage() {
   const [cleared, setCleared] = useState(false)
   const [speedUi, setSpeedUi] = useState<SpeedUi>(null)
   const [obstacleUi, setObstacleUi] = useState<ObstacleUi>(null)
-  const [reviveStub, setReviveStub] = useState(false)
+  /** Successful Second Chance purchases this run (0 → $0.49, 1 → $0.79, …). */
+  const [reviveCount, setReviveCount] = useState(0)
+  const [reviveBusy, setReviveBusy] = useState(false)
+  const [reviveError, setReviveError] = useState<string | null>(null)
+  const [shieldUi, setShieldUi] = useState(false)
+  const speedAtFailRef = useRef(1)
 
   useEffect(() => {
     setPlayMode(mode)
@@ -121,7 +135,11 @@ export default function PlayPage() {
     setSpeedUi(null)
     setObstacleUi(null)
     setChartError(null)
-    setReviveStub(false)
+    setReviveCount(0)
+    setReviveBusy(false)
+    setReviveError(null)
+    setShieldUi(false)
+    speedAtFailRef.current = 1
 
     const songClock = () => {
       const ctx = audioRuntime.getContext()
@@ -158,12 +176,13 @@ export default function PlayPage() {
 
         bedArmedRef.current = false
         audioRuntime.stopBed()
+        speedAtFailRef.current = gameRef.current?.getSpeedMult() ?? 1
         setFailCombo(endedCombo)
         setFail(reason)
         setSpeedUi(null)
         setObstacleUi(null)
         setCleared(false)
-        setReviveStub(false)
+        setReviveError(null)
       },
       onSpeedUp: (ev: SpeedUpPhase) => {
         if (cancelled) return
@@ -273,9 +292,76 @@ export default function PlayPage() {
     goResults(fail ? 'fail' : cleared ? 'clear' : 'quit')
   }
 
-  const onReviveStub = () => {
-    // G10 will charge cUSD. Stub promises keep score + same speed.
-    setReviveStub(true)
+  const onRevive = async () => {
+    if (reviveBusy || !fail) return
+    const game = gameRef.current
+    if (!game) return
+
+    if (!isTreasuryConfigured()) {
+      setReviveError(
+        'Set VITE_TREASURY_ADDRESS in apps/web/.env (Celo Mainnet receiver).',
+      )
+      return
+    }
+
+    const price = secondChancePrice(reviveCount)
+    const sku = secondChanceSku(reviveCount)
+    const scoreBefore = score
+    const speedBefore = speedAtFailRef.current
+
+    setReviveBusy(true)
+    setReviveError(null)
+    try {
+      const { txHash } = await transferCusdToTreasury(price)
+      await recordPurchaseReceipt({
+        sku,
+        amountCusd: price,
+        txHash,
+        metadata: {
+          product: 'second_chance',
+          reviveIndex: reviveCount,
+          scoreAtFail: scoreBefore,
+          speedMultAtFail: speedBefore,
+          chartId,
+        },
+      })
+
+      const shieldMs = SECOND_CHANCE_SHIELD_DEFAULT_ON
+        ? SECOND_CHANCE_SHIELD_MS
+        : 0
+      game.revive({ shieldMs })
+      const speedAfter = game.getSpeedMult()
+      if (speedAfter !== speedBefore) {
+        console.error('Second Chance speed mismatch', {
+          speedBefore,
+          speedAfter,
+        })
+      }
+
+      setReviveCount((n) => n + 1)
+      setFail(null)
+      setCombo(0)
+      setFailCombo(0)
+      setJudge(null)
+      setSpeedUi(null)
+      setObstacleUi(null)
+      if (shieldMs > 0) {
+        setShieldUi(true)
+        window.setTimeout(() => setShieldUi(false), shieldMs)
+      }
+
+      bedArmedRef.current = true
+      // Ambience only — chart clock stays local from fail time (same speed).
+      void audioRuntime.startBed({ restart: true }).catch((err) => {
+        console.error('Bed restart failed', err)
+      })
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Second Chance payment failed'
+      setReviveError(msg)
+    } finally {
+      setReviveBusy(false)
+    }
   }
 
   const retry = () => {
@@ -288,7 +374,10 @@ export default function PlayPage() {
     setMissFlash(false)
     setSpeedUi(null)
     setObstacleUi(null)
-    setReviveStub(false)
+    setReviveCount(0)
+    setReviveBusy(false)
+    setReviveError(null)
+    setShieldUi(false)
     maxComboRef.current = 0
     bedArmedRef.current = true
     gameRef.current?.setMode(mode)
@@ -315,6 +404,10 @@ export default function PlayPage() {
           : null
 
   const modeLabel = mode === 'zen' ? 'ZEN' : 'CLASSIC'
+  const nextPrice = secondChancePrice(reviveCount)
+  const prevPrice =
+    reviveCount > 0 ? secondChancePrice(reviveCount - 1) : null
+  const escalate = reviveCount > 0
 
   return (
     <div className={styles.page}>
@@ -435,6 +528,12 @@ export default function PlayPage() {
             {OBSTACLE_LABEL[obstacleUi.kind]}
           </div>
         ) : null}
+
+        {shieldUi ? (
+          <div className={styles.shieldBadge} role="status">
+            Shield · 2s
+          </div>
+        ) : null}
       </div>
 
       {missFlash ? <div className={styles.missFlash} aria-hidden="true" /> : null}
@@ -449,40 +548,71 @@ export default function PlayPage() {
       {fail && mode === 'classic' ? (
         <div className={styles.failOverlay}>
           <div className={styles.failSheet} role="dialog" aria-labelledby="fail-title">
+            {escalate ? (
+              <div className={styles.sheetEscalate}>Revive #{reviveCount + 1}</div>
+            ) : null}
             <h2 id="fail-title" className={styles.sheetTitle}>
-              {fail === 'miss' ? 'You missed' : 'Wrong tap'}
+              {escalate
+                ? 'Still in it?'
+                : fail === 'miss'
+                  ? 'You missed'
+                  : 'Wrong tap'}
             </h2>
             <p className={styles.sheetBody}>
-              Combo died at {failCombo}. Keep this run alive?
+              {escalate
+                ? 'First continue was cheap. This one steps up.'
+                : `Combo died at ${failCombo}. Keep this run alive?`}
             </p>
-            <div className={styles.sheetRow}>
-              <span className={styles.sheetLabel}>Second Chance</span>
-              <span className={styles.sheetPrice}>$0.49 cUSD</span>
-            </div>
+            {escalate && prevPrice != null ? (
+              <div className={styles.sheetEscalateBox}>
+                <span>Was {formatCusdPrice(prevPrice)}</span>
+                <span className={styles.sheetPrice}>
+                  Now {formatCusdPrice(nextPrice)}
+                </span>
+              </div>
+            ) : (
+              <div className={styles.sheetRow}>
+                <span className={styles.sheetLabel}>Second Chance</span>
+                <span className={styles.sheetPrice}>
+                  {formatCusdPrice(nextPrice)}
+                </span>
+              </div>
+            )}
             <p className={styles.sheetPromise}>
-              Keep your score · same speed
+              Keep your score · revive this run · same speed
             </p>
             <div className={styles.sheetActions}>
               <button
                 type="button"
                 className={styles.sheetPrimary}
-                onClick={onReviveStub}
+                onClick={() => void onRevive()}
+                disabled={reviveBusy}
               >
-                Revive run
+                {reviveBusy
+                  ? 'Confirming cUSD…'
+                  : escalate
+                    ? `Revive · ${formatCusdPrice(nextPrice)}`
+                    : 'Revive run'}
               </button>
               <button
                 type="button"
                 className={styles.sheetSecondary}
                 onClick={endRun}
+                disabled={reviveBusy}
               >
                 End run
               </button>
             </div>
-            {reviveStub ? (
-              <p className={styles.sheetStub} role="status">
-                Payments in G10 — keeps your score &amp; same speed.
+            {reviveError ? (
+              <p className={styles.sheetError} role="alert">
+                {reviveError}
               </p>
-            ) : null}
+            ) : (
+              <p className={styles.sheetHint}>
+                Celo Mainnet · fund Magic wallet with cUSD + a little CELO for
+                gas
+              </p>
+            )}
           </div>
         </div>
       ) : null}

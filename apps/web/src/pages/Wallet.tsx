@@ -113,7 +113,8 @@ export default function WalletPage() {
             Sign out
           </button>
           <p className={styles.minipayHint}>
-            MiniPay path stubs in G17 — use Magic for now.
+            Fund this Magic address with cUSD + a little CELO (gas) on Celo
+            Mainnet for Second Chance. MiniPay path stubs in G17.
           </p>
         </div>
       </div>
