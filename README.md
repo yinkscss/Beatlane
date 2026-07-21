@@ -25,6 +25,10 @@ Review as HTML under `docs/` — preferred order: PRD → design pack → beat p
 open docs/PRD.html          # Product requirements
 open docs/design-pack.html  # Screens + visual system
 open docs/beat-pitch.html   # Animated pitch reel
+open docs/ROADMAP.html      # Build gates G0–G19
+open docs/prompt-pack.html  # Orchestrator / implement / verify / git prompts
+open docs/clarifications.html # Interactive answers builder
+# Locked answers: docs/clarifications-answers.md
 open docs/STACK.html        # Locked free-first stack
 open docs/stack-deck.html   # Interactive stack picker
 ```

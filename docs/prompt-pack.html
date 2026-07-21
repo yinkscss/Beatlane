@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beatlane — Prompt Pack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1424;
+      --soft: #5c5368;
+      --paper: #f7f2eb;
+      --white: #fffdf9;
+      --line: #e4dcd2;
+      --accent: #ff8a3d;
+      --accent-deep: #e85d04;
+      --ok: #1f9d63;
+      --bad: #d6455d;
+      --sky: #7ec8ff;
+      --code: #1c1628;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #f3e0d2 0%, transparent 50%),
+        radial-gradient(800px 480px at 100% 5%, #e5dcf2 0%, transparent 45%),
+        var(--paper);
+      line-height: 1.45;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 22px;
+      background: rgba(247,242,235,.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.03em;
+      text-decoration: none; color: var(--ink); font-size: 1.15rem;
+    }
+    .logo span { color: var(--accent); }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .bar nav a {
+      font-size: 12px; font-weight: 600; color: var(--soft);
+      text-decoration: none; padding: 5px 10px; border-radius: 999px;
+    }
+    .bar nav a:hover { background: #fff; color: var(--accent-deep); }
+    .meta { font-size: 12px; color: var(--soft); font-weight: 600; }
+
+    .wrap { max-width: 980px; margin: 0 auto; padding: 32px 22px 96px; }
+    h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.04em;
+      font-size: clamp(2rem, 4.5vw, 2.9rem);
+      margin: 0 0 10px; line-height: 1.05;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .lede { color: var(--soft); max-width: 62ch; margin: 0 0 20px; font-size: 1.05rem; }
+
+    .banner {
+      background: #fff4eb;
+      border: 1px solid #ffd2b0;
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+    }
+    .banner strong { color: var(--accent-deep); }
+    .banner ol { margin: 8px 0 0; padding-left: 1.2rem; color: var(--soft); font-size: 14px; }
+
+    .models {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .model {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+    .model .who {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; font-weight: 700; color: var(--accent-deep);
+    }
+    .model strong {
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+      margin: 4px 0 2px;
+    }
+    .model span { font-size: 12px; color: var(--soft); }
+
+    h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.45rem; font-weight: 800; letter-spacing: -.03em;
+      margin: 28px 0 12px;
+    }
+    h3 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -.02em;
+      margin: 0;
+    }
+
+    .progress {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 22px;
+    }
+    .progress-head {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .progress-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 6px;
+    }
+    .progress-grid label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 600;
+      padding: 8px 10px; border-radius: 10px;
+      background: #f3efe8; cursor: pointer;
+    }
+    .progress-grid label.done { background: #e5f7ee; color: var(--ok); }
+    .progress-grid input { accent-color: var(--ok); }
+
+    .card {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+    }
+    .card-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .pill {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; font-weight: 700;
+      padding: 4px 9px; border-radius: 999px;
+      background: #efeaf8; color: #4b3a72;
+    }
+    .pill.impl { background: #fff4eb; color: var(--accent-deep); }
+    .pill.verify { background: #e8f5ff; color: #1a5f8a; }
+    .pill.git { background: #e8f8ef; color: var(--ok); }
+    .pill.orch { background: #1c1628; color: #fff; }
+
+    .prompt {
+      position: relative;
+      background: var(--code);
+      color: #efe8ff;
+      border-radius: 14px;
+      padding: 14px 14px 42px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    .copy {
+      position: absolute;
+      right: 10px; bottom: 10px;
+      border: 0;
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+    }
+    .copy.ok { background: var(--ok); }
+
+    .gate-block { margin-bottom: 22px; }
+    .gate-block > .title {
+      display: flex; align-items: baseline; justify-content: space-between;
+      gap: 10px; flex-wrap: wrap; margin: 22px 0 10px;
+    }
+    .gate-block > .title h3 { font-size: 1.25rem; }
+    .gate-id {
+      font-family: "JetBrains Mono", monospace;
+      font-weight: 700; color: var(--accent-deep); font-size: 13px;
+    }
+    .ac {
+      font-size: 13px; color: var(--soft); margin: 0 0 10px;
+    }
+    .ac ul { margin: 6px 0 0; padding-left: 1.15rem; }
+
+    .q-list { margin: 0; padding-left: 1.2rem; }
+    .q-list li { margin-bottom: 10px; font-size: 14px; }
+    .q-list strong { color: var(--ink); }
+
+    .toc {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      margin-bottom: 18px;
+    }
+    .toc a {
+      font-size: 11px; font-weight: 700;
+      text-decoration: none; color: var(--soft);
+      padding: 5px 9px; border-radius: 999px;
+      background: var(--white); border: 1px solid var(--line);
+    }
+    .toc a:hover { color: var(--accent-deep); border-color: var(--accent); }
+
+    footer.note { margin-top: 28px; font-size: 13px; color: var(--soft); font-style: italic; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="logo" href="PRD.html">BEAT<span>LANE</span></a>
+    <nav>
+      <a href="PRD.html">PRD</a>
+      <a href="design-pack.html">Design</a>
+      <a href="beat-pitch.html">Beat pitch</a>
+      <a href="ROADMAP.html">Roadmap</a>
+      <a href="STACK.html">Stack</a>
+    </nav>
+    <div class="meta">Prompt pack · v1.0</div>
+  </div>
+
+  <div class="wrap">
+    <h1>Prompt pack <em>for continuous build</em></h1>
+    <p class="lede">
+      Copy-paste prompts for the Beatlane agent loop. Orchestrator only dispatches.
+      Implementers build. Verifiers only PASS/FAIL (never fix). On PASS, Composer 2.5
+      commits and pushes. Design truth = beat pitch + design pack. Stack truth = STACK.
+      Supabase project = <strong>blockblast</strong>.
+    </p>
+
+    <div class="banner" id="clarify-first">
+      <strong>Clarifications locked.</strong>
+      Canonical answers: <a href="clarifications-answers.md"><strong>clarifications-answers.md</strong></a>
+      (Rebuild anytime via <a href="clarifications.html">clarifications.html</a>.)
+      <ol>
+        <li>Orchestrator reads <code>docs/clarifications-answers.md</code> (do not invent answers)</li>
+        <li>Paste Orchestrator prompt; answers file replaces <code>&lt;&lt;&lt;PASTE_HUMAN_ANSWERS_HERE&gt;&gt;&gt;</code></li>
+        <li>Loop: Implement → Verify → Git (on PASS) → next gate</li>
+      </ol>
+    </div>
+
+    <div class="models">
+      <div class="model"><div class="who">MODEL</div><strong>Cursor Grok 4.5</strong><span>Orchestrator · Implement · Verify</span></div>
+      <div class="model"><div class="who">MODEL</div><strong>Composer 2.5</strong><span>Git commit + push only</span></div>
+      <div class="model"><div class="who">SUPABASE</div><strong>blockblast</strong><span>MCP connected · use this project</span></div>
+      <div class="model"><div class="who">LOOP</div><strong>I → V → Git</strong><span>Repeat G0…G19</span></div>
+    </div>
+
+    <div class="toc">
+      <a href="clarifications.html">Clarifications builder</a>
+      <a href="#clarifications">Questions list</a>
+      <a href="#progress">Progress</a>
+      <a href="#orchestrator">Orchestrator</a>
+      <a href="#shared">Shared context</a>
+      <a href="#git">Git agent</a>
+      <a href="#gates">Gates G0–G19</a>
+    </div>
+
+    <!-- CLARIFICATIONS -->
+    <h2 id="clarifications">Clarifications (answer before start)</h2>
+    <div class="card">
+      <p class="ac" style="margin-top:0"><strong>Preferred:</strong> answer in <a href="clarifications.html">clarifications.html</a> (multi-select + free text → copy built prompt). Orchestrator must paste that block into every Implement dispatch until complete. Raw list below for reference.</p>
+      <ol class="q-list" id="clarifyList">
+        <li><strong>App layout:</strong> Monorepo (<code>apps/web</code>, <code>contracts/</code>) or single Vite app at repo root?</li>
+        <li><strong>Package manager:</strong> npm, pnpm, or bun?</li>
+        <li><strong>Node version:</strong> 20 LTS OK?</li>
+        <li><strong>Supabase <code>blockblast</code>:</strong> Confirm org/account and that we may apply migrations + create Storage buckets via MCP. Any tables that must not be wiped?</li>
+        <li><strong>Supabase region / URL:</strong> Paste project URL (or OK to read via MCP <code>get_project_url</code>)?</li>
+        <li><strong>Magic.link:</strong> Have publishable key + app for email auth? Test vs prod app?</li>
+        <li><strong>Celo network for G10+:</strong> Alfajores / Sepolia testnet only until you say mainnet?</li>
+        <li><strong>cUSD test funds:</strong> Who funds the test wallet — you manually, or faucet docs in README?</li>
+        <li><strong>Vercel:</strong> Which account/team for Hobby deploy? Production domain (or <code>*.vercel.app</code> OK for now)?</li>
+        <li><strong>Git branch policy:</strong> Commit/push directly to <code>master</code>, or feature branch + PR per gate?</li>
+        <li><strong>Commit style:</strong> Conventional commits OK? One commit per gate (after PASS) OK?</li>
+        <li><strong>Sample audio:</strong> May we use short CC0/placeholder loops in-repo for G4–G7, then upload cleared tracks to Storage in G12?</li>
+        <li><strong>Chart authorship:</strong> Hand-authored JSON in repo for samples — confirm no MIDI pipeline in v1?</li>
+        <li><strong>Guest play:</strong> Confirm guests can play Classic/Zen offline; auth only required for purchases / Daily submit / Boast?</li>
+        <li><strong>Second Chance shield:</strong> Enable optional post-revive shield in G10 (default on/off / duration)?</li>
+        <li><strong>Upstash:</strong> Existing Redis DB credentials, or create new free DB when G13 starts?</li>
+        <li><strong>Sentry / PostHog:</strong> Existing projects to reuse, or create new at G18?</li>
+        <li><strong>Foundry / contracts (G15–G16):</strong> Deploy from this repo; any preferred contract naming / wallet for deployer keys (never commit secrets)?</li>
+        <li><strong>Tournament rake:</strong> Lock 15% or 20% for v1?</li>
+        <li><strong>Season Pass duration:</strong> 4 weeks or 6 weeks for v1?</li>
+        <li><strong>MiniPay:</strong> Deep-link docs / tester device available before G19, or stub CTA only?</li>
+        <li><strong>Design strictness:</strong> Pixel-match <code>beat-pitch.html</code> glass shatter + sky/lavender, or “clearly same language” tolerance?</li>
+        <li><strong>Out of scope until you say:</strong> Confirm no ads, no skins shop, no game token — verifiers fail any PR that adds them?</li>
+        <li><strong>Stop conditions:</strong> On Verify FAIL, orchestrator re-dispatches Implement for same gate (max N retries?) — what is N? Default 2?</li>
+        <li><strong>Human gates:</strong> Any gate that must pause for your manual approval before Git push (e.g. G10 payments, G16 tournaments)?</li>
+      </ol>
+    </div>
+
+    <!-- PROGRESS -->
+    <h2 id="progress">Progress board</h2>
+    <div class="progress" id="progress">
+      <div class="progress-head">
+        <strong>Mark complete only after Verifier outputs <code>GATE Gx: PASS</code> and Git push succeeds.</strong>
+        <button type="button" class="copy" style="position:static" id="resetProgress">Reset board</button>
+      </div>
+      <div class="progress-grid" id="progressGrid"></div>
+    </div>
+
+    <!-- ORCHESTRATOR -->
+    <h2 id="orchestrator">0 · Orchestrator</h2>
+    <div class="card">
+      <div class="card-head">
+        <h3>Main orchestrator agent</h3>
+        <span class="pill orch">Grok 4.5 · dispatch only</span>
+      </div>
+      <div class="prompt" id="orchPrompt"></div>
+    </div>
+
+    <!-- SHARED -->
+    <h2 id="shared">Shared context (injected into Implement + Verify)</h2>
+    <div class="card">
+      <div class="card-head">
+        <h3>Source-of-truth block</h3>
+        <span class="pill">Paste if a sub-agent lacks context</span>
+      </div>
+      <div class="prompt" id="sharedPrompt"></div>
+    </div>
+
+    <!-- GIT -->
+    <h2 id="git">Git commit &amp; push</h2>
+    <div class="card">
+      <div class="card-head">
+        <h3>Git agent (after every PASS)</h3>
+        <span class="pill git">Composer 2.5 only</span>
+      </div>
+      <div class="prompt" id="gitPrompt"></div>
+    </div>
+
+    <!-- GATES -->
+    <h2 id="gates">Gates — Implement + Verify</h2>
+    <div id="gatesRoot"></div>
+
+    <footer class="note">
+      Roadmap: <a href="ROADMAP.html">ROADMAP.html</a>.
+      Do not start until clarifications are answered.
+      Verifiers never edit product code; they only report PASS/FAIL and evidence.
+    </footer>
+  </div>
+
+  <script>
+    const GATES = [
+      {
+        id: "G0",
+        title: "Scaffold app",
+        summary: "Vite + React + TS shell, Pixi/Zustand deps, CI lint/typecheck, env template.",
+        ac: [
+          "Vite React-TS app exists per clarifications (root or apps/web)",
+          "PixiJS + Zustand installed; CSS Modules ready",
+          "Env example lists Supabase/Magic/Sentry/PostHog/Celo placeholders",
+          "GitHub Actions runs lint + typecheck",
+          "npm/pnpm/bun build succeeds"
+        ]
+      },
+      {
+        id: "G1",
+        title: "Shell & design tokens",
+        summary: "Tokens + Home/shell routes matching design pack / pitch (sky lavender, orange accent, brand-first Home).",
+        ac: [
+          "CSS variables match design-pack tokens (sky, lav, accent, tile black)",
+          "Fonts: Bricolage Grotesque + DM Sans loaded",
+          "Home shows BEATLANE as hero-level brand signal",
+          "Stub routes: Home, Play, Music, Wallet, Results",
+          "Default playfield theme is NOT dark stage chrome"
+        ]
+      },
+      {
+        id: "G2",
+        title: "Pixi playfield prototype",
+        summary: "Four lanes, scrolling black tiles, hit band, glass-shatter on hit (pitch parity).",
+        ac: [
+          "Soft sky→lavender gradient playfield + white lane rules",
+          "Black tiles scroll; lane tap hits in window",
+          "Hit VFX: crack + glass shard fade like beat-pitch.html",
+          "Miss / wrong tap fails Classic stub run",
+          "Mobile-first canvas scales cleanly"
+        ]
+      },
+      {
+        id: "G3",
+        title: "Judging & HUD",
+        summary: "PERFECT/GREAT/MISS, score, combo, star→crown rail, sparkles.",
+        ac: [
+          "Judge bubbles for PERFECT / GREAT / MISS",
+          "Score + combo update correctly",
+          "Star→crown progress rail responds to combo",
+          "Hit sparkles present",
+          "HUD layout matches design-pack play screens"
+        ]
+      },
+      {
+        id: "G4",
+        title: "Web Audio runtime",
+        summary: "AudioContext, music+SFX gains, mute, no Howler/Tone.",
+        ac: [
+          "Single AudioContext; master→music+SFX gains",
+          "Mute via gain (context stays alive)",
+          "One-shot SFX; bed track starts with run",
+          "No Howler/Tone/extra audio libraries",
+          "Mute toggle in UI"
+        ]
+      },
+      {
+        id: "G5",
+        title: "Chart engine",
+        summary: "JSON charts drive tiles; SPEED UP event; ≥2 sample charts.",
+        ac: [
+          "Chart schema documented + loaded",
+          "≥2 sample charts Easy/Normal playable",
+          "Tiles scheduled from chart + music start time",
+          "SPEED UP banner + countdown + scroll jump",
+          "No waveform-analysis dependency for timing"
+        ]
+      },
+      {
+        id: "G6",
+        title: "Basic obstacles",
+        summary: "HOLD until complete, DON'T TAP, DOUBLE + banners.",
+        ac: [
+          "HOLD requires press until length completes (slight forgiveness OK)",
+          "DON'T TAP bomb fails if pressed",
+          "DOUBLE rows supported as events",
+          "Obstacle banners show 3–8s",
+          "Sample chart includes these types"
+        ]
+      },
+      {
+        id: "G7",
+        title: "Modes Classic + Zen",
+        summary: "Mode select, Classic fail→results/Second Chance stub, Zen no-fail.",
+        ac: [
+          "Home mode cards match design pack",
+          "Classic miss ends run and shows fail sheet stub",
+          "Zen: miss does not end run",
+          "Results screen with score/combo/retry",
+          "Offline end-to-end for both modes"
+        ]
+      },
+      {
+        id: "G8",
+        title: "Supabase foundation (blockblast)",
+        summary: "Migrations, RLS, Storage, Edge skeleton on project blockblast via MCP.",
+        ac: [
+          "Uses Supabase project named blockblast (MCP)",
+          "Tables: profiles, runs, purchases, unlocks, chart metadata + RLS",
+          "Storage buckets for audio + charts",
+          "Edge Function skeleton + client SDK wired",
+          "No secrets committed"
+        ]
+      },
+      {
+        id: "G9",
+        title: "Magic auth",
+        summary: "Magic email login, profile upsert, Wallet screen, guest play rules.",
+        ac: [
+          "Magic email login/logout works",
+          "Profile upserted on first session",
+          "Wallet screen matches design pack energy",
+          "Guest can play; paywalled actions require auth",
+          "Session persists across refresh"
+        ]
+      },
+      {
+        id: "G10",
+        title: "Second Chance (testnet cUSD)",
+        summary: "Revive keeps score, same speed — no slowdown. Receipt in Postgres.",
+        ac: [
+          "Fail sheet copy: keep score / revive (not reduced speed)",
+          "Prices escalate $0.49→$0.79→$0.99",
+          "Testnet cUSD purchase + tx hash stored",
+          "Run resumes at SAME scroll speed",
+          "UI matches pitch/design-pack Second Chance"
+        ]
+      },
+      {
+        id: "G11",
+        title: "Hard obstacles",
+        summary: "Full hard set + ICE/GOLD/FOG/REVERSE; Hard sample chart.",
+        ac: [
+          "LONG HOLD, BRIDGE, TRIPLE, L-HOOK, ZIG, SPLIT, FAKE GAP, SLIDE, CASCADE, TRAP DOUBLE implemented",
+          "ICE/GOLD/FOG/REVERSE modifiers work",
+          "≥1 Hard chart exercises a subset",
+          "Visuals readable on sky/lavender field",
+          "No tournament-banned set forced into Blitz yet (flag OK)"
+        ]
+      },
+      {
+        id: "G12",
+        title: "Song catalog & packs",
+        summary: "8 free tracks in Storage; pack unlock purchase gates content.",
+        ac: [
+          "Music catalog UI per design pack",
+          "8 free tracks playable from Storage",
+          "Pack/single unlock on testnet gates fetch",
+          "Easy/Normal/Hard select per track",
+          "Unlocks persisted in Supabase"
+        ]
+      },
+      {
+        id: "G13",
+        title: "Daily + leaderboards",
+        summary: "Seeded Daily, server tap validation, polling boards, Upstash limits.",
+        ac: [
+          "Daily seed mode works",
+          "Submit includes tap timestamps",
+          "Edge Function revalidates vs chart",
+          "Leaderboard UI polls over HTTP",
+          "Upstash rate limit on submit"
+        ]
+      },
+      {
+        id: "G14",
+        title: "Helpers Slow-mo & Shield",
+        summary: "Purchasable helpers; Classic/Daily only; Blitz-disabled flag.",
+        ac: [
+          "Slow-mo 3s and Shield one-miss purchasable on testnet",
+          "Effects work in Classic",
+          "Disabled flag for Blitz tournaments",
+          "Sheets match design-pack Saves",
+          "Inventory reflected in profile/purchases"
+        ]
+      },
+      {
+        id: "G15",
+        title: "Boast + contracts",
+        summary: "Foundry Boast attestation on testnet + share card.",
+        ac: [
+          "Foundry project in repo",
+          "Boast contract deployed testnet",
+          "$0.29 path + receipt in Postgres",
+          "Shareable Boast card UI",
+          "No secrets in git"
+        ]
+      },
+      {
+        id: "G16",
+        title: "Blitz tournaments",
+        summary: "Entry fee cups, rake, fair obstacle whitelist, payout stub.",
+        ac: [
+          "Timed Blitz mode",
+          "Entry fee + rake per clarifications",
+          "Boosts/helpers off",
+          "Fair obstacle whitelist enforced",
+          "Testnet cup flow entry→play→rank→payout stub"
+        ]
+      },
+      {
+        id: "G17",
+        title: "Season Pass",
+        summary: "Continues + track unlocks over season — not cosmetics.",
+        ac: [
+          "Pass purchase grants entitlements",
+          "Schedule unlocks tracks/continues",
+          "UI for pass progress",
+          "No cosmetic rewards",
+          "Price $2.99 cUSD path on testnet/staging"
+        ]
+      },
+      {
+        id: "G18",
+        title: "Observability & CI harden",
+        summary: "Sentry, PostHog funnels, CI tests for judge/obstacles.",
+        ac: [
+          "Sentry receives test event",
+          "PostHog events: start_run, miss, purchase_continue, unlock_pack",
+          "CI runs unit tests for chart judge + obstacles",
+          "Lint/typecheck remain required",
+          "No PII leaked into analytics beyond agreed fields"
+        ]
+      },
+      {
+        id: "G19",
+        title: "Launch polish",
+        summary: "Vercel deploy, MiniPay CTA, spend caps, perf pass.",
+        ac: [
+          "Vercel Hobby production URL live",
+          "Env wired to Supabase blockblast",
+          "MiniPay CTA present (real or stub per clarifications)",
+          "Spend caps + empty/error states",
+          "Mid-tier mobile perf acceptable; checklist done"
+        ]
+      }
+    ];
+
+    const SHARED = `SHARED CONTEXT — Beatlane (do not contradict)
+
+Product: Beatlane — four-lane Piano Tiles–style rhythm tap on Celo (NOT Block Drop puzzle).
+Repo: yinkscss/Beatlane · local ~/Projects/beatlane
+Docs (read before coding):
+- docs/PRD.html
+- docs/design-pack.html
+- docs/beat-pitch.html  ← animation / VFX truth (glass shatter, HOLD, Second Chance copy)
+- docs/STACK.html
+- docs/ROADMAP.html
+- docs/prompt-pack.html
+
+Locked stack: Vite+React+TS, PixiJS + Web Audio (no Howler/Tone), CSS Modules, Zustand,
+Supabase (Postgres + Edge Functions + Storage) project name **blockblast**, Upstash Redis,
+Magic.link, Celo+cUSD, Foundry, app writes+chain receipt, HTTP polling, Vercel Hobby,
+GitHub Actions, Sentry, PostHog.
+
+Hard product rules:
+- Web only v1 · no ads · no paid skins · prices in cUSD not CELO
+- Second Chance: keep score, SAME speed (never “reduced speed”)
+- HOLD: hold until tile length completes (slightly forgiving OK)
+- Playfield: soft sky→lavender, white lane rules, black tiles (classic Piano Tiles look)
+
+Supabase: use MCP against project **blockblast**. Prefer migrations via MCP/CLI; never commit secrets.`;
+
+    const ORCH = `You are the Beatlane ORCHESTRATOR.
+
+Model: Cursor Grok 4.5
+Repo: ~/Projects/beatlane (GitHub yinkscss/Beatlane)
+Supabase project: blockblast (MCP connected)
+
+YOUR ONLY JOB
+- Dispatch sub-agents. Do not implement features. Do not fix code. Do not commit.
+- Read docs/ROADMAP.html + docs/prompt-pack.html progress.
+- Start at the first incomplete gate (G0…G19) only after CLARIFICATION ANSWERS are provided by the human.
+- Loop for each gate:
+  1) Dispatch IMPLEMENTER (Grok 4.5) with the gate’s Implement prompt + clarification answers + shared context
+  2) Dispatch VERIFIER (Grok 4.5) with the gate’s Verify prompt
+  3) If verifier reports \`GATE Gx: FAIL\`: re-dispatch IMPLEMENTER with the failure report (max retries from clarifications; default 2). Do not call Git.
+  4) If verifier reports \`GATE Gx: PASS\`: dispatch GIT AGENT (Composer 2.5) with the Git prompt filled for that gate
+  5) After successful push, mark the gate complete on the prompt-pack progress board (instruct human to tick if you cannot), then proceed to next gate
+- Stop at any human-approval gate listed in clarifications.
+- Stop when G19 PASS + push complete, and summarize.
+
+MODELS (mandatory)
+- Orchestrator / Implement / Verify = Cursor Grok 4.5
+- Git commit+push = Composer 2.5 (never use Grok for git)
+
+CLARIFICATION ANSWERS
+Read and paste the full fenced block from docs/clarifications-answers.md
+(or inline that file’s CLARIFICATION ANSWERS section). Do not invent answers.
+Magic publishable key must come from env VITE_MAGIC_PUBLISHABLE_KEY — never from git.
+
+When dispatching, always include: gate id, acceptance criteria, shared context, and clarification answers.`;
+
+    const GIT = `You are the Beatlane GIT AGENT.
+
+Model: Composer 2.5 ONLY (do not use other models)
+Repo: ~/Projects/beatlane · remote origin https://github.com/yinkscss/Beatlane.git
+
+PRECONDITION
+- A Verifier has just reported: GATE {{GATE_ID}}: PASS
+- Only commit work for {{GATE_ID}} — {{GATE_TITLE}}
+
+RULES
+- Follow the user’s git safety protocol: never force push; never amend unless the standard amend conditions apply; never update git config; never skip hooks; never commit secrets (.env, keys).
+- Inspect status/diff/log first.
+- Stage relevant files for this gate.
+- Commit with a concise message focused on why, e.g. "feat({{GATE_ID}}): {{GATE_TITLE}}"
+- Push to the branch policy from clarifications (default: current branch tracking origin).
+- After push, report: commit hash, branch, remote URL, files summary.
+- Do not implement features. Do not fix verifier findings. If working tree has unrelated WIP, stop and ask.
+
+If there is nothing to commit, say so and do not create an empty commit.`;
+
+    function implementPrompt(g) {
+      return `You are the Beatlane IMPLEMENTER for ${g.id}.
+
+Model: Cursor Grok 4.5
+Gate: ${g.id} — ${g.title}
+Goal: ${g.summary}
+
+READ FIRST (in repo)
+- docs/ROADMAP.html#${g.id.toLowerCase()}
+- docs/PRD.html
+- docs/design-pack.html
+- docs/beat-pitch.html
+- docs/STACK.html
+
+${SHARED}
+
+CLARIFICATION ANSWERS
+Use docs/clarifications-answers.md (locked). Do not invent answers.
+Magic key from env only.
+
+ACCEPTANCE CRITERIA (you must satisfy all)
+${g.ac.map((a, i) => `${i + 1}. ${a}`).join("\n")}
+
+CONSTRAINTS
+- Match beat-pitch + design-pack visuals for anything user-facing in this gate.
+- Match locked stack; do not add alternate frameworks/libs without human approval.
+- Supabase work targets project **blockblast** via MCP when backend touches this gate.
+- No ads, no skin shop, no game token.
+- Surgical changes only; no drive-by refactors.
+- Do not commit or push (Git agent does that after Verify PASS).
+
+OUTPUT WHEN DONE
+- List files changed
+- How to verify locally (commands / screens)
+- Explicit mapping of each acceptance criterion → evidence
+- Remaining risks / follow-ups for later gates`;
+    }
+
+    function verifyPrompt(g) {
+      return `You are the Beatlane VERIFIER for ${g.id}.
+
+Model: Cursor Grok 4.5
+Gate: ${g.id} — ${g.title}
+
+YOU DO NOT FIX CODE. YOU ONLY VERIFY.
+- No patches, no refactors, no dependency changes, no commits.
+- If something is wrong, report FAIL with actionable bullets for the Implementer.
+
+READ
+- docs/ROADMAP.html gate ${g.id}
+- docs/design-pack.html + docs/beat-pitch.html (design truth)
+- docs/STACK.html (stack truth)
+- The Implementer’s change list / evidence
+
+${SHARED}
+
+ACCEPTANCE CRITERIA
+${g.ac.map((a, i) => `${i + 1}. ${a}`).join("\n")}
+
+CHECK
+1. Each AC: PASS or FAIL with file/path or runtime evidence
+2. Design: UI/VFX for this gate matches pitch/design-pack (call out mismatches)
+3. Stack: no forbidden libs / no ads / no skins / cUSD naming where prices show
+4. Second Chance copy never says reduced/slow speed (especially G7/G10)
+5. HOLD behavior is hold-until-complete if this gate touches holds
+6. Secrets not committed
+
+OUTPUT FORMAT (exact)
+- First line must be either: GATE ${g.id}: PASS
+  or: GATE ${g.id}: FAIL
+- Then checklist of each AC with evidence
+- Then Design notes
+- Then Stack notes
+- On PASS: say "Ready for Git agent (Composer 2.5)"
+- On FAIL: numbered fix list for Implementer retry (no code)`;
+    }
+
+    function el(tag, cls, text) {
+      const n = document.createElement(tag);
+      if (cls) n.className = cls;
+      if (text != null) n.textContent = text;
+      return n;
+    }
+
+    function mountPrompt(container, text) {
+      const pre = el("div", "prompt");
+      pre.textContent = text;
+      const btn = el("button", "copy", "Copy");
+      btn.type = "button";
+      btn.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = "Copied";
+        btn.classList.add("ok");
+        setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("ok"); }, 1200);
+      });
+      pre.appendChild(btn);
+      container.appendChild(pre);
+    }
+
+    // static prompts
+    mountPrompt(document.getElementById("orchPrompt"), ORCH);
+    mountPrompt(document.getElementById("sharedPrompt"), SHARED);
+    mountPrompt(document.getElementById("gitPrompt"), GIT.replaceAll("{{GATE_ID}}", "Gx").replaceAll("{{GATE_TITLE}}", "Gate title"));
+
+    // progress
+    const KEY = "beatlane-gates-progress-v1";
+    const grid = document.getElementById("progressGrid");
+    let state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { state = {}; }
+
+    function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+    GATES.forEach((g) => {
+      const label = el("label", state[g.id] ? "done" : "");
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = !!state[g.id];
+      input.addEventListener("change", () => {
+        state[g.id] = input.checked;
+        label.classList.toggle("done", input.checked);
+        save();
+      });
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(g.id + " " + g.title));
+      grid.appendChild(label);
+    });
+
+    document.getElementById("resetProgress").addEventListener("click", () => {
+      state = {};
+      save();
+      grid.querySelectorAll("input").forEach((i) => { i.checked = false; i.parentElement.classList.remove("done"); });
+    });
+
+    // gates
+    const root = document.getElementById("gatesRoot");
+    GATES.forEach((g) => {
+      const block = el("div", "gate-block");
+      block.id = g.id.toLowerCase();
+      const title = el("div", "title");
+      title.appendChild(el("h3", null, g.title));
+      title.appendChild(el("div", "gate-id", g.id));
+      block.appendChild(title);
+
+      const ac = el("div", "ac");
+      ac.innerHTML = `<strong>Acceptance</strong><ul>${g.ac.map((a) => `<li>${a}</li>`).join("")}</ul>`;
+      block.appendChild(ac);
+
+      const implCard = el("div", "card");
+      const ih = el("div", "card-head");
+      ih.appendChild(el("h3", null, "Implementer prompt"));
+      ih.appendChild(el("span", "pill impl", "Grok 4.5"));
+      implCard.appendChild(ih);
+      mountPrompt(implCard, implementPrompt(g));
+      block.appendChild(implCard);
+
+      const verCard = el("div", "card");
+      const vh = el("div", "card-head");
+      vh.appendChild(el("h3", null, "Verifier prompt"));
+      vh.appendChild(el("span", "pill verify", "Grok 4.5 · no fixes"));
+      verCard.appendChild(vh);
+      mountPrompt(verCard, verifyPrompt(g));
+      block.appendChild(verCard);
+
+      const gitCard = el("div", "card");
+      const gh = el("div", "card-head");
+      gh.appendChild(el("h3", null, "Git prompt for this gate"));
+      gh.appendChild(el("span", "pill git", "Composer 2.5"));
+      gitCard.appendChild(gh);
+      mountPrompt(
+        gitCard,
+        GIT.replaceAll("{{GATE_ID}}", g.id).replaceAll("{{GATE_TITLE}}", g.title)
+      );
+      block.appendChild(gitCard);
+
+      root.appendChild(block);
+    });
+  </script>
+</body>
+</html>

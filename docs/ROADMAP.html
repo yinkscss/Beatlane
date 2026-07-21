@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beatlane — Roadmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1424;
+      --soft: #5c5368;
+      --paper: #f7f2eb;
+      --white: #fffdf9;
+      --line: #e4dcd2;
+      --accent: #ff8a3d;
+      --accent-deep: #e85d04;
+      --ok: #3ecf8e;
+      --sky: #7ec8ff;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #f3e0d2 0%, transparent 50%),
+        radial-gradient(800px 480px at 100% 5%, #e5dcf2 0%, transparent 45%),
+        var(--paper);
+      line-height: 1.45;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 22px;
+      background: rgba(247,242,235,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.03em;
+      text-decoration: none; color: var(--ink); font-size: 1.15rem;
+    }
+    .logo span { color: var(--accent); }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .bar nav a {
+      font-size: 12px; font-weight: 600; color: var(--soft);
+      text-decoration: none; padding: 5px 10px; border-radius: 999px;
+    }
+    .bar nav a:hover { background: #fff; color: var(--accent-deep); }
+    .meta { font-size: 12px; color: var(--soft); font-weight: 600; }
+
+    .wrap { max-width: 920px; margin: 0 auto; padding: 36px 22px 80px; }
+    h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.04em;
+      font-size: clamp(2rem, 4.5vw, 2.9rem);
+      margin: 0 0 10px; line-height: 1.05;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .lede { color: var(--soft); margin: 0 0 18px; max-width: 58ch; font-size: 1.05rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .chip {
+      font-size: 11px; font-weight: 700; padding: 4px 10px;
+      border-radius: 999px; border: 1px solid var(--line); background: var(--white);
+    }
+    .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .loop {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 28px;
+      font-size: 14px;
+    }
+    .loop strong { font-family: "JetBrains Mono", monospace; color: var(--accent-deep); }
+    .loop ol { margin: 8px 0 0; padding-left: 1.2rem; color: var(--soft); }
+    .loop a { color: var(--accent-deep); font-weight: 600; }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    @media (max-width: 800px) { .timeline { grid-template-columns: 1fr 1fr; } }
+    .tl {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .tl:hover { border-color: var(--accent); }
+    .tl .w {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; font-weight: 700; color: var(--accent-deep);
+    }
+    .tl strong {
+      display: block;
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: .95rem; letter-spacing: -.02em; margin: 4px 0 2px;
+    }
+    .tl span { font-size: 12px; color: var(--soft); }
+
+    .phase {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px 22px;
+      margin-bottom: 14px;
+    }
+    .phase header {
+      display: flex; justify-content: space-between; gap: 12px;
+      align-items: baseline; flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .phase h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.25rem; font-weight: 800; letter-spacing: -.03em; margin: 0;
+    }
+    .gate {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px; font-weight: 700;
+      background: #fff4eb; color: var(--accent-deep);
+      padding: 4px 10px; border-radius: 999px;
+    }
+    .phase p { margin: 0 0 10px; color: var(--soft); font-size: 14px; }
+    .phase ul { margin: 0; padding-left: 1.15rem; font-size: 14px; }
+    .phase li { margin-bottom: 4px; }
+    .phase .done {
+      margin-top: 12px; font-size: 12px; font-weight: 700;
+      color: var(--soft); text-transform: uppercase; letter-spacing: .06em;
+    }
+    .refs {
+      margin-top: 10px; font-size: 12px; color: var(--soft);
+    }
+    .refs a { color: var(--accent-deep); font-weight: 600; }
+
+    footer.note {
+      margin-top: 28px; font-size: 13px; color: var(--soft); font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="logo" href="PRD.html">BEAT<span>LANE</span></a>
+    <nav>
+      <a href="PRD.html">PRD</a>
+      <a href="design-pack.html">Design</a>
+      <a href="beat-pitch.html">Beat pitch</a>
+      <a href="STACK.html">Stack</a>
+      <a href="prompt-pack.html">Prompt pack</a>
+      <a href="clarifications.html">Clarifications</a>
+    </nav>
+    <div class="meta">Roadmap · v1.0 · Jul 21, 2026</div>
+  </div>
+
+  <div class="wrap">
+    <h1>Build roadmap <em>gates</em></h1>
+    <p class="lede">
+      Ordered implementation gates for Beatlane. Each gate is one loop:
+      implement → verify (no fixes) → commit &amp; push. Visual truth is
+      <code>beat-pitch.html</code> + <code>design-pack.html</code>. Stack truth is
+      <code>STACK.html</code>. Supabase project name: <strong>blockblast</strong>.
+    </p>
+    <div class="chips">
+      <span class="chip on">20 gates</span>
+      <span class="chip">Web only</span>
+      <span class="chip">cUSD</span>
+      <span class="chip">No ads</span>
+      <span class="chip">Pixi + Web Audio</span>
+    </div>
+
+    <div class="loop">
+      <strong>Agent loop</strong> (see <a href="prompt-pack.html">prompt-pack.html</a>)
+      <ol>
+        <li>Orchestrator (Grok 4.5) — only dispatches sub-agents from feedback</li>
+        <li>Implementer (Grok 4.5) — builds the active gate</li>
+        <li>Verifier (Grok 4.5) — PASS/FAIL vs design + acceptance; never patches code</li>
+        <li>Git agent (Composer 2.5) — commit + push on PASS only</li>
+        <li>Repeat until G19 complete</li>
+      </ol>
+    </div>
+
+    <div class="timeline">
+      <a class="tl" href="#g0"><div class="w">G0–G1</div><strong>Scaffold</strong><span>App + tokens</span></a>
+      <a class="tl" href="#g2"><div class="w">G2–G7</div><strong>Playable</strong><span>Core loop + modes</span></a>
+      <a class="tl" href="#g8"><div class="w">G8–G12</div><strong>Backend</strong><span>Supabase + pay</span></a>
+      <a class="tl" href="#g13"><div class="w">G13–G19</div><strong>Compete</strong><span>Daily → launch</span></a>
+    </div>
+
+    <!-- G0 -->
+    <article class="phase" id="g0">
+      <header><h2>Scaffold app</h2><span class="gate">G0</span></header>
+      <p>Greenfield Vite + React + TypeScript matching locked stack. No gameplay yet.</p>
+      <ul>
+        <li>Create Vite React-TS app at repo root (or <code>apps/web</code> if monorepo chosen in clarifications).</li>
+        <li>Install PixiJS, Zustand; CSS Modules setup; path aliases.</li>
+        <li>Env template: Supabase, Magic, Sentry, PostHog, Celo RPC (placeholders).</li>
+        <li>GitHub Actions: lint + typecheck on PR/push.</li>
+        <li>README status line: scaffold started.</li>
+      </ul>
+      <div class="done">Done when: <code>npm run build</code> + CI green; empty shell renders.</div>
+      <div class="refs">Refs: <a href="STACK.html">STACK</a> · <a href="PRD.html#tech">PRD §7</a></div>
+    </article>
+
+    <article class="phase" id="g1">
+      <header><h2>Shell &amp; design tokens</h2><span class="gate">G1</span></header>
+      <p>App chrome and tokens must match pitch / design pack (sky→lavender, orange accent, Bricolage/DM Sans).</p>
+      <ul>
+        <li>Global CSS variables from design pack; load fonts.</li>
+        <li>Routes/screens stubs: Home, Play, Music, Wallet, Results (empty content OK).</li>
+        <li>Mobile-first layout; brand BEATLANE visible as hero signal on Home.</li>
+        <li>No dark “stage” chrome as default playfield theme.</li>
+      </ul>
+      <div class="done">Done when: Home matches design-pack entry energy; tokens documented in CSS.</div>
+      <div class="refs">Refs: <a href="design-pack.html">design-pack</a> · <a href="beat-pitch.html">beat-pitch</a></div>
+    </article>
+
+    <article class="phase" id="g2">
+      <header><h2>Pixi playfield prototype</h2><span class="gate">G2</span></header>
+      <p>Four-lane playfield look + scrolling black tiles + tap target.</p>
+      <ul>
+        <li>Pixi canvas: soft sky→lavender gradient, thin white lane rules, hit band.</li>
+        <li>Black tiles scroll top→bottom; tap lane hits tile in window.</li>
+        <li>Hit VFX: crack → glass-shatter fade (match beat-pitch aesthetics).</li>
+        <li>Wrong empty tap / miss past hit band ends run (Classic stub).</li>
+      </ul>
+      <div class="done">Done when: playable endless stub without audio; visual parity with pitch demo.</div>
+      <div class="refs">Refs: <a href="beat-pitch.html">beat-pitch</a> · PRD §5.1</div>
+    </article>
+
+    <article class="phase" id="g3">
+      <header><h2>Judging &amp; HUD</h2><span class="gate">G3</span></header>
+      <p>Score fantasy and feedback bubbles.</p>
+      <ul>
+        <li>Judge windows: PERFECT / GREAT / MISS bubbles.</li>
+        <li>Score, combo, star→crown progress rail.</li>
+        <li>Particle sparkles on successful hits.</li>
+      </ul>
+      <div class="done">Done when: HUD matches design-pack play screens; combo drives stars.</div>
+      <div class="refs">Refs: design-pack Play / Feedback</div>
+    </article>
+
+    <article class="phase" id="g4">
+      <header><h2>Web Audio runtime</h2><span class="gate">G4</span></header>
+      <p>Locked audio architecture — no Howler/Tone.</p>
+      <ul>
+        <li>Shared <code>AudioContext</code>; master → music + SFX gains; mute via gain.</li>
+        <li>One-shot SFX buffers; one sample bed track (local or Storage).</li>
+        <li>Run start syncs music start time; mute toggle in UI.</li>
+      </ul>
+      <div class="done">Done when: track + SFX play; mute works; no extra audio libs.</div>
+      <div class="refs">Refs: <a href="PRD.html#audio">PRD §5.3</a> · STACK audio note</div>
+    </article>
+
+    <article class="phase" id="g5">
+      <header><h2>Chart engine</h2><span class="gate">G5</span></header>
+      <p>JSON charts drive tiles; chart is source of truth.</p>
+      <ul>
+        <li>Chart schema: BPM/offset, notes (lane, time, type), events (SPEED UP).</li>
+        <li>≥2 sample charts (Easy/Normal); loader from public or Storage.</li>
+        <li>SPEED UP banner + countdown ring; scroll rate jump.</li>
+        <li>Tiles scheduled from chart + music clock (not waveform analysis).</li>
+      </ul>
+      <div class="done">Done when: both sample charts play through; SPEED UP fires mid-run.</div>
+      <div class="refs">Refs: PRD §5.1–5.3</div>
+    </article>
+
+    <article class="phase" id="g6">
+      <header><h2>Basic obstacles</h2><span class="gate">G6</span></header>
+      <p>Core tricky tiles for Normal.</p>
+      <ul>
+        <li>HOLD: press and hold until full length completes (slightly forgiving OK).</li>
+        <li>DON'T TAP bomb tiles; DOUBLE rows as events.</li>
+        <li>Banners for obstacle events (~3–8s).</li>
+      </ul>
+      <div class="done">Done when: charts can author HOLD / bomb / DOUBLE; pitch Hold reel parity.</div>
+      <div class="refs">Refs: PRD §5.2 basic · beat-pitch Hold</div>
+    </article>
+
+    <article class="phase" id="g7">
+      <header><h2>Modes: Classic + Zen</h2><span class="gate">G7</span></header>
+      <p>Mode select and fail rules. Locked: <strong>auth required before any play</strong> (no guest).</p>
+      <ul>
+        <li>Home mode cards per design pack; play gated on Magic session.</li>
+        <li>Classic: miss = fail → results / Second Chance stub sheet.</li>
+        <li>Zen: no fail; miss breaks combo only.</li>
+        <li>Results screen with score / combo / retry.</li>
+      </ul>
+      <div class="done">Done when: both modes selectable and playable end-to-end for authenticated users.</div>
+      <div class="refs">Refs: design-pack Entry / Saves</div>
+    </article>
+
+    <article class="phase" id="g8">
+      <header><h2>Supabase foundation</h2><span class="gate">G8</span></header>
+      <p>Use existing Supabase project <strong>blockblast</strong> via MCP. Schema + Edge Functions skeleton.</p>
+      <ul>
+        <li>Tables: profiles, runs, purchases, unlocks, charts metadata (RLS on).</li>
+        <li>Storage buckets for audio + charts (private or signed URLs).</li>
+        <li>Edge Function hello + shared CORS/auth helpers.</li>
+        <li>Client Supabase SDK wired with env from project <code>blockblast</code>.</li>
+      </ul>
+      <div class="done">Done when: migrations applied; client can read public catalog stub; RLS verified.</div>
+      <div class="refs">Refs: STACK · Supabase MCP project <code>blockblast</code></div>
+    </article>
+
+    <article class="phase" id="g9">
+      <header><h2>Magic auth</h2><span class="gate">G9</span></header>
+      <p>Invisible wallet onboarding.</p>
+      <ul>
+        <li>Magic email login; session persistence.</li>
+        <li>Upsert profile on first login; Wallet screen per design pack.</li>
+        <li>Guest play allowed; paywalled actions require auth.</li>
+      </ul>
+      <div class="done">Done when: login/logout works; profile row exists after Magic session.</div>
+      <div class="refs">Refs: design-pack Wallet · PRD §5.5</div>
+    </article>
+
+    <article class="phase" id="g10">
+      <header><h2>Second Chance (testnet cUSD)</h2><span class="gate">G10</span></header>
+      <p>Primary impulse monetization — revive keeps score, <strong>same speed</strong> (no slowdown). Locked: <strong>Celo Mainnet</strong> + post-revive shield default ON ~2s.</p>
+      <ul>
+        <li>Fail sheet UI matching design pack / pitch (“Keep your score · revive this run”).</li>
+        <li>Escalating prices $0.49 → $0.79 → $0.99; purchase receipt in Postgres + tx hash.</li>
+        <li>Celo <strong>Mainnet</strong> cUSD path (per clarifications); app writes + chain receipt (no indexer yet).</li>
+        <li>Post-revive shield: enabled, default ON, ~2s; never reduce scroll speed.</li>
+      </ul>
+      <div class="done">Done when: mainnet revive completes and run resumes at same speed with ~2s shield.</div>
+      <div class="refs">Refs: PRD §5.4 · beat-pitch Miss card</div>
+    </article>
+
+    <article class="phase" id="g11">
+      <header><h2>Hard obstacles</h2><span class="gate">G11</span></header>
+      <p>Full tricky set for Hard + late Normal.</p>
+      <ul>
+        <li>LONG HOLD, BRIDGE, TRIPLE BAR, L-HOOK, ZIG, SPLIT, FAKE GAP, SLIDE, CASCADE, TRAP DOUBLE.</li>
+        <li>ICE / GOLD / FOG / REVERSE modifiers.</li>
+        <li>≥1 Hard sample chart exercising a subset.</li>
+      </ul>
+      <div class="done">Done when: Hard chart playable; each type has unit/visual smoke coverage.</div>
+      <div class="refs">Refs: PRD §5.2 hard · design-pack Obstacles</div>
+    </article>
+
+    <article class="phase" id="g12">
+      <header><h2>Song catalog &amp; packs</h2><span class="gate">G12</span></header>
+      <p>Real content monetization.</p>
+      <ul>
+        <li>Music catalog UI; 8 free tracks metadata + assets in Storage.</li>
+        <li>Pack / single unlock purchase (testnet); unlocks gate fetches.</li>
+        <li>Difficulty select Easy / Normal / Hard per track.</li>
+      </ul>
+      <div class="done">Done when: free tracks play from Storage; paid unlock gates a pack.</div>
+      <div class="refs">Refs: design-pack Music · PRD §6</div>
+    </article>
+
+    <article class="phase" id="g13">
+      <header><h2>Daily + leaderboards</h2><span class="gate">G13</span></header>
+      <p>Seeded daily + HTTP polling boards.</p>
+      <ul>
+        <li>Daily Track mode with server seed; submit run + tap timestamps.</li>
+        <li>Edge Function re-validates taps vs chart for Daily.</li>
+        <li>Leaderboard UI with polling (no websockets required).</li>
+        <li>Upstash rate limits on submit.</li>
+      </ul>
+      <div class="done">Done when: daily score appears on board after validated submit.</div>
+      <div class="refs">Refs: PRD §7 note · STACK polling</div>
+    </article>
+
+    <article class="phase" id="g14">
+      <header><h2>Helpers: Slow-mo &amp; Shield</h2><span class="gate">G14</span></header>
+      <ul>
+        <li>Slow-mo 3s ($0.19) and Shield one-miss ($0.29); Classic/Daily only.</li>
+        <li>Disabled in tournament Blitz (flag ready even if Blitz later).</li>
+        <li>Inventory / purchase sheets per design pack.</li>
+      </ul>
+      <div class="done">Done when: both helpers purchasable on testnet and affect Classic runs.</div>
+      <div class="refs">Refs: PRD §5.4 · design-pack Saves</div>
+    </article>
+
+    <article class="phase" id="g15">
+      <header><h2>Boast + contracts</h2><span class="gate">G15</span></header>
+      <ul>
+        <li>Foundry project; Boast attestation contract on Celo testnet.</li>
+        <li>$0.29 cUSD mint; shareable Boast card UI.</li>
+        <li>Store receipt hash in Postgres.</li>
+      </ul>
+      <div class="done">Done when: testnet Boast mints and card renders share image/data.</div>
+      <div class="refs">Refs: PRD §5.5 · design-pack Social</div>
+    </article>
+
+    <article class="phase" id="g16">
+      <header><h2>Blitz tournaments</h2><span class="gate">G16</span></header>
+      <ul>
+        <li>Timed Blitz mode; entry fee; rake 15–20%; boosts off.</li>
+        <li>Fair obstacle whitelist (no Reverse/Fog/Fake Gap).</li>
+        <li>Payout contract + audit checklist doc (audit itself may be external).</li>
+      </ul>
+      <div class="done">Done when: testnet cup runs entry → play → ranking → payout stub.</div>
+      <div class="refs">Refs: PRD §5.5 · §8</div>
+    </article>
+
+    <article class="phase" id="g17">
+      <header><h2>Season Pass</h2><span class="gate">G17</span></header>
+      <ul>
+        <li>$2.99 season: continue tokens + track unlocks over 4–6 weeks — not cosmetics.</li>
+        <li>Pass progress UI; grant schedule Edge Function or cron.</li>
+      </ul>
+      <div class="done">Done when: purchase grants entitlements; tracks unlock on schedule in staging.</div>
+      <div class="refs">Refs: PRD §5.5 · design-pack Pass</div>
+    </article>
+
+    <article class="phase" id="g18">
+      <header><h2>Observability &amp; CI harden</h2><span class="gate">G18</span></header>
+      <ul>
+        <li>Sentry client + Edge error capture.</li>
+        <li>PostHog funnels: start_run, miss, purchase_continue, unlock_pack.</li>
+        <li>CI: lint, typecheck, unit tests for chart judge + obstacle rules.</li>
+      </ul>
+      <div class="done">Done when: events visible in PostHog project; Sentry test event; CI required checks.</div>
+      <div class="refs">Refs: STACK</div>
+    </article>
+
+    <article class="phase" id="g19">
+      <header><h2>Launch polish</h2><span class="gate">G19</span></header>
+      <ul>
+        <li>Vercel Hobby production deploy; env wired to <code>blockblast</code>.</li>
+        <li>MiniPay “Play with MiniPay” CTA on mobile Wallet/Home.</li>
+        <li>Spend caps; mute defaults; empty/error states; performance pass on mid-tier phones.</li>
+        <li>Mainnet cutover checklist (may stay testnet until clarifications unlock).</li>
+      </ul>
+      <div class="done">Done when: production URL playable; checklist signed off in clarifications answers.</div>
+      <div class="refs">Refs: PRD §9 · design-pack</div>
+    </article>
+
+    <footer class="note">
+      Source of truth: PRD · design-pack · beat-pitch · STACK. Agent prompts live in
+      <a href="prompt-pack.html">prompt-pack.html</a>. Do not start G0 until clarification questions in the prompt pack are answered.
+    </footer>
+  </div>
+</body>
+</html>

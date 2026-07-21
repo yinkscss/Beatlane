@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beatlane — Clarifications Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1424;
+      --soft: #5c5368;
+      --paper: #f7f2eb;
+      --white: #fffdf9;
+      --line: #e4dcd2;
+      --accent: #ff8a3d;
+      --accent-deep: #e85d04;
+      --ok: #1f9d63;
+      --sky: #7ec8ff;
+      --code: #1c1628;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 500px at 0% 0%, #f3e0d2 0%, transparent 50%),
+        radial-gradient(800px 480px at 100% 5%, #e5dcf2 0%, transparent 45%),
+        var(--paper);
+      line-height: 1.45;
+    }
+    .bar {
+      position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 12px 22px;
+      background: rgba(247,242,235,.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--line);
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.03em;
+      text-decoration: none; color: var(--ink); font-size: 1.15rem;
+    }
+    .logo span { color: var(--accent); }
+    .bar nav { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+    .bar nav a {
+      font-size: 12px; font-weight: 600; color: var(--soft);
+      text-decoration: none; padding: 5px 10px; border-radius: 999px;
+    }
+    .bar nav a:hover { background: #fff; color: var(--accent-deep); }
+    .meta { font-size: 12px; color: var(--soft); font-weight: 600; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 32px 22px 120px; }
+    h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800; letter-spacing: -.04em;
+      font-size: clamp(2rem, 4.5vw, 2.7rem);
+      margin: 0 0 10px; line-height: 1.05;
+    }
+    h1 em { font-style: normal; color: var(--accent); }
+    .lede { color: var(--soft); margin: 0 0 18px; max-width: 54ch; }
+
+    .status {
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      margin-bottom: 20px;
+    }
+    .chip {
+      font-size: 12px; font-weight: 700;
+      padding: 5px 10px; border-radius: 999px;
+      background: var(--white); border: 1px solid var(--line);
+    }
+    .chip.ok { background: #e5f7ee; color: var(--ok); border-color: #bfe8d0; }
+    .chip.warn { background: #fff4eb; color: var(--accent-deep); border-color: #ffd2b0; }
+
+    .q {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+    .q.done { border-color: #bfe8d0; }
+    .q-head {
+      display: flex; justify-content: space-between; gap: 10px;
+      align-items: flex-start; margin-bottom: 10px;
+    }
+    .q-num {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px; font-weight: 700; color: var(--accent-deep);
+      flex-shrink: 0; padding-top: 3px;
+    }
+    .q h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-size: 1.05rem; font-weight: 800; letter-spacing: -.02em;
+      margin: 0; line-height: 1.25;
+    }
+    .q .hint { font-size: 12px; color: var(--soft); margin: 4px 0 0; font-weight: 500; }
+
+    .opts {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-bottom: 10px;
+    }
+    .opt {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #faf7f2;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .opt:hover { border-color: #ffc49a; }
+    .opt:has(input:checked) {
+      background: #fff4eb;
+      border-color: var(--accent);
+      color: var(--accent-deep);
+    }
+    .opt input { margin-top: 2px; accent-color: var(--accent-deep); }
+    .opt.multi:has(input:checked) { background: #eef7ff; border-color: var(--sky); color: #1a5f8a; }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      background: #faf7f2;
+      color: var(--ink);
+      resize: vertical;
+    }
+    textarea:focus, input[type="text"]:focus {
+      outline: 2px solid rgba(255,138,61,.35);
+      border-color: var(--accent);
+      background: #fff;
+    }
+    .note-label {
+      display: block;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .06em;
+      color: var(--soft); margin-bottom: 6px;
+    }
+
+    .dock {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 50;
+      background: rgba(28, 22, 40, .94);
+      backdrop-filter: blur(12px);
+      color: #efe8ff;
+      border-top: 1px solid #3a2f52;
+      padding: 12px 18px;
+      display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      justify-content: space-between;
+    }
+    .dock .left { font-size: 13px; font-weight: 600; }
+    .dock .left span { color: var(--accent); font-family: "JetBrains Mono", monospace; }
+    .dock .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      border: 0; border-radius: 12px;
+      padding: 11px 14px;
+      font-family: inherit; font-weight: 700; font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost { background: #2a223f; color: #efe8ff; border: 1px solid #463a62; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    .output {
+      margin-top: 28px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px 18px;
+    }
+    .output h3 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      margin: 0 0 8px; font-size: 1.2rem;
+    }
+    .output p { margin: 0 0 12px; color: var(--soft); font-size: 14px; }
+    .prompt {
+      position: relative;
+      background: var(--code);
+      color: #efe8ff;
+      border-radius: 14px;
+      padding: 14px 14px 48px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      max-height: 420px;
+      overflow: auto;
+      min-height: 120px;
+    }
+    .copy-float {
+      position: absolute; right: 10px; bottom: 10px;
+      border: 0; border-radius: 10px;
+      padding: 8px 12px;
+      font-family: "DM Sans", sans-serif;
+      font-weight: 700; font-size: 12px;
+      background: var(--accent); color: #fff; cursor: pointer;
+    }
+    .copy-float.ok { background: var(--ok); }
+
+    .actions-top {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-bottom: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <a class="logo" href="PRD.html">BEAT<span>LANE</span></a>
+    <nav>
+      <a href="prompt-pack.html">Prompt pack</a>
+      <a href="ROADMAP.html">Roadmap</a>
+      <a href="STACK.html">Stack</a>
+      <a href="beat-pitch.html">Beat pitch</a>
+    </nav>
+    <div class="meta">Clarifications builder</div>
+  </div>
+
+  <div class="wrap">
+    <h1>Answer clarifications <em>interactively</em></h1>
+    <p class="lede">
+      Pick options, add free-text notes, then copy the built answers block.
+      <strong>Locked answers live in</strong> <a href="clarifications-answers.md">clarifications-answers.md</a>
+      — re-copy here only if you intentionally change them, then update that file.
+    </p>
+
+    <div class="status">
+      <span class="chip" id="progressChip">0 / 25 answered</span>
+      <span class="chip warn" id="readyChip">Not ready to paste</span>
+    </div>
+
+    <div class="actions-top">
+      <button type="button" class="btn btn-ghost" id="resetBtn" style="background:#fff;color:var(--ink);border:1px solid var(--line)">Reset all</button>
+      <button type="button" class="btn btn-ghost" id="recommendBtn" style="background:#fff;color:var(--ink);border:1px solid var(--line)">Apply recommended defaults</button>
+      <a class="btn btn-ghost" href="#output" style="background:#fff;color:var(--ink);border:1px solid var(--line);text-decoration:none">Jump to output</a>
+    </div>
+
+    <form id="form"></form>
+
+    <div class="output" id="output">
+      <h3>Built prompt block</h3>
+      <p>Paste this into every Orchestrator / Implement dispatch until gates complete.</p>
+      <div class="prompt" id="outPrompt"><button type="button" class="copy-float" id="copyBtn">Copy answers</button></div>
+    </div>
+  </div>
+
+  <div class="dock">
+    <div class="left">Progress <span id="dockCount">0/25</span> · Auto-saves in this browser</div>
+    <div class="btns">
+      <button type="button" class="btn btn-ghost" id="dockBuild">Refresh output</button>
+      <button type="button" class="btn btn-primary" id="dockCopy">Copy answers block</button>
+    </div>
+  </div>
+
+  <script>
+    const KEY = "beatlane-clarifications-v2";
+
+    const QUESTIONS = [
+      {
+        id: "app_layout",
+        title: "App layout",
+        hint: "Where does the Vite app live?",
+        multi: false,
+        options: [
+          { value: "monorepo", label: "Monorepo — apps/web + contracts/" },
+          { value: "root", label: "Single Vite app at repo root" }
+        ]
+      },
+      {
+        id: "pkg",
+        title: "Package manager",
+        multi: false,
+        options: [
+          { value: "npm", label: "npm" },
+          { value: "pnpm", label: "pnpm" },
+          { value: "bun", label: "bun" }
+        ]
+      },
+      {
+        id: "node",
+        title: "Node version",
+        multi: false,
+        options: [
+          { value: "20", label: "Node 20 LTS — OK" },
+          { value: "22", label: "Node 22 — prefer" },
+          { value: "other", label: "Other (specify in notes)" }
+        ]
+      },
+      {
+        id: "supabase_perms",
+        title: "Supabase blockblast — permissions",
+        hint: "Migrations + Storage via MCP. Note any tables that must not be wiped.",
+        multi: true,
+        options: [
+          { value: "migrate_ok", label: "OK to apply migrations via MCP" },
+          { value: "buckets_ok", label: "OK to create Storage buckets" },
+          { value: "no_wipe", label: "Do NOT wipe existing tables/data (list in notes)" },
+          { value: "greenfield_ok", label: "Treat as greenfield — wipe/reset OK" }
+        ]
+      },
+      {
+        id: "supabase_url",
+        title: "Supabase region / URL",
+        multi: false,
+        options: [
+          { value: "mcp", label: "OK to read via MCP get_project_url" },
+          { value: "paste", label: "I will paste the project URL in notes" }
+        ]
+      },
+      {
+        id: "magic",
+        title: "Magic.link",
+        multi: true,
+        options: [
+          { value: "have_key", label: "I have a publishable key" },
+          { value: "need_setup", label: "Not set up yet — agent should document setup steps" },
+          { value: "test_app", label: "Use Magic test / staging app" },
+          { value: "prod_app", label: "Use Magic production app" }
+        ]
+      },
+      {
+        id: "celo",
+        title: "Celo network for G10+",
+        multi: false,
+        options: [
+          { value: "alfajores", label: "Alfajores testnet only until I say mainnet" },
+          { value: "sepolia", label: "Celo Sepolia testnet only until I say mainnet" },
+          { value: "either_testnet", label: "Either testnet — pick best DX and document" },
+          { value: "mainnet_soon", label: "Plan mainnet earlier (explain in notes)" }
+        ]
+      },
+      {
+        id: "cusd_funds",
+        title: "cUSD test funds",
+        multi: false,
+        options: [
+          { value: "manual", label: "I will fund the test wallet manually" },
+          { value: "faucet_readme", label: "Document faucet steps in README; I fund from that" },
+          { value: "both", label: "Both — faucet docs + I fund manually" }
+        ]
+      },
+      {
+        id: "vercel",
+        title: "Vercel deploy",
+        hint: "Account/team + domain. Put team name / domain in notes if needed.",
+        multi: true,
+        options: [
+          { value: "hobby_ok", label: "Vercel Hobby is fine" },
+          { value: "vercel_app", label: "*.vercel.app OK for now (no custom domain yet)" },
+          { value: "custom_domain", label: "Custom domain (specify in notes)" },
+          { value: "account_in_notes", label: "Account/team specified in notes" }
+        ]
+      },
+      {
+        id: "git_branch",
+        title: "Git branch policy",
+        multi: false,
+        options: [
+          { value: "master_direct", label: "Commit & push directly to master" },
+          { value: "feature_pr", label: "Feature branch + PR per gate" },
+          { value: "feature_no_pr", label: "Feature branch per gate, merge locally (no PR)" }
+        ]
+      },
+      {
+        id: "commit_style",
+        title: "Commit style",
+        multi: true,
+        options: [
+          { value: "conventional", label: "Conventional commits OK" },
+          { value: "one_per_gate", label: "One commit per gate after PASS OK" },
+          { value: "many_ok", label: "Multiple commits per gate OK if needed" }
+        ]
+      },
+      {
+        id: "sample_audio",
+        title: "Sample audio",
+        multi: false,
+        options: [
+          { value: "cc0_then_storage", label: "CC0/placeholder in-repo for G4–G7, Storage in G12" },
+          { value: "storage_early", label: "Put samples in Supabase Storage from the start" },
+          { value: "silent_ok", label: "Silent/mute stubs OK until G12" }
+        ]
+      },
+      {
+        id: "charts",
+        title: "Chart authorship",
+        multi: false,
+        options: [
+          { value: "json_only", label: "Hand-authored JSON samples — no MIDI pipeline in v1" },
+          { value: "midi_later", label: "JSON now; allow MIDI tooling later (not v1)" }
+        ]
+      },
+      {
+        id: "guest",
+        title: "Guest play",
+        multi: false,
+        options: [
+          { value: "guest_ok", label: "Guests play Classic/Zen offline; auth for pay / Daily / Boast" },
+          { value: "auth_all", label: "Require auth before any play" },
+          { value: "guest_no_daily", label: "Guests play; Daily also requires auth (default path)" }
+        ]
+      },
+      {
+        id: "shield",
+        title: "Second Chance shield",
+        hint: "Optional post-revive shield. Put duration in notes if custom.",
+        multi: true,
+        options: [
+          { value: "enable", label: "Enable optional post-revive shield in G10" },
+          { value: "default_on", label: "Default ON after revive" },
+          { value: "default_off", label: "Default OFF (player opt-in / tunable server flag)" },
+          { value: "dur_1s", label: "Duration ~1s" },
+          { value: "dur_2s", label: "Duration ~2s" },
+          { value: "dur_3s", label: "Duration ~3s" },
+          { value: "no_shield", label: "No shield — revive only" }
+        ]
+      },
+      {
+        id: "upstash",
+        title: "Upstash Redis",
+        multi: false,
+        options: [
+          { value: "existing", label: "I have existing Redis credentials (paste in notes / env later)" },
+          { value: "create_g13", label: "Create new free DB when G13 starts" },
+          { value: "skip_until_needed", label: "Defer until G13; document setup then" }
+        ]
+      },
+      {
+        id: "obs",
+        title: "Sentry / PostHog",
+        multi: true,
+        options: [
+          { value: "sentry_existing", label: "Reuse existing Sentry project" },
+          { value: "sentry_new", label: "Create new Sentry at G18" },
+          { value: "posthog_existing", label: "Reuse existing PostHog project" },
+          { value: "posthog_new", label: "Create new PostHog at G18" },
+          { value: "defer_obs", label: "Defer both until G18 fully" }
+        ]
+      },
+      {
+        id: "foundry",
+        title: "Foundry / contracts (G15–G16)",
+        hint: "Never commit secrets. Put naming prefs + how keys are supplied in notes.",
+        multi: true,
+        options: [
+          { value: "deploy_from_repo", label: "Deploy from this repo via Foundry" },
+          { value: "names_default", label: "Default names OK (Boast, TournamentVault, etc.)" },
+          { value: "names_custom", label: "Custom naming (specify in notes)" },
+          { value: "keys_env", label: "Deployer keys via local env / CI secrets only" },
+          { value: "keys_i_run", label: "I will run forge scripts myself with keys" }
+        ]
+      },
+      {
+        id: "rake",
+        title: "Tournament rake",
+        multi: false,
+        options: [
+          { value: "15", label: "15%" },
+          { value: "20", label: "20%" }
+        ]
+      },
+      {
+        id: "season",
+        title: "Season Pass duration",
+        multi: false,
+        options: [
+          { value: "4", label: "4 weeks" },
+          { value: "6", label: "6 weeks" }
+        ]
+      },
+      {
+        id: "minipay",
+        title: "MiniPay",
+        multi: false,
+        options: [
+          { value: "stub", label: "Stub CTA only until I provide tester device/docs" },
+          { value: "real_before_g19", label: "Real deep-link testing available before G19" },
+          { value: "docs_only", label: "I will paste MiniPay docs links in notes; implement against them" }
+        ]
+      },
+      {
+        id: "design",
+        title: "Design strictness",
+        multi: false,
+        options: [
+          { value: "pixel", label: "Pixel-match beat-pitch glass shatter + sky/lavender as closely as practical" },
+          { value: "language", label: "“Clearly same language” tolerance OK" }
+        ]
+      },
+      {
+        id: "oos",
+        title: "Out of scope hard bans",
+        hint: "Verifiers should FAIL PRs that add these.",
+        multi: true,
+        options: [
+          { value: "no_ads", label: "No ads — FAIL if added" },
+          { value: "no_skins", label: "No skins shop — FAIL if added" },
+          { value: "no_token", label: "No game token — FAIL if added" },
+          { value: "confirm_all", label: "Confirm all three bans for v1" }
+        ]
+      },
+      {
+        id: "retries",
+        title: "Stop conditions — max Implement retries on FAIL",
+        multi: false,
+        options: [
+          { value: "1", label: "1 retry" },
+          { value: "2", label: "2 retries (default)" },
+          { value: "3", label: "3 retries" },
+          { value: "ask", label: "Ask me on every FAIL (no auto-retry)" }
+        ]
+      },
+      {
+        id: "human_gates",
+        title: "Human approval before Git push",
+        hint: "Select gates that must pause for your OK. Add more in notes.",
+        multi: true,
+        options: [
+          { value: "none", label: "No human pauses — auto Git on every PASS" },
+          { value: "G10", label: "Pause at G10 (Second Chance / payments)" },
+          { value: "G15", label: "Pause at G15 (Boast / contracts)" },
+          { value: "G16", label: "Pause at G16 (tournaments)" },
+          { value: "G19", label: "Pause at G19 (launch)" },
+          { value: "all_pay", label: "Pause on any gate that moves real/test money" }
+        ]
+      }
+    ];
+
+    const RECOMMENDED = {
+      app_layout: { choices: ["monorepo"], note: "" },
+      pkg: { choices: ["pnpm"], note: "" },
+      node: { choices: ["20"], note: "" },
+      supabase_perms: { choices: ["migrate_ok", "buckets_ok", "greenfield_ok"], note: "Prefer greenfield for Beatlane schemas; archive any legacy Block Drop tables if present rather than dropping blindly." },
+      supabase_url: { choices: ["mcp"], note: "" },
+      magic: { choices: ["need_setup", "test_app"], note: "Create Magic app when keys available; start with test." },
+      celo: { choices: ["either_testnet"], note: "Prefer current Celo testnet with best tooling/docs at implement time." },
+      cusd_funds: { choices: ["faucet_readme"], note: "" },
+      vercel: { choices: ["hobby_ok", "vercel_app"], note: "" },
+      git_branch: { choices: ["master_direct"], note: "" },
+      commit_style: { choices: ["conventional", "one_per_gate"], note: "" },
+      sample_audio: { choices: ["cc0_then_storage"], note: "" },
+      charts: { choices: ["json_only"], note: "" },
+      guest: { choices: ["guest_ok"], note: "" },
+      shield: { choices: ["enable", "default_off", "dur_2s"], note: "Server-tunable; default off." },
+      upstash: { choices: ["create_g13"], note: "" },
+      obs: { choices: ["sentry_new", "posthog_new"], note: "" },
+      foundry: { choices: ["deploy_from_repo", "names_default", "keys_env"], note: "Deployer key only in local env / CI secrets." },
+      rake: { choices: ["15"], note: "" },
+      season: { choices: ["4"], note: "" },
+      minipay: { choices: ["stub"], note: "" },
+      design: { choices: ["pixel"], note: "Match beat-pitch.html VFX and playfield as closely as practical." },
+      oos: { choices: ["confirm_all", "no_ads", "no_skins", "no_token"], note: "" },
+      retries: { choices: ["2"], note: "" },
+      human_gates: { choices: ["G10", "G16"], note: "Also pause if mainnet keys are involved." }
+    };
+
+    const form = document.getElementById("form");
+    const state = loadState();
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(KEY) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(KEY, JSON.stringify(state));
+      build();
+    }
+
+    function ensure(id) {
+      if (!state[id]) state[id] = { choices: [], note: "" };
+      return state[id];
+    }
+
+    QUESTIONS.forEach((q, idx) => {
+      ensure(q.id);
+      const card = document.createElement("section");
+      card.className = "q";
+      card.dataset.id = q.id;
+
+      const head = document.createElement("div");
+      head.className = "q-head";
+      head.innerHTML = `
+        <div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div class="q-num">Q${String(idx + 1).padStart(2, "0")}</div>
+            <div>
+              <h2>${q.title}</h2>
+              ${q.hint ? `<p class="hint">${q.hint}</p>` : ""}
+            </div>
+          </div>
+        </div>`;
+      card.appendChild(head);
+
+      const opts = document.createElement("div");
+      opts.className = "opts";
+      q.options.forEach((opt) => {
+        const label = document.createElement("label");
+        label.className = "opt" + (q.multi ? " multi" : "");
+        const input = document.createElement("input");
+        input.type = q.multi ? "checkbox" : "radio";
+        input.name = q.id;
+        input.value = opt.value;
+        input.checked = state[q.id].choices.includes(opt.value);
+        input.addEventListener("change", () => {
+          const s = ensure(q.id);
+          if (q.multi) {
+            if (input.checked) {
+              if (!s.choices.includes(opt.value)) s.choices.push(opt.value);
+              // none exclusive
+              if (opt.value === "none") s.choices = ["none"];
+              else s.choices = s.choices.filter((c) => c !== "none");
+              if (opt.value === "no_shield") {
+                s.choices = s.choices.filter((c) => !c.startsWith("dur_") && c !== "default_on" && c !== "default_off" && c !== "enable");
+                if (!s.choices.includes("no_shield")) s.choices.push("no_shield");
+              }
+            } else {
+              s.choices = s.choices.filter((c) => c !== opt.value);
+            }
+            // sync checkboxes in this question
+            opts.querySelectorAll("input").forEach((el) => {
+              el.checked = s.choices.includes(el.value);
+            });
+          } else {
+            s.choices = [opt.value];
+          }
+          saveState();
+          paintDone();
+        });
+        label.appendChild(input);
+        label.appendChild(document.createTextNode(opt.label));
+        opts.appendChild(label);
+      });
+      card.appendChild(opts);
+
+      const noteLabel = document.createElement("label");
+      noteLabel.className = "note-label";
+      noteLabel.textContent = "Free text / paste details";
+      const ta = document.createElement("textarea");
+      ta.rows = 2;
+      ta.placeholder = "Optional notes, URLs, account names, exceptions…";
+      ta.value = state[q.id].note || "";
+      ta.addEventListener("input", () => {
+        ensure(q.id).note = ta.value;
+        saveState();
+        paintDone();
+      });
+      card.appendChild(noteLabel);
+      card.appendChild(ta);
+
+      form.appendChild(card);
+    });
+
+    function answered(q) {
+      const s = state[q.id] || { choices: [], note: "" };
+      return (s.choices && s.choices.length > 0) || (s.note && s.note.trim().length > 0);
+    }
+
+    function paintDone() {
+      let n = 0;
+      QUESTIONS.forEach((q) => {
+        const card = form.querySelector(`[data-id="${q.id}"]`);
+        const ok = answered(q);
+        if (ok) n++;
+        card.classList.toggle("done", ok);
+      });
+      const total = QUESTIONS.length;
+      document.getElementById("progressChip").textContent = `${n} / ${total} answered`;
+      document.getElementById("dockCount").textContent = `${n}/${total}`;
+      const ready = document.getElementById("readyChip");
+      if (n === total) {
+        ready.textContent = "Ready to paste";
+        ready.className = "chip ok";
+      } else {
+        ready.textContent = `${total - n} remaining`;
+        ready.className = "chip warn";
+      }
+    }
+
+    function labelFor(q, value) {
+      return (q.options.find((o) => o.value === value) || {}).label || value;
+    }
+
+    function build() {
+      const lines = [];
+      lines.push("CLARIFICATION ANSWERS — Beatlane");
+      lines.push("Generated from docs/clarifications.html");
+      lines.push("Orchestrator: paste into every Implement dispatch until complete.");
+      lines.push("");
+
+      QUESTIONS.forEach((q, idx) => {
+        const s = ensure(q.id);
+        const num = String(idx + 1).padStart(2, "0");
+        lines.push(`Q${num}. ${q.title}`);
+        if (s.choices.length) {
+          s.choices.forEach((c) => lines.push(`  - ${labelFor(q, c)} [${c}]`));
+        } else {
+          lines.push("  - (no option selected)");
+        }
+        if (s.note && s.note.trim()) {
+          lines.push(`  Notes: ${s.note.trim()}`);
+        }
+        lines.push("");
+      });
+
+      lines.push("END CLARIFICATION ANSWERS");
+
+      const text = lines.join("\n");
+      const pre = document.getElementById("outPrompt");
+      // keep button
+      const btn = document.getElementById("copyBtn");
+      pre.textContent = text;
+      pre.appendChild(btn);
+      pre.dataset.text = text;
+      return text;
+    }
+
+    async function copy() {
+      const text = build();
+      await navigator.clipboard.writeText(text);
+      [document.getElementById("copyBtn"), document.getElementById("dockCopy")].forEach((b) => {
+        const old = b.textContent;
+        b.textContent = "Copied";
+        b.classList.add("ok");
+        setTimeout(() => { b.textContent = old; b.classList.remove("ok"); }, 1400);
+      });
+      document.getElementById("copyBtn").classList.add("ok");
+    }
+
+    document.getElementById("copyBtn").addEventListener("click", copy);
+    document.getElementById("dockCopy").addEventListener("click", copy);
+    document.getElementById("dockBuild").addEventListener("click", () => {
+      build();
+      document.getElementById("output").scrollIntoView({ behavior: "smooth" });
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", () => {
+      if (!confirm("Reset all clarification answers?")) return;
+      localStorage.removeItem(KEY);
+      location.reload();
+    });
+
+    document.getElementById("recommendBtn").addEventListener("click", () => {
+      Object.keys(RECOMMENDED).forEach((id) => {
+        state[id] = {
+          choices: [...RECOMMENDED[id].choices],
+          note: RECOMMENDED[id].note || ""
+        };
+      });
+      localStorage.setItem(KEY, JSON.stringify(state));
+      location.reload();
+    });
+
+    paintDone();
+    build();
+  </script>
+</body>
+</html>
