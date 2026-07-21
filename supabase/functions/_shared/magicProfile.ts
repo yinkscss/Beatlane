@@ -16,12 +16,46 @@ type DidClaim = {
   nbf?: number
 }
 
-/** Lightweight DID claim decode + expiry/issuer checks (Admin SDK optional). */
+function decodeBase64Json(b64: string): unknown {
+  const normalized = b64.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4)
+  return JSON.parse(atob(padded))
+}
+
+/**
+ * Decode Magic DID claim payload.
+ *
+ * Real Magic DID tokens from `magic.user.getIdToken()` are:
+ *   base64(JSON.stringify([proof, claimJwt]))
+ * where claimJwt is a JWT (`header.payload.sig`).
+ *
+ * Verify scripts also forge a lightweight `hdr.payload.sig` shape when
+ * MAGIC_SECRET_KEY is unset — keep that path working.
+ */
 export function parseDidClaim(didToken: string): DidClaim {
-  const parts = didToken.split('.')
+  const trimmed = didToken.trim()
+  if (!trimmed) throw new Error('Malformed DID token')
+
+  // Real Magic DID: base64([proof, claimJwt])
+  try {
+    const decoded = decodeBase64Json(trimmed)
+    if (Array.isArray(decoded) && typeof decoded[1] === 'string') {
+      const claimParts = decoded[1].split('.')
+      if (claimParts.length < 2) throw new Error('Malformed DID token')
+      return decodeBase64Json(claimParts[1]) as DidClaim
+    }
+  } catch {
+    // Fall through to forged JWT-shaped tokens.
+  }
+
+  // Lightweight forge / JWT-shaped: hdr.payload.sig
+  const parts = trimmed.split('.')
   if (parts.length < 2) throw new Error('Malformed DID token')
-  const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
-  return JSON.parse(json) as DidClaim
+  try {
+    return decodeBase64Json(parts[1]) as DidClaim
+  } catch {
+    throw new Error('Malformed DID token')
+  }
 }
 
 export function assertDidClaim(claim: DidClaim, issuer: string): void {
