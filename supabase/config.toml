@@ -1,0 +1,21 @@
+# A string used to distinguish different Supabase projects on the same host. Defaults to the
+# working directory name when running `supabase init`.
+project_id = "beatlane"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
+
+[studio]
+enabled = true
+
+[auth]
+enabled = true
+
+[storage]
+enabled = true
+
+[functions.hello]
+verify_jwt = true
