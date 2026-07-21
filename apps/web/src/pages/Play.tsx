@@ -6,6 +6,9 @@ import { SAMPLE_CHARTS, sampleChartById } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
 import type { Chart } from '@/charts/schema'
 import {
+  sanitizeBlitzChart,
+} from '@/game/blitzWhitelist'
+import {
   ClassicPlayfield,
   type FailReason,
   type HitGrade,
@@ -38,6 +41,14 @@ import {
   type HelperSku,
 } from '@/lib/helpers'
 import { recordPurchaseReceipt } from '@/lib/purchases'
+import {
+  BLITZ_DURATION_MS,
+  DEFAULT_CUP_SLUG,
+  fetchTournamentLobby,
+  fetchTournamentRank,
+  formatBlitzClock,
+  submitBlitzRun,
+} from '@/lib/tournament'
 import {
   SECOND_CHANCE_SHIELD_DEFAULT_ON,
   SECOND_CHANCE_SHIELD_MS,
@@ -123,6 +134,7 @@ function bannerClass(kind: ObstacleBannerKind): string {
 function parseMode(raw: string | null): PlayMode {
   if (raw === 'zen') return 'zen'
   if (raw === 'daily') return 'daily'
+  if (raw === 'blitz') return 'blitz'
   return 'classic'
 }
 
@@ -143,6 +155,7 @@ export default function PlayPage() {
   const [searchParams] = useSearchParams()
   const mode = parseMode(searchParams.get('mode'))
   const chartParam = searchParams.get('chart')
+  const cupSlug = searchParams.get('cup')?.trim() || DEFAULT_CUP_SLUG
   const { status } = useAuth()
 
   const muted = useAppStore((s) => s.muted)
@@ -154,10 +167,14 @@ export default function PlayPage() {
   useEffect(() => {
     if (status === 'loading') return
     if (status !== 'authenticated') {
-      const next = `/play?mode=${mode}${chartParam ? `&chart=${encodeURIComponent(chartParam)}` : ''}`
-      navigate(`/wallet?next=${encodeURIComponent(next)}`, { replace: true })
+      const qs = new URLSearchParams({ mode })
+      if (chartParam) qs.set('chart', chartParam)
+      if (mode === 'blitz') qs.set('cup', cupSlug)
+      navigate(`/wallet?next=${encodeURIComponent(`/play?${qs}`)}`, {
+        replace: true,
+      })
     }
-  }, [status, mode, chartParam, navigate])
+  }, [status, mode, chartParam, cupSlug, navigate])
 
   const [dailyMeta, setDailyMeta] = useState<DailyChallenge | null>(null)
   const [chartId, setChartId] = useState(
@@ -190,9 +207,14 @@ export default function PlayPage() {
   const [helperBusy, setHelperBusy] = useState(false)
   const [helperError, setHelperError] = useState<string | null>(null)
   const [reverseUi, setReverseUi] = useState(false)
+  const [blitzMsLeft, setBlitzMsLeft] = useState(BLITZ_DURATION_MS)
+  const [blitzTimedOut, setBlitzTimedOut] = useState(false)
+  const [tournamentId, setTournamentId] = useState<string | null>(null)
   const speedAtFailRef = useRef(1)
   const slowMoTimerRef = useRef<number | null>(null)
   const shieldTimerRef = useRef<number | null>(null)
+  const blitzTickRef = useRef<number | null>(null)
+  const blitzEndedRef = useRef(false)
 
   const helpersOk = helpersAllowed(mode)
 
@@ -231,6 +253,36 @@ export default function PlayPage() {
     }
   }, [status, mode])
 
+  // Blitz: require cup entry + fair chart from tournament lobby
+  useEffect(() => {
+    if (status !== 'authenticated' || mode !== 'blitz') return
+    let cancelled = false
+    setChartError(null)
+    void (async () => {
+      try {
+        const lobby = await fetchTournamentLobby(cupSlug)
+        if (cancelled) return
+        if (!lobby.myEntry) {
+          setTournamentId(null)
+          setChartError('Enter the cup from Tournaments before playing Blitz.')
+          return
+        }
+        setTournamentId(lobby.tournament.id)
+        setChartId(lobby.tournament.chart_id || 'sample-normal')
+      } catch (err) {
+        console.error('Tournament lobby failed', err)
+        if (!cancelled) {
+          setChartError(
+            err instanceof Error ? err.message : 'Tournament lobby failed',
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status, mode, cupSlug])
+
   const showJudge = (grade: JudgeGrade) => {
     if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
     setJudge(grade)
@@ -247,6 +299,8 @@ export default function PlayPage() {
     if (status !== 'authenticated') return
     // Wait for daily seed → chartId
     if (mode === 'daily' && !dailyMeta) return
+    // Wait for cup entry + tournament id before Blitz boot
+    if (mode === 'blitz' && !tournamentId) return
 
     let cancelled = false
     bedArmedRef.current = true
@@ -272,6 +326,9 @@ export default function PlayPage() {
     setHelperBusy(false)
     setHelperError(null)
     setReverseUi(false)
+    setBlitzMsLeft(BLITZ_DURATION_MS)
+    setBlitzTimedOut(false)
+    blitzEndedRef.current = false
     speedAtFailRef.current = 1
     if (slowMoTimerRef.current) {
       window.clearTimeout(slowMoTimerRef.current)
@@ -280,6 +337,10 @@ export default function PlayPage() {
     if (shieldTimerRef.current) {
       window.clearTimeout(shieldTimerRef.current)
       shieldTimerRef.current = null
+    }
+    if (blitzTickRef.current) {
+      window.clearInterval(blitzTickRef.current)
+      blitzTickRef.current = null
     }
 
     const songClock = () => {
@@ -316,8 +377,8 @@ export default function PlayPage() {
         setMissFlash(true)
         window.setTimeout(() => setMissFlash(false), 450)
 
-        if (mode === 'zen') {
-          // Miss breaks combo only — run continues.
+        if (mode === 'zen' || mode === 'blitz') {
+          // Miss breaks combo only — run continues (Blitz is timed).
           return
         }
 
@@ -398,7 +459,7 @@ export default function PlayPage() {
         })
       },
     })
-    game.setMode(mode === 'daily' ? 'daily' : mode)
+    game.setMode(mode)
     gameRef.current = game
     game.setSongClock(songClock)
 
@@ -437,12 +498,48 @@ export default function PlayPage() {
           musicUrlRef.current = assets.audioUrl
         }
         if (cancelled) return
+        if (mode === 'blitz') {
+          chart = sanitizeBlitzChart(chart)
+        }
         game.setChart(chart)
         setChartMeta(chart)
 
         await game.mount(host)
         if (cancelled) return
         kickBed()
+
+        if (mode === 'blitz') {
+          const started = performance.now()
+          blitzTickRef.current = window.setInterval(() => {
+            if (cancelled || blitzEndedRef.current) return
+            const left = Math.max(0, BLITZ_DURATION_MS - (performance.now() - started))
+            setBlitzMsLeft(left)
+            if (left <= 0) {
+              blitzEndedRef.current = true
+              if (blitzTickRef.current) {
+                window.clearInterval(blitzTickRef.current)
+                blitzTickRef.current = null
+              }
+              bedArmedRef.current = false
+              audioRuntime.stopBed()
+              setBlitzTimedOut(true)
+              setCleared(true)
+              setSpeedUi(null)
+              setObstacleUi(null)
+              const g = gameRef.current
+              setLastRun({
+                mode: 'blitz',
+                score: g?.getScore() ?? 0,
+                combo: g?.getCombo() ?? 0,
+                maxCombo: maxComboRef.current,
+                outcome: 'clear',
+                chartTitle: g?.getChart()?.title ?? null,
+                tournamentSlug: cupSlug,
+                tournamentId,
+              })
+            }
+          }, 100)
+        }
       } catch (err) {
         console.error('Playfield / chart failed to start', err)
         if (!cancelled) {
@@ -457,11 +554,15 @@ export default function PlayPage() {
       host.removeEventListener('pointerdown', onGesture, { capture: true })
       window.removeEventListener('keydown', onGesture, { capture: true })
       if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
+      if (blitzTickRef.current) {
+        window.clearInterval(blitzTickRef.current)
+        blitzTickRef.current = null
+      }
       audioRuntime.stopBed()
       game.destroy()
       gameRef.current = null
     }
-  }, [chartId, mode, setLastRun, status, dailyMeta])
+  }, [chartId, mode, setLastRun, status, dailyMeta, cupSlug, tournamentId])
 
   if (status !== 'authenticated') {
     return (
@@ -482,6 +583,42 @@ export default function PlayPage() {
       outcome,
       chartTitle: chartMeta?.title ?? dailyMeta?.chart?.title ?? null,
       dailyDay: dailyMeta?.day ?? null,
+      tournamentSlug: mode === 'blitz' ? cupSlug : null,
+      tournamentId: mode === 'blitz' ? tournamentId : null,
+    }
+
+    // Blitz cup: submit tiles → rank → results
+    if (mode === 'blitz' && tournamentId) {
+      setSubmitBusy(true)
+      setSubmitError(null)
+      try {
+        await submitBlitzRun({
+          tournamentId,
+          tiles: score,
+          score,
+          comboMax: maxCombo,
+          durationMs: Math.round(performance.now() - runStartedAtRef.current),
+          chartId,
+          taps: tapsRef.current.map(({ t, lane }) => ({ t, lane })),
+        })
+        const rank = await fetchTournamentRank(cupSlug)
+        setLastRun({
+          ...base,
+          submitted: true,
+          placement: rank.you?.rank ?? null,
+          payoutStubCusd: rank.you?.payoutStubCusd ?? null,
+        })
+        navigate('/tournament?slug=' + encodeURIComponent(cupSlug) + '&view=results')
+        return
+      } catch (err) {
+        console.error('blitz submit failed', err)
+        setSubmitError(err instanceof Error ? err.message : 'Submit failed')
+        setLastRun({ ...base, submitted: false })
+        navigate('/results')
+        return
+      } finally {
+        setSubmitBusy(false)
+      }
     }
 
     // Daily (and optional Classic with taps): server validate + board
@@ -726,7 +863,13 @@ export default function PlayPage() {
           : null
 
   const modeLabel =
-    mode === 'zen' ? 'ZEN' : mode === 'daily' ? 'DAILY' : 'CLASSIC'
+    mode === 'zen'
+      ? 'ZEN'
+      : mode === 'daily'
+        ? 'DAILY'
+        : mode === 'blitz'
+          ? 'BLITZ'
+          : 'CLASSIC'
   const nextPrice = secondChancePrice(reviveCount)
   const prevPrice =
     reviveCount > 0 ? secondChancePrice(reviveCount - 1) : null
@@ -750,6 +893,11 @@ export default function PlayPage() {
           <span className={styles.chartTitle}>
             {dailyMeta?.day ?? '…'} ·{' '}
             {chartMeta?.title ?? dailyMeta?.chart?.title ?? 'Loading…'}
+          </span>
+        ) : mode === 'blitz' ? (
+          <span className={styles.chartTitle}>
+            {formatBlitzClock(blitzMsLeft)} ·{' '}
+            {chartMeta?.title ?? 'Cup chart'} · tiles
           </span>
         ) : !chartParam || sampleChartById(chartParam) ? (
           SAMPLE_CHARTS.map((c) => (
@@ -776,24 +924,38 @@ export default function PlayPage() {
             {chartMeta?.difficulty?.toUpperCase() ?? '…'}
           </span>
         )}
-        {mode !== 'daily' && chartMeta ? (
+        {mode !== 'daily' && mode !== 'blitz' && chartMeta ? (
           <span className={styles.chartTitle}>{chartMeta.title}</span>
         ) : null}
       </div>
 
       <div className={styles.progress} aria-hidden="true">
         <div className={styles.rail} />
-        <div className={styles.fill} style={{ width: `${fill}%` }} />
-        <div className={styles.marks}>
-          {marks.map((m, i) => (
-            <span
-              key={`${m.kind}-${i}`}
-              className={m.on ? styles.markOn : styles.markOff}
-            >
-              {MARK_GLYPH[m.kind]}
-            </span>
-          ))}
-        </div>
+        <div
+          className={styles.fill}
+          style={{
+            width:
+              mode === 'blitz'
+                ? `${(blitzMsLeft / BLITZ_DURATION_MS) * 100}%`
+                : `${fill}%`,
+          }}
+        />
+        {mode === 'blitz' ? (
+          <div className={styles.marks}>
+            <span className={styles.markOn}>⚡</span>
+          </div>
+        ) : (
+          <div className={styles.marks}>
+            {marks.map((m, i) => (
+              <span
+                key={`${m.kind}-${i}`}
+                className={m.on ? styles.markOn : styles.markOff}
+              >
+                {MARK_GLYPH[m.kind]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div
@@ -802,6 +964,11 @@ export default function PlayPage() {
       >
         {score.toLocaleString()}
       </div>
+      {mode === 'blitz' ? (
+        <p className={styles.failSub} style={{ marginTop: -8 }}>
+          TILES · helpers off
+        </p>
+      ) : null}
 
       {judgeLabel ? (
         <div
@@ -977,8 +1144,24 @@ export default function PlayPage() {
 
       {chartError ? (
         <div className={styles.failOverlay}>
-          <p className={styles.failTitle}>Chart error</p>
+          <p className={styles.failTitle}>
+            {mode === 'blitz' ? 'Blitz cup' : 'Chart error'}
+          </p>
           <p className={styles.failSub}>{chartError}</p>
+          {mode === 'blitz' ? (
+            <button
+              type="button"
+              className={styles.sheetPrimary}
+              style={{ marginTop: 16 }}
+              onClick={() =>
+                navigate(
+                  `/tournament?slug=${encodeURIComponent(cupSlug)}`,
+                )
+              }
+            >
+              Open tournament lobby
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -1064,12 +1247,14 @@ export default function PlayPage() {
         <div className={styles.failOverlay}>
           <div className={styles.failSheet} role="dialog" aria-labelledby="clear-title">
             <h2 id="clear-title" className={styles.sheetTitleClear}>
-              Cleared
+              {mode === 'blitz' || blitzTimedOut ? 'Time!' : 'Cleared'}
             </h2>
             <p className={styles.sheetBody}>
               {chartMeta?.title ?? dailyMeta?.chart?.title ?? 'Chart'} ·{' '}
-              {score.toLocaleString()} pts · ×{combo}
+              {score.toLocaleString()}
+              {mode === 'blitz' ? ' tiles' : ' pts'} · ×{combo}
               {mode === 'daily' ? ' · Daily' : ''}
+              {mode === 'blitz' ? ' · helpers off' : ''}
             </p>
             <div className={styles.sheetActions}>
               <button
@@ -1082,15 +1267,24 @@ export default function PlayPage() {
                   ? 'Submitting…'
                   : mode === 'daily'
                     ? 'Submit to board'
-                    : 'See results'}
+                    : mode === 'blitz'
+                      ? 'Submit cup score'
+                      : 'See results'}
               </button>
               <button
                 type="button"
                 className={styles.sheetSecondary}
-                onClick={retry}
+                onClick={
+                  mode === 'blitz'
+                    ? () =>
+                        navigate(
+                          `/tournament?slug=${encodeURIComponent(cupSlug)}`,
+                        )
+                    : retry
+                }
                 disabled={submitBusy}
               >
-                Play again
+                {mode === 'blitz' ? 'Cup lobby' : 'Play again'}
               </button>
             </div>
             {submitError ? (
@@ -1107,7 +1301,9 @@ export default function PlayPage() {
           ? 'Zen · miss breaks combo only · helpers off · DFJK / 1–4'
           : mode === 'daily'
             ? 'Daily · helpers on · taps validated on submit'
-            : 'Classic · Slow-mo & Shield · DFJK / 1–4'}
+            : mode === 'blitz'
+              ? 'Blitz · 60s · most tiles · no Reverse/Fog/Fake Gap · helpers off'
+              : 'Classic · Slow-mo & Shield · DFJK / 1–4'}
       </p>
     </div>
   )

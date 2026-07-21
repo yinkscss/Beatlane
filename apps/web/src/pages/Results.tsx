@@ -29,7 +29,13 @@ export default function ResultsPage() {
   const mode = lastRun?.mode ?? playMode
   const retryTo = `/play?mode=${mode}`
   const modeLabel =
-    mode === 'zen' ? 'Zen' : mode === 'daily' ? 'Daily' : 'Classic'
+    mode === 'zen'
+      ? 'Zen'
+      : mode === 'daily'
+        ? 'Daily'
+        : mode === 'blitz'
+          ? 'Blitz'
+          : 'Classic'
 
   const onMint = async () => {
     if (!lastRun || busy) return
@@ -96,7 +102,7 @@ export default function ResultsPage() {
         <p className={styles.eyebrow}>Results</p>
         <h1 className={styles.title}>No run yet</h1>
         <p className={styles.blurb}>
-          Finish a Classic, Zen, or Daily run to see score and combo here.
+          Finish a Classic, Zen, Daily, or Blitz run to see score and combo here.
         </p>
         <div className={styles.actions}>
           <Link to="/play?mode=classic" className={styles.primary}>
@@ -135,7 +141,9 @@ export default function ResultsPage() {
 
       <div className={styles.stats} role="group" aria-label="Run stats">
         <div className={styles.stat}>
-          <div className={styles.statLbl}>Score</div>
+          <div className={styles.statLbl}>
+            {mode === 'blitz' ? 'Tiles' : 'Score'}
+          </div>
           <div className={styles.statVal}>{lastRun.score.toLocaleString()}</div>
         </div>
         <div className={styles.stat}>
@@ -143,6 +151,15 @@ export default function ResultsPage() {
           <div className={styles.statVal}>×{lastRun.maxCombo}</div>
         </div>
       </div>
+
+      {mode === 'blitz' && lastRun.placement != null ? (
+        <p className={styles.blurb}>
+          Cup place #{lastRun.placement}
+          {lastRun.payoutStubCusd != null && lastRun.payoutStubCusd > 0
+            ? ` · stub +${formatCusdPrice(lastRun.payoutStubCusd)}`
+            : ''}
+        </p>
+      ) : null}
 
       {lastRun.submitted != null ? (
         <p className={styles.blurb}>
@@ -158,6 +175,13 @@ export default function ResultsPage() {
         {mode === 'daily' ? (
           <Link to="/leaderboard?board=daily" className={styles.primary}>
             Leaderboard
+          </Link>
+        ) : mode === 'blitz' ? (
+          <Link
+            to={`/tournament?slug=${encodeURIComponent(lastRun.tournamentSlug ?? 'friday-finger')}&view=results`}
+            className={styles.primary}
+          >
+            Cup ranking
           </Link>
         ) : (
           <Link to={retryTo} className={styles.primary}>

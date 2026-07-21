@@ -24,8 +24,11 @@ import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
 export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
-/** Classic/Daily end the run on miss; Zen breaks combo only. */
-export type PlayMode = 'classic' | 'zen' | 'daily'
+/**
+ * Classic/Daily end the run on miss; Zen/Blitz break combo only.
+ * Blitz is timed (60s) tournament mode — helpers off (G16).
+ */
+export type PlayMode = 'classic' | 'zen' | 'daily' | 'blitz'
 
 /** Song-time tap record for server revalidation (G13). */
 export type TapRecord = {
@@ -75,7 +78,7 @@ export type ClassicPlayfieldHandlers = {
   onHit?: (grade: HitGrade, score: number, combo: number) => void
   /** Fired when a note awards score — includes song-time + lane for Daily submit. */
   onTapRecord?: (tap: TapRecord) => void
-  /** Classic/Daily: run ended. Zen: combo broken; run continues. */
+  /** Classic/Daily: run ended. Zen/Blitz: combo broken; run continues. */
   onFail?: (reason: FailReason, score: number, combo: number) => void
   /** Miss absorbed by timed or charged shield — run continues. */
   onShieldAbsorb?: (
@@ -1535,8 +1538,11 @@ export class ClassicPlayfield {
           ? 'perfect'
           : 'great'
 
-    let pts = pointsForGrade(grade)
-    if (tile.mod === 'gold' || this.goldActive) pts *= GOLD_SCORE_MULT
+    // Blitz cups score most tiles (design-pack), not grade points.
+    let pts = this.mode === 'blitz' ? 1 : pointsForGrade(grade)
+    if (this.mode !== 'blitz' && (tile.mod === 'gold' || this.goldActive)) {
+      pts *= GOLD_SCORE_MULT
+    }
 
     this.combo += 1
     this.score += pts
@@ -1607,7 +1613,7 @@ export class ClassicPlayfield {
   }
 
   private fail(reason: FailReason) {
-    if (this.mode === 'zen') {
+    if (this.mode === 'zen' || this.mode === 'blitz') {
       const endedCombo = this.combo
       this.combo = 0
       this.handlers.onFail?.(reason, this.score, endedCombo)

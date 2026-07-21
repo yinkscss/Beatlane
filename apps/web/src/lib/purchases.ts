@@ -10,6 +10,16 @@ import type { Database } from '@/lib/database.types'
 export type PurchaseRow = Database['public']['Tables']['purchases']['Row']
 export type BoastRow = Database['public']['Tables']['boasts']['Row']
 
+type TournamentEntryRow = {
+  id: string
+  tournament_id: string
+  user_id: string
+  purchase_id: string | null
+  tx_hash: string
+  amount_cusd: number
+  created_at: string
+}
+
 type RecordResponse = {
   ok: boolean
   purchase?: PurchaseRow
@@ -26,6 +36,7 @@ type RecordResponse = {
     | 'on_chain_id'
     | 'created_at'
   >
+  entry?: TournamentEntryRow
   shareSlug?: string
   error?: string
 }
@@ -40,6 +51,7 @@ export type RecordPurchaseInput = {
 export type RecordPurchaseResult = {
   purchase: PurchaseRow
   boast?: RecordResponse['boast']
+  entry?: RecordResponse['entry']
   shareSlug?: string
 }
 
@@ -79,6 +91,7 @@ export async function recordPurchaseReceipt(
   return {
     purchase: data.purchase,
     boast: data.boast,
+    entry: data.entry,
     shareSlug: data.shareSlug ?? data.boast?.share_slug,
   }
 }

@@ -317,6 +317,183 @@ export type Database = {
         }
         Relationships: []
       }
+      tournaments: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          status: string
+          entry_fee_cusd: number
+          rake_bps: number
+          duration_sec: number
+          chart_id: string
+          capacity: number
+          starts_at: string | null
+          ends_at: string | null
+          on_chain_cup_id: string | null
+          contract_address: string | null
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title: string
+          status?: string
+          entry_fee_cusd: number
+          rake_bps?: number
+          duration_sec?: number
+          chart_id?: string
+          capacity?: number
+          starts_at?: string | null
+          ends_at?: string | null
+          on_chain_cup_id?: string | null
+          contract_address?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title?: string
+          status?: string
+          entry_fee_cusd?: number
+          rake_bps?: number
+          duration_sec?: number
+          chart_id?: string
+          capacity?: number
+          starts_at?: string | null
+          ends_at?: string | null
+          on_chain_cup_id?: string | null
+          contract_address?: string | null
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tournament_entries: {
+        Row: {
+          id: string
+          tournament_id: string
+          user_id: string
+          purchase_id: string | null
+          tx_hash: string
+          amount_cusd: number
+          network: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          user_id: string
+          purchase_id?: string | null
+          tx_hash: string
+          amount_cusd: number
+          network?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          user_id?: string
+          purchase_id?: string | null
+          tx_hash?: string
+          amount_cusd?: number
+          network?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      tournament_runs: {
+        Row: {
+          id: string
+          tournament_id: string
+          entry_id: string
+          user_id: string
+          tiles: number
+          score: number
+          combo_max: number
+          duration_ms: number | null
+          chart_id: string | null
+          validated: boolean
+          taps: Json
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          entry_id: string
+          user_id: string
+          tiles: number
+          score?: number
+          combo_max?: number
+          duration_ms?: number | null
+          chart_id?: string | null
+          validated?: boolean
+          taps?: Json
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          entry_id?: string
+          user_id?: string
+          tiles?: number
+          score?: number
+          combo_max?: number
+          duration_ms?: number | null
+          chart_id?: string | null
+          validated?: boolean
+          taps?: Json
+          created_at?: string
+        }
+        Relationships: []
+      }
+      tournament_payouts: {
+        Row: {
+          id: string
+          tournament_id: string
+          user_id: string
+          place: number
+          tiles: number
+          gross_pool_cusd: number
+          rake_cusd: number
+          prize_cusd: number
+          status: string
+          tx_hash: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          tournament_id: string
+          user_id: string
+          place: number
+          tiles: number
+          gross_pool_cusd: number
+          rake_cusd: number
+          prize_cusd: number
+          status?: string
+          tx_hash?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          tournament_id?: string
+          user_id?: string
+          place?: number
+          tiles?: number
+          gross_pool_cusd?: number
+          rake_cusd?: number
+          prize_cusd?: number
+          status?: string
+          tx_hash?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

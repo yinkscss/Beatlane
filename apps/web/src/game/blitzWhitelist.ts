@@ -1,9 +1,7 @@
 /**
- * Tournament Blitz fair-obstacle whitelist (G11 flag / G16 enforcement).
- * Banned set is NOT forced into Blitz charts — flag only until G16.
- *
+ * Tournament Blitz fair-obstacle whitelist (G16 enforced).
  * Fair subset examples: Speed Up, Hold, Bridge.
- * Banned: Reverse, Fog, Fake Gap (and related unfair modifiers).
+ * Banned: Reverse, Fog, Fake Gap (stripped via sanitizeBlitzChart).
  */
 
 import type { ChartObstacleEventType, ChartNoteType } from '@/charts/schema'
@@ -42,4 +40,19 @@ export function chartHasBlitzBannedContent(chart: {
     chart.notes.some((n) => isBlitzBannedNote(n.type)) ||
     chart.events.some((e) => isBlitzBannedEvent(e.type))
   )
+}
+
+/**
+ * Strip banned Reverse / Fog / Fake Gap content for tournament Blitz.
+ * Fair subset remains (Speed Up, Hold, Bridge, etc.).
+ */
+export function sanitizeBlitzChart<T extends {
+  notes: { type: string }[]
+  events: { type: string }[]
+}>(chart: T): T {
+  return {
+    ...chart,
+    notes: chart.notes.filter((n) => !isBlitzBannedNote(n.type)),
+    events: chart.events.filter((e) => !isBlitzBannedEvent(e.type)),
+  }
 }

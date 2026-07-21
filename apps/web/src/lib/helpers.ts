@@ -20,7 +20,7 @@ export const SLOW_MO_SCROLL_MULT = 0.45
 
 export type HelperSku = typeof SLOW_MO_SKU | typeof SHIELD_SKU
 
-export type HelperMode = PlayMode | 'blitz'
+export type HelperMode = PlayMode
 
 /**
  * Blitz-disabled flag (G14 / G16). True when helpers must not be offered.

@@ -17,6 +17,11 @@ export type LastRun = {
   dailyDay?: string | null
   runId?: string | null
   serverScore?: number | null
+  /** G16 Blitz cup */
+  tournamentSlug?: string | null
+  tournamentId?: string | null
+  placement?: number | null
+  payoutStubCusd?: number | null
 }
 
 type AppState = {

@@ -47,3 +47,7 @@ verify_jwt = false
 [functions.leaderboard]
 # Optional Magic DID for "you" row; board is public poll
 verify_jwt = false
+
+[functions.tournament-cup]
+# Magic DID Bearer token — not a Supabase JWT
+verify_jwt = false

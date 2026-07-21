@@ -1,13 +1,14 @@
 # contracts/
 
-Foundry Solidity for Beatlane. Scaffolded in G0; **Boast attestation** implemented in G15.
+Foundry Solidity for Beatlane. Scaffolded in G0; **Boast** (G15) + **TournamentVault** (G16).
 
-## Network policy (G15)
+## Network policy (G15–G16)
 
 | Concern | Network | Notes |
 |---|---|---|
 | Boast attestation deploy (G15 AC) | **Celo Sepolia** (chain id `11142220`) | Alfajores `44787` sunset Sep 2025 |
-| Second Chance / helpers / packs (G10+) | **Celo Mainnet** (chain id `42220`) | Locked Q07 |
+| TournamentVault cup escrow / payout stub (G16) | **Celo Sepolia** (default) | Mainnet vault unsafe without funded deployer + audit |
+| Second Chance / helpers / packs / **cup entry fees** | **Celo Mainnet** (chain id `42220`) | Locked Q07 — app treasury transfer |
 | Player-facing prices | **cUSD** naming | Always; not native CELO |
 
 Do **not** commit deployer private keys. Use `contracts/.env` (gitignored).
@@ -18,9 +19,13 @@ Do **not** commit deployer private keys. Use `contracts/.env` (gitignored).
 contracts/
   foundry.toml
   src/BoastAttestation.sol
+  src/TournamentVault.sol
   test/BoastAttestation.t.sol
+  test/TournamentVault.t.sol
   script/DeployBoast.s.sol
-  script/DeployBoastSmoke.s.sol   # Mock cUSD + mint for AC3
+  script/DeployBoastSmoke.s.sol
+  script/DeployTournament.s.sol
+  script/DeployTournamentSmoke.s.sol
   .env.example
 ```
 
@@ -83,3 +88,39 @@ VITE_BOAST_TREASURY_ADDRESS=0x…   # same as TREASURY_ADDRESS
 ## Mint price
 
 `BoastAttestation.MINT_PRICE = 29e16` (= **$0.29 cUSD**, 18 decimals).
+
+## Deploy TournamentVault → Celo Sepolia (G16)
+
+Optional on-chain escrow. **Live app entry fees still use Mainnet cUSD → treasury** (Q07).  
+Rake: `RAKE_BPS = 1500` (15%). Audit checklist: `docs/tournament-audit-checklist.md`.
+
+```bash
+cd contracts
+set -a && source .env && set +a
+forge script script/DeployTournamentSmoke.s.sol:DeployTournamentSmoke \
+  --rpc-url "$CELO_SEPOLIA_RPC_URL" \
+  --broadcast \
+  --private-key "$DEPLOYER_PRIVATE_KEY"
+```
+
+Then set in `apps/web/.env`:
+
+```bash
+VITE_TOURNAMENT_CONTRACT_ADDRESS=0x…
+VITE_TOURNAMENT_CHAIN_ID=11142220
+```
+
+### Tournament deploy status
+
+| Field | Value |
+|---|---|
+| Network | Celo Sepolia (11142220) — preferred; Mainnet not deployed in G16 |
+| TournamentVault | *not broadcast in this environment — run DeployTournamentSmoke locally* |
+| Entry fee (app) | Mainnet cUSD via `VITE_TREASURY_ADDRESS` |
+| Payout | App+edge stub (`tournament_payouts.status=stub`) unless vault `payoutStub` called |
+| Rake | 15% |
+
+```bash
+forge test --match-contract TournamentVaultTest -vv
+node apps/web/scripts/verify-g16.mjs
+```

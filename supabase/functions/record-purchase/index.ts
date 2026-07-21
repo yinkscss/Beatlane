@@ -1,10 +1,11 @@
 /**
- * G10/G12/G14/G15: Record cUSD purchase receipt after on-chain transfer.
+ * G10/G12/G14/G15/G16: Record cUSD purchase receipt after on-chain transfer.
  *
  * Client sends Magic DID + sku/amount/txHash.
  * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
  * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks / helpers.
  * Boast (sku=boast): also inserts public.boasts + returns shareSlug.
+ * Tournament entry (sku=tournament_entry_<uuid|slug>): inserts tournament_entries.
  * Network metadata: Celo Mainnet (chainId 42220) for shop SKUs — locked Q07.
  * Boast mint is Celo Sepolia (11142220) — Alfajores 44787 sunset Sep 2025.
  */
@@ -36,9 +37,20 @@ const HELPER_PRICES: Record<string, number> = {
 /** G15 Boast mint price (cUSD) — Celo Sepolia attestation. */
 const BOAST_PRICE = 0.29
 
+/** G16 tournament entry SKU prefix. */
+const TOURNAMENT_ENTRY_PREFIX = 'tournament_entry_'
+
 function shareSlugFromTx(txHash: string): string {
   // Short share id from tx hash (design-pack style /b/4c2…).
   return txHash.slice(2, 10).toLowerCase()
+}
+
+function isTournamentEntrySku(sku: string): boolean {
+  return sku.startsWith(TOURNAMENT_ENTRY_PREFIX)
+}
+
+function tournamentKeyFromSku(sku: string): string {
+  return sku.slice(TOURNAMENT_ENTRY_PREFIX.length)
 }
 
 Deno.serve(async (req: Request) => {
@@ -111,7 +123,13 @@ Deno.serve(async (req: Request) => {
     )
     if (profileErr) throw profileErr
 
-    // Price check for catalog / helper / boast SKUs.
+    let tournamentRow: {
+      id: string
+      entry_fee_cusd: number
+      status: string
+    } | null = null
+
+    // Price check for catalog / helper / boast / tournament SKUs.
     if (sku === 'boast') {
       if (BOAST_PRICE.toFixed(2) !== amountCusd.toFixed(2)) {
         return jsonResponse(
@@ -119,6 +137,43 @@ Deno.serve(async (req: Request) => {
           400,
           req,
         )
+      }
+    } else if (isTournamentEntrySku(sku)) {
+      const key = tournamentKeyFromSku(sku)
+      const byId = key.match(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+      )
+      const { data: cup, error: cupErr } = await admin
+        .from('tournaments')
+        .select('id, entry_fee_cusd, status')
+        .eq(byId ? 'id' : 'slug', key)
+        .maybeSingle()
+      if (cupErr) throw cupErr
+      if (!cup) {
+        return jsonResponse(
+          { ok: false, error: 'Unknown tournament entry sku' },
+          400,
+          req,
+        )
+      }
+      if (cup.status !== 'open' && cup.status !== 'live') {
+        return jsonResponse(
+          { ok: false, error: 'Tournament not open for entry' },
+          400,
+          req,
+        )
+      }
+      if (Number(cup.entry_fee_cusd).toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match entry fee' },
+          400,
+          req,
+        )
+      }
+      tournamentRow = {
+        id: cup.id,
+        entry_fee_cusd: Number(cup.entry_fee_cusd),
+        status: cup.status,
       }
     } else if (sku in HELPER_PRICES) {
       const want = HELPER_PRICES[sku]
@@ -170,6 +225,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const isBoast = sku === 'boast'
+    const isTournamentEntry = isTournamentEntrySku(sku)
     const metadata = {
       ...(body.metadata ?? {}),
       network: isBoast ? 'celo-sepolia' : 'celo-mainnet',
@@ -244,6 +300,43 @@ Deno.serve(async (req: Request) => {
         },
         { onConflict: 'user_id,unlock_type,unlock_key' },
       )
+    }
+
+    if (isTournamentEntry && tournamentRow) {
+      const { data: entry, error: entryErr } = await admin
+        .from('tournament_entries')
+        .insert({
+          tournament_id: tournamentRow.id,
+          user_id: userId,
+          purchase_id: purchase.id,
+          tx_hash: txHash.toLowerCase(),
+          amount_cusd: amountCusd,
+          network: 'celo-mainnet',
+        })
+        .select(
+          'id, tournament_id, user_id, purchase_id, tx_hash, amount_cusd, created_at',
+        )
+        .single()
+
+      if (entryErr) {
+        if (entryErr.code === '23505') {
+          const { data: existing } = await admin
+            .from('tournament_entries')
+            .select(
+              'id, tournament_id, user_id, purchase_id, tx_hash, amount_cusd, created_at',
+            )
+            .eq('tx_hash', txHash.toLowerCase())
+            .maybeSingle()
+          return jsonResponse(
+            { ok: true, purchase, entry: existing },
+            200,
+            req,
+          )
+        }
+        throw entryErr
+      }
+
+      return jsonResponse({ ok: true, purchase, entry }, 200, req)
     }
 
     if (isBoast) {

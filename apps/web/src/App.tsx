@@ -7,6 +7,7 @@ import LeaderboardPage from '@/pages/Leaderboard'
 import MusicPage from '@/pages/Music'
 import PlayPage from '@/pages/Play'
 import ResultsPage from '@/pages/Results'
+import TournamentPage from '@/pages/Tournament'
 import WalletPage from '@/pages/Wallet'
 import { useAppStore } from '@/store/appStore'
 
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/results" element={<ResultsPage />} />
+          <Route path="/tournament" element={<TournamentPage />} />
           <Route path="/b/:slug" element={<BoastPage />} />
         </Routes>
       </main>

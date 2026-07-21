@@ -102,6 +102,25 @@ node apps/web/scripts/verify-g15.mjs
 
 **Deploy status:** see `contracts/README.md` (address + broadcast path after forge script).
 
+## G16 Blitz tournaments
+
+Timed **60s Blitz** cups with entry fee, **15% rake** (Q19), fair obstacle whitelist, helpers off.
+
+| Surface | Network |
+|---|---|
+| Cup entry fees | **Celo Mainnet** cUSD (same treasury path as continues) |
+| `TournamentVault` escrow / payout stub | **Celo Sepolia** (optional; Alfajores sunset) |
+| Ranking + prize rows | Supabase Edge `tournament-cup` (**payout stub** — not live prize transfer) |
+
+```bash
+# Home → Blitz → /tournament → Enter · $3 → Play Blitz · 60s → ranking → Run payout stub
+node apps/web/scripts/verify-g16.mjs
+cd contracts && forge test --match-contract TournamentVaultTest -vv
+```
+
+Audit checklist (audit itself may be external): `docs/tournament-audit-checklist.md`.
+Optional vault: set `VITE_TOURNAMENT_CONTRACT_ADDRESS` after Sepolia deploy (`contracts/README.md`).
+
 ## G13 Upstash Redis (rate limits)
 
 Q16: create a free Upstash Redis DB when G13 starts. Dashboard login is required (no CLI creds in this environment).

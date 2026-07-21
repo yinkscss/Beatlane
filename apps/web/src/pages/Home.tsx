@@ -21,7 +21,7 @@ const modes = [
     iconClass: styles.zen,
   },
   {
-    kind: 'soon' as const,
+    kind: 'tournament' as const,
     title: 'Blitz',
     blurb: '60s · tournament scoring',
     icon: '⚡',
@@ -59,6 +59,16 @@ export default function HomePage() {
       return
     }
     navigate(playPath)
+  }
+
+  const enterTournament = () => {
+    setPlayMode('blitz')
+    const path = '/tournament'
+    if (!authed) {
+      navigate(`/wallet?next=${encodeURIComponent(path)}`)
+      return
+    }
+    navigate(path)
   }
 
   return (
@@ -105,11 +115,12 @@ export default function HomePage() {
               </span>
             </button>
           ) : (
-            <div
+            <button
               key={mode.title}
-              className={`${styles.mode} ${styles.modeSoon}`}
+              type="button"
+              className={styles.mode}
               role="listitem"
-              aria-disabled="true"
+              onClick={enterTournament}
             >
               <span className={`${styles.icon} ${mode.iconClass}`} aria-hidden>
                 {mode.icon}
@@ -118,7 +129,7 @@ export default function HomePage() {
                 <strong>{mode.title}</strong>
                 <small>{mode.blurb}</small>
               </span>
-            </div>
+            </button>
           ),
         )}
       </div>

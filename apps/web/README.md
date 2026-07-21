@@ -49,3 +49,15 @@ node apps/web/scripts/verify-g14.mjs
 ```bash
 node apps/web/scripts/verify-g15.mjs
 ```
+
+### Blitz tournaments (G16)
+
+- Home → **Blitz** → `/tournament` lobby (Friday Finger Cup seed).
+- Entry: Mainnet cUSD → `record-purchase` sku `tournament_entry_<slug>` → play `/play?mode=blitz`.
+- Helpers off (`helpersDisabled('blitz')`); Reverse / Fog / Fake Gap stripped via `sanitizeBlitzChart`.
+- Ranking + **payout stub** via Edge `tournament-cup`. Optional `TournamentVault` on Celo Sepolia.
+- Audit checklist: `docs/tournament-audit-checklist.md`.
+
+```bash
+node apps/web/scripts/verify-g16.mjs
+```

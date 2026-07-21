@@ -25,3 +25,4 @@
 - Locked stack: Vite+React+TS, PixiJS (+ Web Audio), CSS Modules, Zustand, Supabase (Postgres + Edge Functions + Storage), Upstash Redis, Magic.link, Celo+cUSD, Foundry, app writes+chain receipt, HTTP polling, Vercel Hobby, GitHub Actions, Sentry, PostHog
 - Charts are hand-authored JSON in-repo (chart clock drives tiles; no waveform analysis / MIDI pipeline in v1)
 - Boast attestation deploys via Foundry to Celo Sepolia (testnet; Alfajores sunset); player payments remain Celo Mainnet cUSD
+- G16 Blitz cups: Mainnet cUSD entry fees + app/edge payout stub; optional TournamentVault on Celo Sepolia; rake 15%
