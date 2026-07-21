@@ -11,6 +11,12 @@ export type LastRun = {
   maxCombo: number
   outcome: RunOutcome
   chartTitle: string | null
+  /** G13: server-validated Daily/Classic board score */
+  submitted?: boolean
+  validated?: boolean
+  dailyDay?: string | null
+  runId?: string | null
+  serverScore?: number | null
 }
 
 type AppState = {

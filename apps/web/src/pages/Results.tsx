@@ -8,7 +8,8 @@ export default function ResultsPage() {
 
   const mode = lastRun?.mode ?? playMode
   const retryTo = `/play?mode=${mode}`
-  const modeLabel = mode === 'zen' ? 'Zen' : 'Classic'
+  const modeLabel =
+    mode === 'zen' ? 'Zen' : mode === 'daily' ? 'Daily' : 'Classic'
 
   if (!lastRun) {
     return (
@@ -16,7 +17,7 @@ export default function ResultsPage() {
         <p className={styles.eyebrow}>Results</p>
         <h1 className={styles.title}>No run yet</h1>
         <p className={styles.blurb}>
-          Finish a Classic or Zen run to see score and combo here.
+          Finish a Classic, Zen, or Daily run to see score and combo here.
         </p>
         <div className={styles.actions}>
           <Link to="/play?mode=classic" className={styles.primary}>
@@ -58,10 +59,31 @@ export default function ResultsPage() {
         </div>
       </div>
 
+      {lastRun.submitted != null ? (
+        <p className={styles.blurb}>
+          {lastRun.validated
+            ? `Board score ${lastRun.serverScore?.toLocaleString() ?? lastRun.score} · validated`
+            : lastRun.submitted
+              ? 'Submitted (not validated)'
+              : 'Not submitted'}
+        </p>
+      ) : null}
+
       <div className={styles.actions}>
-        <Link to={retryTo} className={styles.primary}>
-          Retry
-        </Link>
+        {mode === 'daily' ? (
+          <Link to="/leaderboard?board=daily" className={styles.primary}>
+            Leaderboard
+          </Link>
+        ) : (
+          <Link to={retryTo} className={styles.primary}>
+            Retry
+          </Link>
+        )}
+        {mode === 'daily' ? (
+          <Link to={retryTo} className={styles.secondary}>
+            Retry Daily
+          </Link>
+        ) : null}
         <Link to="/" className={styles.secondary}>
           Home
         </Link>

@@ -2,6 +2,7 @@ import { NavLink, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import styles from '@/App.module.css'
 import HomePage from '@/pages/Home'
+import LeaderboardPage from '@/pages/Leaderboard'
 import MusicPage from '@/pages/Music'
 import PlayPage from '@/pages/Play'
 import ResultsPage from '@/pages/Results'
@@ -20,6 +21,7 @@ export default function App() {
     { to: '/', label: 'Home', end: true },
     { to: playTo, label: 'Play' },
     { to: '/music', label: 'Music' },
+    { to: '/leaderboard?board=daily', label: 'Board' },
     { to: '/wallet', label: 'Wallet' },
     { to: '/results', label: 'Results' },
   ]
@@ -31,6 +33,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/play" element={<PlayPage />} />
           <Route path="/music" element={<MusicPage />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/results" element={<ResultsPage />} />
         </Routes>

@@ -28,7 +28,8 @@ const modes = [
     iconClass: styles.blitz,
   },
   {
-    kind: 'soon' as const,
+    kind: 'play' as const,
+    mode: 'daily' as const,
     title: 'Daily Track',
     blurb: 'Same chart worldwide',
     icon: '☀',
@@ -50,7 +51,7 @@ export default function HomePage() {
         ? identity?.email ?? 'Signed in'
         : 'Sign in to play'
 
-  const enterMode = (mode: 'classic' | 'zen') => {
+  const enterMode = (mode: 'classic' | 'zen' | 'daily') => {
     setPlayMode(mode)
     const playPath = `/play?mode=${mode}`
     if (!authed) {

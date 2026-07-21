@@ -123,6 +123,27 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_tracks: {
+        Row: {
+          day: string
+          seed: string
+          chart_id: string
+          created_at: string
+        }
+        Insert: {
+          day: string
+          seed: string
+          chart_id: string
+          created_at?: string
+        }
+        Update: {
+          day?: string
+          seed?: string
+          chart_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       runs: {
         Row: {
           id: string
@@ -135,6 +156,11 @@ export type Database = {
           goods: number
           misses: number
           duration_ms: number | null
+          daily_day: string | null
+          seed: string | null
+          validated: boolean
+          client_score: number | null
+          taps: Json
           created_at: string
         }
         Insert: {
@@ -148,6 +174,11 @@ export type Database = {
           goods?: number
           misses?: number
           duration_ms?: number | null
+          daily_day?: string | null
+          seed?: string | null
+          validated?: boolean
+          client_score?: number | null
+          taps?: Json
           created_at?: string
         }
         Update: {
@@ -161,6 +192,11 @@ export type Database = {
           goods?: number
           misses?: number
           duration_ms?: number | null
+          daily_day?: string | null
+          seed?: string | null
+          validated?: boolean
+          client_score?: number | null
+          taps?: Json
           created_at?: string
         }
         Relationships: []

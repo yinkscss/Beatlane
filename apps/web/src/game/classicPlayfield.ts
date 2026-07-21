@@ -23,8 +23,15 @@ import {
 
 export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
-/** Classic ends the run on miss; Zen breaks combo only. */
-export type PlayMode = 'classic' | 'zen'
+/** Classic/Daily end the run on miss; Zen breaks combo only. */
+export type PlayMode = 'classic' | 'zen' | 'daily'
+
+/** Song-time tap record for server revalidation (G13). */
+export type TapRecord = {
+  t: number
+  lane: number
+  grade: HitGrade
+}
 
 export type SpeedUpPhase =
   | { phase: 'banner' }
@@ -65,7 +72,9 @@ export type SongClock = () => number | null
 
 export type ClassicPlayfieldHandlers = {
   onHit?: (grade: HitGrade, score: number, combo: number) => void
-  /** Classic: run ended. Zen: combo broken; run continues. */
+  /** Fired when a note awards score — includes song-time + lane for Daily submit. */
+  onTapRecord?: (tap: TapRecord) => void
+  /** Classic/Daily: run ended. Zen: combo broken; run continues. */
   onFail?: (reason: FailReason, score: number, combo: number) => void
   onSpeedUp?: (ev: SpeedUpPhase) => void
   onObstacleBanner?: (ev: ObstacleBannerPhase) => void
@@ -1480,6 +1489,15 @@ export class ClassicPlayfield {
     this.combo += 1
     this.score += pts
     this.handlers.onHit?.(grade, this.score, this.combo)
+    const songT = this.songTimeSec()
+    if (songT != null) {
+      this.handlers.onTapRecord?.({
+        t: songT,
+        // Slides are judged at endLane; bridge/triple use leftmost lane.
+        lane: tile.kind === 'slide' ? tile.endLane : tile.lane,
+        grade,
+      })
+    }
 
     const job = playGlassShatter({
       tile: tile.root,

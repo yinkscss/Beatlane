@@ -65,3 +65,24 @@ Payments are **real cUSD on Celo Mainnet** (Q07/Q08). There is no faucet path.
 4. Miss in Classic → **Revive run** → confirm the Magic tx → receipt lands in `purchases` with `tx_hash`.
 
 Do not invent a successful purchase without an on-chain transfer.
+
+## G13 Upstash Redis (rate limits)
+
+Q16: create a free Upstash Redis DB when G13 starts. Dashboard login is required (no CLI creds in this environment).
+
+1. Open [Upstash Console](https://console.upstash.com/) → **Redis** → **Create Database** (free tier).
+2. Open the DB → **REST API** → copy `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+3. Set Edge secrets on Supabase project `blockblast` (`zxtwshhlicditrvqafzo`):
+
+```bash
+supabase secrets set \
+  UPSTASH_REDIS_REST_URL="https://….upstash.io" \
+  UPSTASH_REDIS_REST_TOKEN="…" \
+  --project-ref zxtwshhlicditrvqafzo
+```
+
+4. Optionally paste the same keys into a **local gitignored** `.env` for reference — never commit them. Vite does not read these; only Edge Functions do.
+
+Until secrets are set, `submit-run` **degrades open** (`rateLimit.degraded: true`) so Daily submit still works for verify. Live anti-spam requires the human DB step above.
+
+Smoke: `node apps/web/scripts/verify-g13.mjs`

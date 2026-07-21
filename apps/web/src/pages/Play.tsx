@@ -14,6 +14,7 @@ import {
   type ObstacleBannerPhase,
   type PlayMode,
   type SpeedUpPhase,
+  type TapRecord,
 } from '@/game/classicPlayfield'
 import {
   railFillPct,
@@ -22,6 +23,11 @@ import {
 } from '@/game/judging'
 import { resolveChartAssets } from '@/lib/catalog'
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
+import {
+  fetchDailyChallenge,
+  submitRun,
+  type DailyChallenge,
+} from '@/lib/daily'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import {
   SECOND_CHANCE_SHIELD_DEFAULT_ON,
@@ -99,7 +105,9 @@ function bannerClass(kind: ObstacleBannerKind): string {
 }
 
 function parseMode(raw: string | null): PlayMode {
-  return raw === 'zen' ? 'zen' : 'classic'
+  if (raw === 'zen') return 'zen'
+  if (raw === 'daily') return 'daily'
+  return 'classic'
 }
 
 /** G5/G6 chart engine + G3 HUD + G4 Web Audio + G7 Classic/Zen modes. */
@@ -110,6 +118,11 @@ export default function PlayPage() {
   const bedArmedRef = useRef(true)
   const maxComboRef = useRef(0)
   const musicUrlRef = useRef<string | null>(null)
+  const tapsRef = useRef<TapRecord[]>([])
+  const perfectsRef = useRef(0)
+  const goodsRef = useRef(0)
+  const runStartedAtRef = useRef(0)
+  const dailyRef = useRef<DailyChallenge | null>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const mode = parseMode(searchParams.get('mode'))
@@ -130,11 +143,14 @@ export default function PlayPage() {
     }
   }, [status, mode, chartParam, navigate])
 
+  const [dailyMeta, setDailyMeta] = useState<DailyChallenge | null>(null)
   const [chartId, setChartId] = useState(
     chartParam && sampleChartById(chartParam)
       ? chartParam
       : chartParam || SAMPLE_CHARTS[0].id,
   )
+  const [submitBusy, setSubmitBusy] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [chartMeta, setChartMeta] = useState<Chart | null>(null)
   const [chartError, setChartError] = useState<string | null>(null)
   const [score, setScore] = useState(0)
@@ -157,12 +173,39 @@ export default function PlayPage() {
   const speedAtFailRef = useRef(1)
 
   useEffect(() => {
+    if (mode === 'daily') return
     if (chartParam) setChartId(chartParam)
-  }, [chartParam])
+  }, [chartParam, mode])
 
   useEffect(() => {
     setPlayMode(mode)
   }, [mode, setPlayMode])
+
+  // Daily: resolve server seed → chart before playfield boot
+  useEffect(() => {
+    if (status !== 'authenticated' || mode !== 'daily') return
+    let cancelled = false
+    setChartError(null)
+    void (async () => {
+      try {
+        const daily = await fetchDailyChallenge()
+        if (cancelled) return
+        dailyRef.current = daily
+        setDailyMeta(daily)
+        setChartId(daily.chartId)
+      } catch (err) {
+        console.error('Daily challenge failed', err)
+        if (!cancelled) {
+          setChartError(
+            err instanceof Error ? err.message : 'Daily challenge failed',
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status, mode])
 
   const showJudge = (grade: JudgeGrade) => {
     if (judgeTimer.current) window.clearTimeout(judgeTimer.current)
@@ -178,17 +221,24 @@ export default function PlayPage() {
     const host = hostRef.current
     if (!host) return
     if (status !== 'authenticated') return
+    // Wait for daily seed → chartId
+    if (mode === 'daily' && !dailyMeta) return
 
     let cancelled = false
     bedArmedRef.current = true
     maxComboRef.current = 0
+    tapsRef.current = []
+    perfectsRef.current = 0
+    goodsRef.current = 0
+    runStartedAtRef.current = performance.now()
     setFail(null)
     setCleared(false)
     setScore(0)
     setCombo(0)
     setSpeedUi(null)
     setObstacleUi(null)
-    setChartError(null)
+    setSubmitBusy(false)
+    setSubmitError(null)
     setReviveCount(0)
     setReviveBusy(false)
     setReviveError(null)
@@ -210,9 +260,15 @@ export default function PlayPage() {
         setScore(nextScore)
         setCombo(nextCombo)
         if (nextCombo > maxComboRef.current) maxComboRef.current = nextCombo
+        if (grade === 'perfect') perfectsRef.current += 1
+        else goodsRef.current += 1
         setScorePop(true)
         window.setTimeout(() => setScorePop(false), 160)
         showJudge(grade)
+      },
+      onTapRecord: (tap: TapRecord) => {
+        if (cancelled) return
+        tapsRef.current.push(tap)
       },
       onFail: (reason, nextScore, endedCombo) => {
         if (cancelled) return
@@ -276,10 +332,11 @@ export default function PlayPage() {
           maxCombo: maxComboRef.current,
           outcome: 'clear',
           chartTitle: game.getChart()?.title ?? null,
+          dailyDay: dailyRef.current?.day ?? null,
         })
       },
     })
-    game.setMode(mode)
+    game.setMode(mode === 'daily' ? 'daily' : mode)
     gameRef.current = game
     game.setSongClock(songClock)
 
@@ -303,7 +360,9 @@ export default function PlayPage() {
 
     void (async () => {
       try {
-        const sample = sampleChartById(chartId)
+        // Daily always uses catalog Storage charts (never local samples)
+        const sample =
+          mode === 'daily' ? undefined : sampleChartById(chartId)
         let chart: Chart
         if (sample) {
           chart = await loadChart(sample.url)
@@ -340,7 +399,7 @@ export default function PlayPage() {
       game.destroy()
       gameRef.current = null
     }
-  }, [chartId, mode, setLastRun, status])
+  }, [chartId, mode, setLastRun, status, dailyMeta])
 
   if (status !== 'authenticated') {
     return (
@@ -350,20 +409,68 @@ export default function PlayPage() {
     )
   }
 
-  const goResults = (outcome: 'fail' | 'clear' | 'quit') => {
-    setLastRun({
+  const goResults = async (outcome: 'fail' | 'clear' | 'quit') => {
+    const maxCombo = maxComboRef.current
+    const runCombo = outcome === 'fail' ? failCombo : combo
+    const base = {
       mode,
       score,
-      combo: outcome === 'fail' ? failCombo : combo,
-      maxCombo: maxComboRef.current,
+      combo: runCombo,
+      maxCombo,
       outcome,
-      chartTitle: chartMeta?.title ?? null,
-    })
+      chartTitle: chartMeta?.title ?? dailyMeta?.chart?.title ?? null,
+      dailyDay: dailyMeta?.day ?? null,
+    }
+
+    // Daily (and optional Classic with taps): server validate + board
+    if (mode === 'daily' || (mode === 'classic' && tapsRef.current.length > 0)) {
+      setSubmitBusy(true)
+      setSubmitError(null)
+      try {
+        const result = await submitRun({
+          mode,
+          chartId,
+          score,
+          comboMax: maxCombo,
+          perfects: perfectsRef.current,
+          goods: goodsRef.current,
+          taps: tapsRef.current.map(({ t, lane }) => ({ t, lane })),
+          durationMs: Math.round(performance.now() - runStartedAtRef.current),
+          dailyDay: dailyMeta?.day,
+          seed: dailyMeta?.seed,
+          outcome,
+        })
+        if (!result.ok) {
+          throw new Error(result.error ?? result.reason ?? 'Submit failed')
+        }
+        setLastRun({
+          ...base,
+          score: result.run?.score ?? score,
+          submitted: true,
+          validated: result.validated === true,
+          runId: result.run?.id ?? null,
+          serverScore: result.run?.score ?? null,
+        })
+        navigate(mode === 'daily' ? '/leaderboard?board=daily' : '/results')
+        return
+      } catch (err) {
+        console.error('submit-run failed', err)
+        setSubmitError(err instanceof Error ? err.message : 'Submit failed')
+        setLastRun({ ...base, submitted: false, validated: false })
+        // Still allow viewing results / board
+        navigate(mode === 'daily' ? '/leaderboard?board=daily' : '/results')
+        return
+      } finally {
+        setSubmitBusy(false)
+      }
+    }
+
+    setLastRun(base)
     navigate('/results')
   }
 
   const endRun = () => {
-    goResults(fail ? 'fail' : cleared ? 'clear' : 'quit')
+    void goResults(fail ? 'fail' : cleared ? 'clear' : 'quit')
   }
 
   const onRevive = async () => {
@@ -483,7 +590,8 @@ export default function PlayPage() {
           ? 'MISS'
           : null
 
-  const modeLabel = mode === 'zen' ? 'ZEN' : 'CLASSIC'
+  const modeLabel =
+    mode === 'zen' ? 'ZEN' : mode === 'daily' ? 'DAILY' : 'CLASSIC'
   const nextPrice = secondChancePrice(reviveCount)
   const prevPrice =
     reviveCount > 0 ? secondChancePrice(reviveCount - 1) : null
@@ -503,7 +611,12 @@ export default function PlayPage() {
 
       <div className={styles.chartBar} role="group" aria-label="Chart">
         <span className={styles.modePill}>{modeLabel}</span>
-        {!chartParam || sampleChartById(chartParam) ? (
+        {mode === 'daily' ? (
+          <span className={styles.chartTitle}>
+            {dailyMeta?.day ?? '…'} ·{' '}
+            {chartMeta?.title ?? dailyMeta?.chart?.title ?? 'Loading…'}
+          </span>
+        ) : !chartParam || sampleChartById(chartParam) ? (
           SAMPLE_CHARTS.map((c) => (
             <button
               key={c.id}
@@ -528,7 +641,7 @@ export default function PlayPage() {
             {chartMeta?.difficulty?.toUpperCase() ?? '…'}
           </span>
         )}
-        {chartMeta ? (
+        {mode !== 'daily' && chartMeta ? (
           <span className={styles.chartTitle}>{chartMeta.title}</span>
         ) : null}
       </div>
@@ -635,7 +748,7 @@ export default function PlayPage() {
         </div>
       ) : null}
 
-      {fail && mode === 'classic' ? (
+      {fail && (mode === 'classic' || mode === 'daily') ? (
         <div className={styles.failOverlay}>
           <div className={styles.failSheet} role="dialog" aria-labelledby="fail-title">
             {escalate ? (
@@ -651,7 +764,9 @@ export default function PlayPage() {
             <p className={styles.sheetBody}>
               {escalate
                 ? 'First continue was cheap. This one steps up.'
-                : `Combo died at ${failCombo}. Keep this run alive?`}
+                : mode === 'daily'
+                  ? `Combo died at ${failCombo}. Submit score or revive?`
+                  : `Combo died at ${failCombo}. Keep this run alive?`}
             </p>
             {escalate && prevPrice != null ? (
               <div className={styles.sheetEscalateBox}>
@@ -676,7 +791,7 @@ export default function PlayPage() {
                 type="button"
                 className={styles.sheetPrimary}
                 onClick={() => void onRevive()}
-                disabled={reviveBusy}
+                disabled={reviveBusy || submitBusy}
               >
                 {reviveBusy
                   ? 'Confirming cUSD…'
@@ -688,14 +803,18 @@ export default function PlayPage() {
                 type="button"
                 className={styles.sheetSecondary}
                 onClick={endRun}
-                disabled={reviveBusy}
+                disabled={reviveBusy || submitBusy}
               >
-                End run
+                {submitBusy
+                  ? 'Submitting…'
+                  : mode === 'daily'
+                    ? 'Submit to board'
+                    : 'End run'}
               </button>
             </div>
-            {reviveError ? (
+            {reviveError || submitError ? (
               <p className={styles.sheetError} role="alert">
-                {reviveError}
+                {reviveError ?? submitError}
               </p>
             ) : (
               <p className={styles.sheetHint}>
@@ -714,25 +833,37 @@ export default function PlayPage() {
               Cleared
             </h2>
             <p className={styles.sheetBody}>
-              {chartMeta?.title ?? 'Chart'} · {score.toLocaleString()} pts · ×
-              {combo}
+              {chartMeta?.title ?? dailyMeta?.chart?.title ?? 'Chart'} ·{' '}
+              {score.toLocaleString()} pts · ×{combo}
+              {mode === 'daily' ? ' · Daily' : ''}
             </p>
             <div className={styles.sheetActions}>
               <button
                 type="button"
                 className={styles.sheetPrimary}
-                onClick={() => goResults('clear')}
+                onClick={() => void goResults('clear')}
+                disabled={submitBusy}
               >
-                See results
+                {submitBusy
+                  ? 'Submitting…'
+                  : mode === 'daily'
+                    ? 'Submit to board'
+                    : 'See results'}
               </button>
               <button
                 type="button"
                 className={styles.sheetSecondary}
                 onClick={retry}
+                disabled={submitBusy}
               >
                 Play again
               </button>
             </div>
+            {submitError ? (
+              <p className={styles.sheetError} role="alert">
+                {submitError}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -740,7 +871,9 @@ export default function PlayPage() {
       <p className={styles.hint}>
         {mode === 'zen'
           ? 'Zen · miss breaks combo only · DFJK / 1–4'
-          : 'Classic · miss ends run · DFJK / 1–4'}
+          : mode === 'daily'
+            ? 'Daily · same chart worldwide · taps validated on submit'
+            : 'Classic · miss ends run · DFJK / 1–4'}
       </p>
     </div>
   )

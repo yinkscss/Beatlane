@@ -35,3 +35,15 @@ verify_jwt = false
 [functions.resolve-chart-assets]
 # Public charts OK without auth; paid uses Magic DID
 verify_jwt = false
+
+[functions.daily-challenge]
+# Magic DID Bearer token — not a Supabase JWT
+verify_jwt = false
+
+[functions.submit-run]
+# Magic DID Bearer token — not a Supabase JWT
+verify_jwt = false
+
+[functions.leaderboard]
+# Optional Magic DID for "you" row; board is public poll
+verify_jwt = false
