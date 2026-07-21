@@ -27,3 +27,11 @@ verify_jwt = false
 [functions.record-purchase]
 # Magic DID Bearer token — not a Supabase JWT
 verify_jwt = false
+
+[functions.my-unlocks]
+# Magic DID Bearer token — not a Supabase JWT
+verify_jwt = false
+
+[functions.resolve-chart-assets]
+# Public charts OK without auth; paid uses Magic DID
+verify_jwt = false

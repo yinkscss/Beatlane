@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { audioRuntime } from '@/audio/runtime'
-import { SAMPLE_CHARTS } from '@/charts/catalog'
+import { SAMPLE_CHARTS, sampleChartById } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
 import type { Chart } from '@/charts/schema'
 import {
@@ -20,6 +20,7 @@ import {
   railMarks,
   type JudgeGrade,
 } from '@/game/judging'
+import { resolveChartAssets } from '@/lib/catalog'
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import {
@@ -108,9 +109,11 @@ export default function PlayPage() {
   const judgeTimer = useRef<number | null>(null)
   const bedArmedRef = useRef(true)
   const maxComboRef = useRef(0)
+  const musicUrlRef = useRef<string | null>(null)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const mode = parseMode(searchParams.get('mode'))
+  const chartParam = searchParams.get('chart')
   const { status } = useAuth()
 
   const muted = useAppStore((s) => s.muted)
@@ -122,12 +125,16 @@ export default function PlayPage() {
   useEffect(() => {
     if (status === 'loading') return
     if (status !== 'authenticated') {
-      const next = `/play?mode=${mode}`
+      const next = `/play?mode=${mode}${chartParam ? `&chart=${encodeURIComponent(chartParam)}` : ''}`
       navigate(`/wallet?next=${encodeURIComponent(next)}`, { replace: true })
     }
-  }, [status, mode, navigate])
+  }, [status, mode, chartParam, navigate])
 
-  const [chartId, setChartId] = useState(SAMPLE_CHARTS[0].id)
+  const [chartId, setChartId] = useState(
+    chartParam && sampleChartById(chartParam)
+      ? chartParam
+      : chartParam || SAMPLE_CHARTS[0].id,
+  )
   const [chartMeta, setChartMeta] = useState<Chart | null>(null)
   const [chartError, setChartError] = useState<string | null>(null)
   const [score, setScore] = useState(0)
@@ -148,6 +155,10 @@ export default function PlayPage() {
   const [shieldUi, setShieldUi] = useState(false)
   const [reverseUi, setReverseUi] = useState(false)
   const speedAtFailRef = useRef(1)
+
+  useEffect(() => {
+    if (chartParam) setChartId(chartParam)
+  }, [chartParam])
 
   useEffect(() => {
     setPlayMode(mode)
@@ -272,10 +283,15 @@ export default function PlayPage() {
     gameRef.current = game
     game.setSongClock(songClock)
 
+    const musicUrlBox = { current: null as string | null }
+
     const kickBed = () => {
       if (cancelled || !bedArmedRef.current) return
-      void audioRuntime.startBed().catch((err) => {
-        console.error('Bed start failed', err)
+      const start = musicUrlBox.current
+        ? audioRuntime.startMusic(musicUrlBox.current)
+        : audioRuntime.startBed()
+      void start.catch((err) => {
+        console.error('Music start failed', err)
       })
     }
 
@@ -287,9 +303,18 @@ export default function PlayPage() {
 
     void (async () => {
       try {
-        const meta = SAMPLE_CHARTS.find((c) => c.id === chartId)
-        if (!meta) throw new Error(`Unknown chart: ${chartId}`)
-        const chart = await loadChart(meta.url)
+        const sample = sampleChartById(chartId)
+        let chart: Chart
+        if (sample) {
+          chart = await loadChart(sample.url)
+          musicUrlBox.current = null
+          musicUrlRef.current = null
+        } else {
+          const assets = await resolveChartAssets(chartId)
+          chart = await loadChart(assets.chartUrl)
+          musicUrlBox.current = assets.audioUrl
+          musicUrlRef.current = assets.audioUrl
+        }
         if (cancelled) return
         game.setChart(chart)
         setChartMeta(chart)
@@ -401,8 +426,11 @@ export default function PlayPage() {
 
       bedArmedRef.current = true
       // Ambience only — chart clock stays local from fail time (same speed).
-      void audioRuntime.startBed({ restart: true }).catch((err) => {
-        console.error('Bed restart failed', err)
+      const restartMusic = musicUrlRef.current
+        ? audioRuntime.startMusic(musicUrlRef.current, { restart: true })
+        : audioRuntime.startBed({ restart: true })
+      void restartMusic.catch((err) => {
+        console.error('Music restart failed', err)
       })
     } catch (err) {
       const msg =
@@ -431,8 +459,11 @@ export default function PlayPage() {
     bedArmedRef.current = true
     gameRef.current?.setMode(mode)
     gameRef.current?.restart()
-    void audioRuntime.startBed({ restart: true }).catch((err) => {
-      console.error('Bed restart failed', err)
+    const restartMusic = musicUrlRef.current
+      ? audioRuntime.startMusic(musicUrlRef.current, { restart: true })
+      : audioRuntime.startBed({ restart: true })
+    void restartMusic.catch((err) => {
+      console.error('Music restart failed', err)
     })
   }
 
@@ -472,25 +503,31 @@ export default function PlayPage() {
 
       <div className={styles.chartBar} role="group" aria-label="Chart">
         <span className={styles.modePill}>{modeLabel}</span>
-        {SAMPLE_CHARTS.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            className={
-              chartId === c.id
-                ? `${styles.chartBtn} ${styles.chartBtnOn}`
-                : styles.chartBtn
-            }
-            onClick={() => setChartId(c.id)}
-            aria-pressed={chartId === c.id}
-          >
-            {c.difficulty === 'easy'
-              ? 'Easy'
-              : c.difficulty === 'normal'
-                ? 'Normal'
-                : 'Hard'}
-          </button>
-        ))}
+        {!chartParam || sampleChartById(chartParam) ? (
+          SAMPLE_CHARTS.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              className={
+                chartId === c.id
+                  ? `${styles.chartBtn} ${styles.chartBtnOn}`
+                  : styles.chartBtn
+              }
+              onClick={() => setChartId(c.id)}
+              aria-pressed={chartId === c.id}
+            >
+              {c.difficulty === 'easy'
+                ? 'Easy'
+                : c.difficulty === 'normal'
+                  ? 'Normal'
+                  : 'Hard'}
+            </button>
+          ))
+        ) : (
+          <span className={styles.chartTitle}>
+            {chartMeta?.difficulty?.toUpperCase() ?? '…'}
+          </span>
+        )}
         {chartMeta ? (
           <span className={styles.chartTitle}>{chartMeta.title}</span>
         ) : null}

@@ -2,7 +2,7 @@
 
 Hand-authored JSON charts drive tiles. The **chart + music start time** is the gameplay clock — not waveform analysis.
 
-Loaded from `public/charts/*.json` (G5). Storage signed URLs land in G12.
+Loaded from Supabase Storage signed URLs (G12) via `resolve-chart-assets`, with in-repo `public/charts/*.json` samples kept for local smoke (G5–G11).
 
 ## Top level
 

@@ -50,6 +50,11 @@ export type Database = {
           bpm: number
           duration_ms: number | null
           is_public: boolean
+          is_listed: boolean
+          track_key: string | null
+          pack_id: string | null
+          price_cusd: number | null
+          art_gradient: string | null
           audio_path: string | null
           chart_path: string | null
           created_at: string
@@ -62,6 +67,11 @@ export type Database = {
           bpm: number
           duration_ms?: number | null
           is_public?: boolean
+          is_listed?: boolean
+          track_key?: string | null
+          pack_id?: string | null
+          price_cusd?: number | null
+          art_gradient?: string | null
           audio_path?: string | null
           chart_path?: string | null
           created_at?: string
@@ -74,10 +84,42 @@ export type Database = {
           bpm?: number
           duration_ms?: number | null
           is_public?: boolean
+          is_listed?: boolean
+          track_key?: string | null
+          pack_id?: string | null
+          price_cusd?: number | null
+          art_gradient?: string | null
           audio_path?: string | null
           chart_path?: string | null
           created_at?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      packs: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          price_cusd: number
+          art_gradient: string | null
+          created_at: string
+        }
+        Insert: {
+          id: string
+          title: string
+          description?: string | null
+          price_cusd: number
+          art_gradient?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          description?: string | null
+          price_cusd?: number
+          art_gradient?: string | null
+          created_at?: string
         }
         Relationships: []
       }

@@ -1,9 +1,9 @@
 /**
- * G10: Record cUSD purchase receipt after on-chain transfer.
+ * G10/G12: Record cUSD purchase receipt after on-chain transfer.
  *
  * Client sends Magic DID + sku/amount/txHash.
  * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
- * Inserts purchases row (status=confirmed) + optional continue unlock.
+ * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
@@ -94,6 +94,47 @@ Deno.serve(async (req: Request) => {
     )
     if (profileErr) throw profileErr
 
+    // Price check for catalog SKUs.
+    if (sku.startsWith('pack_')) {
+      const packId = sku.slice('pack_'.length)
+      const { data: pack, error: packErr } = await admin
+        .from('packs')
+        .select('id, price_cusd')
+        .eq('id', packId)
+        .maybeSingle()
+      if (packErr) throw packErr
+      if (!pack) {
+        return jsonResponse({ ok: false, error: 'Unknown pack sku' }, 400, req)
+      }
+      if (Number(pack.price_cusd).toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match pack price' },
+          400,
+          req,
+        )
+      }
+    } else if (sku.startsWith('track_')) {
+      const trackKey = sku.slice('track_'.length)
+      const { data: chart, error: chartErr } = await admin
+        .from('charts')
+        .select('track_key, price_cusd')
+        .eq('track_key', trackKey)
+        .not('price_cusd', 'is', null)
+        .limit(1)
+        .maybeSingle()
+      if (chartErr) throw chartErr
+      if (!chart?.price_cusd) {
+        return jsonResponse({ ok: false, error: 'Unknown track sku' }, 400, req)
+      }
+      if (Number(chart.price_cusd).toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match track price' },
+          400,
+          req,
+        )
+      }
+    }
+
     const metadata = {
       ...(body.metadata ?? {}),
       network: 'celo-mainnet',
@@ -132,6 +173,28 @@ Deno.serve(async (req: Request) => {
           user_id: userId,
           unlock_type: 'continue',
           unlock_key: purchase.id,
+          source_purchase_id: purchase.id,
+        },
+        { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+    } else if (sku.startsWith('pack_')) {
+      const packId = sku.slice('pack_'.length)
+      await admin.from('unlocks').upsert(
+        {
+          user_id: userId,
+          unlock_type: 'pack',
+          unlock_key: packId,
+          source_purchase_id: purchase.id,
+        },
+        { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+    } else if (sku.startsWith('track_')) {
+      const trackKey = sku.slice('track_'.length)
+      await admin.from('unlocks').upsert(
+        {
+          user_id: userId,
+          unlock_type: 'chart',
+          unlock_key: trackKey,
           source_purchase_id: purchase.id,
         },
         { onConflict: 'user_id,unlock_type,unlock_key' },

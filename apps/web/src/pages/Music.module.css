@@ -1,0 +1,291 @@
+/* Music catalog — design-pack #music */
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background:
+    radial-gradient(circle at 20% 0%, #f3e0d2 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, #e8dff5 0%, transparent 35%),
+    #f3efe8;
+  color: var(--ink);
+}
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 14px 8px;
+  font-weight: 600;
+}
+
+.pill {
+  background: var(--white);
+  border: 1px solid var(--line);
+  color: var(--accent-deep);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.head {
+  padding: 4px 16px 12px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: -0.03em;
+}
+
+.list {
+  padding: 0 14px 16px;
+  overflow: auto;
+  flex: 1;
+}
+
+.track {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.track:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.art {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.trackMeta {
+  min-width: 0;
+  flex: 1;
+}
+
+.trackMeta strong {
+  display: block;
+  font-size: 13px;
+}
+
+.trackMeta small {
+  color: var(--soft);
+  font-size: 11px;
+}
+
+.lock {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-deep);
+  flex-shrink: 0;
+}
+
+.lockFree {
+  color: var(--ok);
+}
+
+.muted {
+  margin: 0;
+  color: var(--soft);
+  font-size: 0.9rem;
+  padding: 0 16px;
+}
+
+.warn {
+  margin: 8px 16px 0;
+  color: var(--bad);
+  font-size: 0.85rem;
+}
+
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(20, 15, 28, 0.35);
+}
+
+.sheetCard {
+  background: #f3efe8;
+  border-radius: 22px 22px 0 0;
+  padding: 20px 18px 24px;
+  max-height: 88vh;
+  overflow: auto;
+  box-shadow: 0 -8px 40px rgba(20, 15, 28, 0.18);
+}
+
+.packArt {
+  height: 120px;
+  border-radius: 18px;
+  margin-bottom: 14px;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+
+.sheetBlurb {
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.price {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.4rem;
+  color: var(--accent-deep);
+}
+
+.sheetActions {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-btn);
+  padding: 14px 18px;
+  font-weight: 700;
+  font-size: 14px;
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btnPrimary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--accent-deep);
+}
+
+.btnLight {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 3px 0 #ddd5c8;
+  border: 1px solid var(--line);
+}
+
+.btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.mode {
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 0 #ddd5c8;
+  margin-bottom: 8px;
+  width: 100%;
+  border: 2px solid transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.modeSelected {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.mode strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+}
+
+.mode small {
+  color: var(--soft);
+  font-size: 11.5px;
+}
+
+.icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: #fff;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.iconEasy {
+  background: var(--ok);
+}
+
+.iconNormal {
+  background: var(--accent);
+}
+
+.iconHard {
+  background: var(--bad);
+}
+
+.packStrip {
+  margin: 0 14px 12px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: calc(100% - 28px);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.packStrip strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+}
+
+.packStrip small {
+  color: var(--soft);
+  font-size: 11px;
+}

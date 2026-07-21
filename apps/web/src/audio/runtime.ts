@@ -117,12 +117,15 @@ class AudioRuntime {
   }
 
   /**
-   * Start (or restart) the looping bed track. Returns music start time
-   * in AudioContext seconds for chart sync (G5).
-   * If already playing and `restart` is false, returns the existing start time.
+   * Start (or restart) music from an arbitrary URL (Storage signed URL in G12).
+   * Loops short placeholders so the run can finish the chart.
    */
-  async startBed(opts: { restart?: boolean } = {}): Promise<number> {
+  async startMusic(
+    url: string,
+    opts: { restart?: boolean; loop?: boolean } = {},
+  ): Promise<number> {
     const restart = opts.restart === true
+    const loop = opts.loop !== false
     if (!restart && this.bedSource && this.musicStartTime != null) {
       await this.unlock()
       return this.musicStartTime
@@ -135,16 +138,25 @@ class AudioRuntime {
     const music = this.music
     if (!music) throw new Error('Music gain missing')
 
-    const buf = await this.loadBuffer(BED_URL)
+    const buf = await this.loadBuffer(url)
     const src = ctx.createBufferSource()
     src.buffer = buf
-    src.loop = true
+    src.loop = loop
     src.connect(music)
     const when = ctx.currentTime
     src.start(when)
     this.bedSource = src
     this.musicStartTime = when
     return when
+  }
+
+  /**
+   * Start (or restart) the looping bed track. Returns music start time
+   * in AudioContext seconds for chart sync (G5).
+   * If already playing and `restart` is false, returns the existing start time.
+   */
+  async startBed(opts: { restart?: boolean } = {}): Promise<number> {
+    return this.startMusic(BED_URL, { ...opts, loop: true })
   }
 
   stopBed(): void {
