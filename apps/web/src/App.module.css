@@ -1,0 +1,22 @@
+.shell {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  background: linear-gradient(180deg, #b8d4f0 0%, #d4c4e8 100%);
+  color: #1a1a2e;
+}
+
+.brand {
+  margin: 0;
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.95rem;
+  opacity: 0.75;
+}

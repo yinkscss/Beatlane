@@ -43,4 +43,14 @@ Audio: Web Audio only in v1 — songs are Storage audio + JSON charts; the chart
 
 ## Status
 
-Greenfield product docs and design. App scaffold not started yet.
+Scaffold started (G0) — Vite + React + TS at `apps/web`; PixiJS + Zustand deps; CI lint/typecheck.
+
+```bash
+npm install
+npm run dev        # apps/web → http://localhost:5173
+npm run build
+npm run lint
+npm run typecheck
+```
+
+Copy `apps/web/.env.example` → `apps/web/.env` (never commit secrets).

@@ -1,0 +1,19 @@
+{
+  "name": "beatlane",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Beatlane — four-lane rhythm tap on Celo",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "lint": "npm run lint -w web",
+    "typecheck": "npm run typecheck -w web",
+    "preview": "npm run preview -w web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
