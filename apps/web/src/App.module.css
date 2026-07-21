@@ -1,22 +1,48 @@
 .shell {
   min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.nav {
   display: grid;
-  place-content: center;
-  gap: 0.5rem;
-  text-align: center;
-  background: linear-gradient(180deg, #b8d4f0 0%, #d4c4e8 100%);
-  color: #1a1a2e;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(247, 242, 235, 0.92);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
 }
 
-.brand {
-  margin: 0;
-  font-size: clamp(2rem, 8vw, 3.5rem);
-  font-weight: 800;
-  letter-spacing: 0.08em;
+.navLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--soft);
 }
 
-.meta {
-  margin: 0;
-  font-size: 0.95rem;
-  opacity: 0.75;
+.navLink:hover {
+  color: var(--accent-deep);
+  background: var(--white);
+}
+
+.navLinkActive {
+  color: var(--accent-deep);
+  background: var(--white);
+  box-shadow: 0 1px 0 var(--line);
 }

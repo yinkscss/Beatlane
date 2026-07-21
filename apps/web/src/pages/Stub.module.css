@@ -1,0 +1,26 @@
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px 18px;
+  background:
+    radial-gradient(circle at 20% 0%, #f3e0d2 0%, transparent 40%),
+    radial-gradient(circle at 90% 10%, #e8dff5 0%, transparent 35%),
+    #f3efe8;
+  color: var(--ink);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+}
+
+.blurb {
+  margin: 8px 0 0;
+  color: var(--soft);
+  font-size: 0.95rem;
+}
