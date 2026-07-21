@@ -14,7 +14,7 @@ export const SCORE_GREAT = 180
 export { HIT_WINDOW_TILES, PERFECT_WINDOW_TILES }
 
 /** Combo hits needed to light each of 3 stars then 3 crowns (flag sits mid-rail). */
-export const COMBO_PER_MARK = 4
+export const COMBO_PER_MARK = 11
 export const STAR_MARKS = 3
 export const CROWN_MARKS = 3
 export const TOTAL_MARKS = STAR_MARKS + CROWN_MARKS

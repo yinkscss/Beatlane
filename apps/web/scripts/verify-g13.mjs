@@ -54,8 +54,8 @@ function chartIdForDailySeed(seed) {
 
 const SCORE_PERFECT = 320
 const SCORE_GREAT = 180
-const GREAT_WINDOW_SEC = (0.85 * 0.14) / 0.72
-const PERFECT_WINDOW_SEC = (0.28 * 0.14) / 0.72
+const GREAT_WINDOW_SEC = (0.85 * 0.18) / 0.72
+const PERFECT_WINDOW_SEC = (0.28 * 0.18) / 0.72
 
 function validateTaps(notes, taps, clientScore) {
   const all = notes.filter((n) => n.type !== 'bomb')

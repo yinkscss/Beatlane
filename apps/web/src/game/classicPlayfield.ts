@@ -7,6 +7,7 @@ import {
 } from 'pixi.js'
 import {
   clampBannerDuration,
+  lanesCoveredByNote,
   type Chart,
   type ChartNote,
   type ChartNoteMod,
@@ -21,6 +22,7 @@ import {
   tilePartiallyOnPlayfield,
 } from '@/game/judging'
 import { PLAYFIELD, SCROLL } from '@/game/playfieldTheme'
+import { spawnYForSongTime } from '@/game/spawnPlacement'
 import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
 export type FailReason = 'miss' | 'wrong'
@@ -873,7 +875,22 @@ export class ClassicPlayfield {
       .fill({ color: HOLD_MARKER, alpha: 0.4 })
   }
 
-  private spawnNote(note: ChartNote) {
+  private spawnNote(note: ChartNote, songTime: number) {
+    const covered = new Set<number>()
+    for (const t of this.tiles) {
+      if (t.dying || t.noteT !== note.t) continue
+      for (let lane = 0; lane < PLAYFIELD.lanes; lane++) {
+        if (this.tileCoversLane(t, lane)) covered.add(lane)
+      }
+    }
+    for (const lane of lanesCoveredByNote(note)) covered.add(lane)
+    if (covered.size > 3) {
+      console.warn(
+        `[playfield] skip note at t=${note.t} lane=${note.lane}: would cover all 4 lanes`,
+      )
+      return
+    }
+
     const laneW = this.laneWidth()
     const base = this.tileSize()
     const mod = 'mod' in note && note.mod ? note.mod : null
@@ -920,8 +937,17 @@ export class ClassicPlayfield {
       endLane = note.endLane
     }
 
+    const lead = this.leadForNote(note)
+    const y = spawnYForSongTime({
+      songTime,
+      noteT: note.t,
+      leadSec: lead,
+      scrollSpeed: this.scrollSpeed(),
+      tileH: h,
+    })
+
     const root = new Container()
-    root.position.set(x, -h)
+    root.position.set(x, y)
     const body = new Graphics()
 
     if (kind === 'bomb') this.drawBombBody(body, w, h)
@@ -967,7 +993,7 @@ export class ClassicPlayfield {
       gapLen,
       mod,
       noteT: note.t,
-      y: -h,
+      y,
       w,
       h,
       hit: false,
@@ -1099,7 +1125,7 @@ export class ClassicPlayfield {
       const lead = this.leadForNote(note)
       if (songTime < note.t - lead) break
       this.noteIndex++
-      this.spawnNote(note)
+      this.spawnNote(note, songTime)
     }
 
     if (

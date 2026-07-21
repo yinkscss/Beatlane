@@ -45,7 +45,6 @@ import {
   DEFAULT_CUP_SLUG,
   fetchTournamentLobby,
   fetchTournamentRank,
-  formatBlitzClock,
   submitBlitzRun,
 } from '@/lib/tournament'
 import {
@@ -59,12 +58,6 @@ import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Play.module.css'
 
 const JUDGE_MS = 520
-
-const MARK_GLYPH: Record<'star' | 'flag' | 'crown', string> = {
-  star: '⭐',
-  flag: '⚑',
-  crown: '👑',
-}
 
 type SpeedUi =
   | { kind: 'banner' }
@@ -850,84 +843,48 @@ export default function PlayPage() {
     reviveCount > 0 ? secondChancePrice(reviveCount - 1) : null
   const escalate = reviveCount > 0
 
+  const sampleDifficultySelectable =
+    mode !== 'daily' &&
+    mode !== 'blitz' &&
+    (!chartParam || Boolean(sampleChartById(chartParam)))
+
   return (
     <div className={styles.page}>
-      <button
-        type="button"
-        className={styles.mute}
-        onClick={onMuteClick}
-        aria-pressed={muted}
-        aria-label={muted ? 'Unmute audio' : 'Mute audio'}
+      <div
+        className={styles.progress}
+        aria-hidden="true"
+        data-mode={mode === 'blitz' ? 'blitz' : 'combo'}
       >
-        {muted ? 'Unmute' : 'Mute'}
-      </button>
-
-      <div className={styles.chartBar} role="group" aria-label="Chart">
-        <span className={styles.modePill}>{modeLabel}</span>
-        {mode === 'daily' ? (
-          <span className={styles.chartTitle}>
-            {dailyMeta?.day ?? '…'} ·{' '}
-            {chartMeta?.title ?? dailyMeta?.chart?.title ?? 'Loading…'}
-          </span>
-        ) : mode === 'blitz' ? (
-          <span className={styles.chartTitle}>
-            {formatBlitzClock(blitzMsLeft)} ·{' '}
-            {chartMeta?.title ?? 'Cup chart'} · tiles
-          </span>
-        ) : !chartParam || sampleChartById(chartParam) ? (
-          SAMPLE_CHARTS.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              className={
-                chartId === c.id
-                  ? `${styles.chartBtn} ${styles.chartBtnOn}`
-                  : styles.chartBtn
-              }
-              onClick={() => setChartId(c.id)}
-              aria-pressed={chartId === c.id}
-            >
-              {c.difficulty === 'easy'
-                ? 'Easy'
-                : c.difficulty === 'normal'
-                  ? 'Normal'
-                  : 'Hard'}
-            </button>
-          ))
-        ) : (
-          <span className={styles.chartTitle}>
-            {chartMeta?.difficulty?.toUpperCase() ?? '…'}
-          </span>
-        )}
-        {mode !== 'daily' && mode !== 'blitz' && chartMeta ? (
-          <span className={styles.chartTitle}>{chartMeta.title}</span>
-        ) : null}
-      </div>
-
-      <div className={styles.progress} aria-hidden="true">
-        <div className={styles.rail} />
-        <div
-          className={styles.fill}
-          style={{
-            width:
-              mode === 'blitz'
-                ? `${(blitzMsLeft / BLITZ_DURATION_MS) * 100}%`
-                : `${fill}%`,
-          }}
-        />
+        <div className={styles.railTrack}>
+          <div
+            className={styles.railFill}
+            style={{
+              width:
+                mode === 'blitz'
+                  ? `${(blitzMsLeft / BLITZ_DURATION_MS) * 100}%`
+                  : `${fill}%`,
+            }}
+          />
+        </div>
         {mode === 'blitz' ? (
           <div className={styles.marks}>
-            <span className={styles.markOn}>⚡</span>
+            <span
+              className={`${styles.mark} ${styles.markBlitz} ${styles.markOn}`}
+            />
           </div>
         ) : (
           <div className={styles.marks}>
             {marks.map((m, i) => (
               <span
                 key={`${m.kind}-${i}`}
-                className={m.on ? styles.markOn : styles.markOff}
-              >
-                {MARK_GLYPH[m.kind]}
-              </span>
+                className={`${styles.mark} ${
+                  m.kind === 'star'
+                    ? styles.markStar
+                    : m.kind === 'flag'
+                      ? styles.markFlag
+                      : styles.markCrown
+                } ${m.on ? styles.markOn : styles.markOff}`}
+              />
             ))}
           </div>
         )}
@@ -971,13 +928,77 @@ export default function PlayPage() {
         />
         {runPhase === 'ready' && !fail && !cleared && !chartError ? (
           <div className={styles.startOverlay}>
-            <button
-              type="button"
-              className={styles.playBtn}
-              onClick={onPlayClick}
-            >
-              Play
-            </button>
+            <div className={styles.readyPanel}>
+              <div className={styles.readyMeta} role="group" aria-label="Chart">
+                <span className={styles.modePill}>{modeLabel}</span>
+                {mode === 'daily' ? (
+                  <span className={styles.readyChartInfo}>
+                    {dailyMeta?.day ?? '…'} ·{' '}
+                    {chartMeta?.title ??
+                      dailyMeta?.chart?.title ??
+                      'Loading…'}
+                  </span>
+                ) : mode === 'blitz' ? (
+                  <span className={styles.readyChartInfo}>
+                    {chartMeta?.title ?? 'Cup chart'}
+                  </span>
+                ) : sampleDifficultySelectable ? (
+                  <>
+                    <div
+                      className={styles.readyDiffs}
+                      role="group"
+                      aria-label="Difficulty"
+                    >
+                      {SAMPLE_CHARTS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className={
+                            chartId === c.id
+                              ? `${styles.chartBtn} ${styles.chartBtnOn}`
+                              : styles.chartBtn
+                          }
+                          onClick={() => setChartId(c.id)}
+                          aria-pressed={chartId === c.id}
+                        >
+                          {c.difficulty === 'easy'
+                            ? 'Easy'
+                            : c.difficulty === 'normal'
+                              ? 'Normal'
+                              : 'Hard'}
+                        </button>
+                      ))}
+                    </div>
+                    {chartMeta ? (
+                      <span className={styles.readyChartInfo}>
+                        {chartMeta.title}
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className={styles.readyChartInfo}>
+                    {chartMeta?.difficulty?.toUpperCase() ?? '…'}
+                    {chartMeta?.title ? ` · ${chartMeta.title}` : ''}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className={styles.readyMute}
+                onClick={onMuteClick}
+                aria-pressed={muted}
+                aria-label={muted ? 'Unmute audio' : 'Mute audio'}
+              >
+                {muted ? 'Unmute' : 'Mute'}
+              </button>
+              <button
+                type="button"
+                className={styles.playBtn}
+                onClick={onPlayClick}
+              >
+                Play
+              </button>
+            </div>
           </div>
         ) : null}
         {runPhase === 'countdown' && startCountdown != null ? (

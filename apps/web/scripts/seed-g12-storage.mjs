@@ -73,30 +73,38 @@ function pcmWav(freqHz, durationSec, sampleRate) {
 
 function buildNotes(difficulty, bpm) {
   const beat = 60 / bpm
-  const gap =
+  const baseGap =
     difficulty === 'easy' ? beat * 1.2 : difficulty === 'normal' ? beat * 0.85 : beat * 0.55
+  // Cold start: wider gaps early, ease into baseGap (~first third of chart).
+  const earlyGap = baseGap * 1.55
+  const rampUntil = DURATION_SEC * 0.35
   const notes = []
   let t = 1.0
   let lane = 0
   let i = 0
   while (t < DURATION_SEC - 1.5) {
     notes.push({ t: Number(t.toFixed(3)), lane, type: 'tap' })
-    if (difficulty === 'hard' && i % 7 === 6) {
+    // Bombs / holds only after warmup so catalog charts ramp cold→hard.
+    if (difficulty === 'hard' && t >= rampUntil && i % 7 === 6) {
       notes.push({
         t: Number(t.toFixed(3)),
         lane: (lane + 2) % 4,
         type: 'bomb',
       })
     }
-    if (difficulty !== 'easy' && i % 11 === 10) {
+    if (difficulty !== 'easy' && t >= rampUntil && i % 11 === 10) {
       notes.push({
-        t: Number((t + gap * 0.5).toFixed(3)),
+        t: Number((t + baseGap * 0.5).toFixed(3)),
         lane: (lane + 1) % 4,
         type: 'hold',
         length: Number((beat * 1.5).toFixed(3)),
       })
     }
     lane = (lane + 1) % 4
+    const gap =
+      t < rampUntil
+        ? earlyGap + (baseGap - earlyGap) * (t / rampUntil)
+        : baseGap
     t += gap
     i++
   }
@@ -121,11 +129,11 @@ function buildChart(track, difficulty) {
     events:
       difficulty === 'hard'
         ? [
-            { t: 8, type: 'speed_up', mult: 1.25 },
-            { t: 12, type: 'double', duration: 4 },
+            { t: 14, type: 'speed_up', mult: 1.25 },
+            { t: 16, type: 'double', duration: 4 },
           ]
         : difficulty === 'normal'
-          ? [{ t: 10, type: 'hold', duration: 4 }]
+          ? [{ t: 12, type: 'hold', duration: 4 }]
           : [],
   }
 }
