@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Home.module.css'
 
 const modes = [
   {
     kind: 'play' as const,
-    to: '/play?mode=classic',
     mode: 'classic' as const,
     title: 'Classic',
     blurb: 'Fail on miss · songs or endless',
@@ -14,7 +14,6 @@ const modes = [
   },
   {
     kind: 'play' as const,
-    to: '/play?mode=zen',
     mode: 'zen' as const,
     title: 'Zen',
     blurb: 'No fail · practice mode',
@@ -38,13 +37,39 @@ const modes = [
 ]
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const bestCombo = useAppStore((s) => s.bestCombo)
   const setPlayMode = useAppStore((s) => s.setPlayMode)
+  const { status, identity } = useAuth()
+  const authed = status === 'authenticated'
+
+  const pill =
+    status === 'loading'
+      ? '…'
+      : authed
+        ? identity?.email ?? 'Signed in'
+        : 'Sign in to play'
+
+  const enterMode = (mode: 'classic' | 'zen') => {
+    setPlayMode(mode)
+    const playPath = `/play?mode=${mode}`
+    if (!authed) {
+      navigate(`/wallet?next=${encodeURIComponent(playPath)}`)
+      return
+    }
+    navigate(playPath)
+  }
 
   return (
     <div className={styles.page}>
       <header className={styles.status}>
-        <span className={styles.pill}>Guest · auth G9</span>
+        <Link
+          to="/wallet"
+          className={styles.pill}
+          aria-label={authed ? 'Open wallet' : 'Sign in'}
+        >
+          {pill}
+        </Link>
         <div className={styles.score}>
           <div className={styles.scoreLbl}>Best combo</div>
           <div className={styles.scoreVal}>
@@ -63,12 +88,12 @@ export default function HomePage() {
       <div className={styles.modes} role="list">
         {modes.map((mode) =>
           mode.kind === 'play' ? (
-            <Link
+            <button
               key={mode.title}
-              to={mode.to}
+              type="button"
               className={styles.mode}
               role="listitem"
-              onClick={() => setPlayMode(mode.mode)}
+              onClick={() => enterMode(mode.mode)}
             >
               <span className={`${styles.icon} ${mode.iconClass}`} aria-hidden>
                 {mode.icon}
@@ -77,7 +102,7 @@ export default function HomePage() {
                 <strong>{mode.title}</strong>
                 <small>{mode.blurb}</small>
               </span>
-            </Link>
+            </button>
           ) : (
             <div
               key={mode.title}
@@ -102,7 +127,7 @@ export default function HomePage() {
           Music
         </Link>
         <Link to="/wallet" className={`${styles.btn} ${styles.btnDark}`}>
-          MiniPay
+          {authed ? 'Wallet' : 'Sign in'}
         </Link>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
 import { audioRuntime } from '@/audio/runtime'
 import { SAMPLE_CHARTS } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
@@ -59,11 +60,21 @@ export default function PlayPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const mode = parseMode(searchParams.get('mode'))
+  const { status } = useAuth()
 
   const muted = useAppStore((s) => s.muted)
   const toggleMute = useAppStore((s) => s.toggleMute)
   const setPlayMode = useAppStore((s) => s.setPlayMode)
   const setLastRun = useAppStore((s) => s.setLastRun)
+
+  // auth_all (Q14): no guest play — gate before chart/Pixi boot
+  useEffect(() => {
+    if (status === 'loading') return
+    if (status !== 'authenticated') {
+      const next = `/play?mode=${mode}`
+      navigate(`/wallet?next=${encodeURIComponent(next)}`, { replace: true })
+    }
+  }, [status, mode, navigate])
 
   const [chartId, setChartId] = useState(SAMPLE_CHARTS[0].id)
   const [chartMeta, setChartMeta] = useState<Chart | null>(null)
@@ -98,6 +109,7 @@ export default function PlayPage() {
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
+    if (status !== 'authenticated') return
 
     let cancelled = false
     bedArmedRef.current = true
@@ -235,7 +247,15 @@ export default function PlayPage() {
       game.destroy()
       gameRef.current = null
     }
-  }, [chartId, mode, setLastRun])
+  }, [chartId, mode, setLastRun, status])
+
+  if (status !== 'authenticated') {
+    return (
+      <div className={styles.page}>
+        <p className={styles.failSub}>Sign in required…</p>
+      </div>
+    )
+  }
 
   const goResults = (outcome: 'fail' | 'clear' | 'quit') => {
     setLastRun({

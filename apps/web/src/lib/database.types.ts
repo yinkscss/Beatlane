@@ -20,6 +20,7 @@ export type Database = {
           id: string
           display_name: string | null
           wallet_address: string | null
+          magic_issuer: string | null
           created_at: string
           updated_at: string
         }
@@ -27,6 +28,7 @@ export type Database = {
           id: string
           display_name?: string | null
           wallet_address?: string | null
+          magic_issuer?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -34,6 +36,7 @@ export type Database = {
           id?: string
           display_name?: string | null
           wallet_address?: string | null
+          magic_issuer?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router-dom'
+import { useAuth } from '@/auth/AuthProvider'
 import styles from '@/App.module.css'
 import HomePage from '@/pages/Home'
 import MusicPage from '@/pages/Music'
@@ -9,7 +10,11 @@ import { useAppStore } from '@/store/appStore'
 
 export default function App() {
   const playMode = useAppStore((s) => s.playMode)
-  const playTo = `/play?mode=${playMode}`
+  const { status } = useAuth()
+  const playTo =
+    status === 'authenticated'
+      ? `/play?mode=${playMode}`
+      : `/wallet?next=${encodeURIComponent(`/play?mode=${playMode}`)}`
 
   const nav: { to: string; label: string; end?: boolean }[] = [
     { to: '/', label: 'Home', end: true },

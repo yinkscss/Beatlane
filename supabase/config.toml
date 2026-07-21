@@ -19,3 +19,7 @@ enabled = true
 
 [functions.hello]
 verify_jwt = true
+
+[functions.magic-profile]
+# Magic DID Bearer token — not a Supabase JWT
+verify_jwt = false

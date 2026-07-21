@@ -26,6 +26,10 @@
   border-radius: 999px;
   font-size: 11px;
   letter-spacing: 0.04em;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .score {
@@ -87,6 +91,11 @@
   gap: 12px;
   box-shadow: 0 2px 0 #ddd5c8;
   color: var(--ink);
+  border: 0;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
 }
 
 .modeSoon {

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
+    "magic-sdk": "^33.9.0",
     "pixi.js": "^8.14.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
