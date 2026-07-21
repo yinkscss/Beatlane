@@ -83,12 +83,17 @@ export class AudioRuntime {
     return this.musicStartTime
   }
 
-  /** Resume context (user-gesture safe) and preload buffers. */
-  async unlock(): Promise<void> {
+  /** Resume AudioContext only — safe to call from a user gesture. */
+  async resumeContext(): Promise<void> {
     const ctx = this.ensureGraph()
     if (ctx.state === 'suspended') {
       await ctx.resume()
     }
+  }
+
+  /** Resume context (user-gesture safe) and preload buffers. */
+  async unlock(): Promise<void> {
+    await this.resumeContext()
     await this.preload()
   }
 
@@ -145,12 +150,16 @@ export class AudioRuntime {
     const restart = opts.restart === true
     const loop = opts.loop !== false
     if (!restart && this.bedSource && this.musicStartTime != null) {
-      await this.unlock()
+      await this.resumeContext()
       return this.musicStartTime
     }
 
-    await this.unlock()
+    // Resume only — do not await full SFX preload (that stalled Play → beginRun).
+    await this.resumeContext()
     this.stopBed()
+    void this.preload().catch(() => {
+      /* sfx warm-up is best-effort */
+    })
 
     const ctx = this.ensureGraph()
     const music = this.music
