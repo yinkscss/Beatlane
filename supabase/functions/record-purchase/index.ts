@@ -1,11 +1,12 @@
 /**
- * G10/G12/G14/G15/G16: Record cUSD purchase receipt after on-chain transfer.
+ * G10/G12/G14/G15/G16/G17: Record cUSD purchase receipt after on-chain transfer.
  *
  * Client sends Magic DID + sku/amount/txHash.
  * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
  * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks / helpers.
  * Boast (sku=boast): also inserts public.boasts + returns shareSlug.
  * Tournament entry (sku=tournament_entry_<uuid|slug>): inserts tournament_entries.
+ * Season Pass (sku=season_pass / season_pass_<slug>): unlock + due schedule grants.
  * Network metadata: Celo Mainnet (chainId 42220) for shop SKUs — locked Q07.
  * Boast mint is Celo Sepolia (11142220) — Alfajores 44787 sunset Sep 2025.
  */
@@ -17,6 +18,14 @@ import {
   parseDidClaim,
   profileIdFromIssuer,
 } from '../_shared/magicProfile.ts'
+import {
+  grantDueSeasonRewards,
+  isSeasonPassSku,
+  seasonSlugFromSku,
+  SEASON_PASS_PRICE,
+  type SeasonRewardRow,
+  type SeasonRow,
+} from '../_shared/seasonPassGrants.ts'
 
 type Body = {
   issuer?: string
@@ -129,7 +138,10 @@ Deno.serve(async (req: Request) => {
       status: string
     } | null = null
 
-    // Price check for catalog / helper / boast / tournament SKUs.
+    let seasonRow: SeasonRow | null = null
+    let seasonRewards: SeasonRewardRow[] = []
+
+    // Price check for catalog / helper / boast / tournament / season-pass SKUs.
     if (sku === 'boast') {
       if (BOAST_PRICE.toFixed(2) !== amountCusd.toFixed(2)) {
         return jsonResponse(
@@ -175,6 +187,74 @@ Deno.serve(async (req: Request) => {
         entry_fee_cusd: Number(cup.entry_fee_cusd),
         status: cup.status,
       }
+    } else if (isSeasonPassSku(sku)) {
+      if (SEASON_PASS_PRICE.toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match season pass price' },
+          400,
+          req,
+        )
+      }
+      const slugHint = seasonSlugFromSku(sku)
+      const seasonSelect =
+        'id, slug, title, price_cusd, starts_at, ends_at, status, metadata'
+      const { data: season, error: seasonErr } = slugHint
+        ? await admin
+            .from('seasons')
+            .select(seasonSelect)
+            .eq('slug', slugHint)
+            .maybeSingle()
+        : await admin
+            .from('seasons')
+            .select(seasonSelect)
+            .eq('status', 'active')
+            .order('starts_at', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+      if (seasonErr) throw seasonErr
+      if (!season) {
+        return jsonResponse(
+          { ok: false, error: 'Unknown season pass sku' },
+          400,
+          req,
+        )
+      }
+      if (season.status !== 'active' && season.status !== 'scheduled') {
+        return jsonResponse(
+          { ok: false, error: 'Season pass not available' },
+          400,
+          req,
+        )
+      }
+      if (Number(season.price_cusd).toFixed(2) !== amountCusd.toFixed(2)) {
+        return jsonResponse(
+          { ok: false, error: 'amountCusd does not match season price' },
+          400,
+          req,
+        )
+      }
+      const { data: rewards, error: rewardsErr } = await admin
+        .from('season_rewards')
+        .select(
+          'id, season_id, day_offset, sort_order, reward_type, continue_count, track_key, label',
+        )
+        .eq('season_id', season.id)
+        .order('sort_order', { ascending: true })
+      if (rewardsErr) throw rewardsErr
+      const list = (rewards ?? []) as SeasonRewardRow[]
+      if (
+        list.some(
+          (r) => r.reward_type !== 'continue' && r.reward_type !== 'chart',
+        )
+      ) {
+        return jsonResponse(
+          { ok: false, error: 'Invalid season rewards (cosmetics banned)' },
+          500,
+          req,
+        )
+      }
+      seasonRow = season as SeasonRow
+      seasonRewards = list
     } else if (sku in HELPER_PRICES) {
       const want = HELPER_PRICES[sku]
       if (want.toFixed(2) !== amountCusd.toFixed(2)) {
@@ -299,6 +379,36 @@ Deno.serve(async (req: Request) => {
           source_purchase_id: purchase.id,
         },
         { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+    } else if (seasonRow) {
+      await admin.from('unlocks').upsert(
+        {
+          user_id: userId,
+          unlock_type: 'season_pass',
+          unlock_key: seasonRow.slug,
+          source_purchase_id: purchase.id,
+        },
+        { onConflict: 'user_id,unlock_type,unlock_key' },
+      )
+      const grantResult = await grantDueSeasonRewards(admin, {
+        userId,
+        season: seasonRow,
+        rewards: seasonRewards,
+        purchaseId: purchase.id,
+      })
+      return jsonResponse(
+        {
+          ok: true,
+          purchase,
+          seasonPass: {
+            slug: seasonRow.slug,
+            title: seasonRow.title,
+            newlyGranted: grantResult.grantedRewardIds,
+            dayElapsed: grantResult.dayElapsed,
+          },
+        },
+        200,
+        req,
       )
     }
 

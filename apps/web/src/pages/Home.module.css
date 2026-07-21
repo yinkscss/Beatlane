@@ -150,7 +150,7 @@
   margin-top: auto;
   padding: 14px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
 }
 

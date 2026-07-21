@@ -138,6 +138,16 @@ export default function HomePage() {
         <Link to="/music" className={`${styles.btn} ${styles.btnLight}`}>
           Music
         </Link>
+        <Link
+          to={
+            authed
+              ? '/pass'
+              : `/wallet?next=${encodeURIComponent('/pass')}`
+          }
+          className={`${styles.btn} ${styles.btnLight}`}
+        >
+          Pass
+        </Link>
         <Link to="/wallet" className={`${styles.btn} ${styles.btnDark}`}>
           {authed ? 'Wallet' : 'Sign in'}
         </Link>

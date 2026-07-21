@@ -61,3 +61,14 @@ node apps/web/scripts/verify-g15.mjs
 ```bash
 node apps/web/scripts/verify-g16.mjs
 ```
+
+### Season Pass (G17)
+
+- Home → **Pass** → `/pass` (Rhythm Pass, Season 1).
+- Buy: Mainnet cUSD → `record-purchase` sku `season_pass_season-1` → `unlocks.season_pass` + due continues/tracks.
+- Progress UI + grant on status fetch; optional cron `season-pass` `action=grant_due`.
+- Rewards: continues + chart unlocks only (no skins). Price **$2.99** · **4 weeks** (Q20).
+
+```bash
+node apps/web/scripts/verify-g17.mjs
+```

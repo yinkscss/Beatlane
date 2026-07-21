@@ -494,6 +494,108 @@ export type Database = {
         }
         Relationships: []
       }
+      seasons: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          price_cusd: number
+          starts_at: string
+          ends_at: string
+          status: string
+          metadata: Json
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          slug: string
+          title: string
+          price_cusd?: number
+          starts_at: string
+          ends_at: string
+          status?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          slug?: string
+          title?: string
+          price_cusd?: number
+          starts_at?: string
+          ends_at?: string
+          status?: string
+          metadata?: Json
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      season_rewards: {
+        Row: {
+          id: string
+          season_id: string
+          day_offset: number
+          sort_order: number
+          reward_type: 'continue' | 'chart'
+          continue_count: number
+          track_key: string | null
+          label: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          day_offset: number
+          sort_order?: number
+          reward_type: 'continue' | 'chart'
+          continue_count?: number
+          track_key?: string | null
+          label: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          day_offset?: number
+          sort_order?: number
+          reward_type?: 'continue' | 'chart'
+          continue_count?: number
+          track_key?: string | null
+          label?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      season_reward_grants: {
+        Row: {
+          id: string
+          season_id: string
+          reward_id: string
+          user_id: string
+          source_purchase_id: string | null
+          granted_at: string
+        }
+        Insert: {
+          id?: string
+          season_id: string
+          reward_id: string
+          user_id: string
+          source_purchase_id?: string | null
+          granted_at?: string
+        }
+        Update: {
+          id?: string
+          season_id?: string
+          reward_id?: string
+          user_id?: string
+          source_purchase_id?: string | null
+          granted_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

@@ -20,6 +20,13 @@ type TournamentEntryRow = {
   created_at: string
 }
 
+type SeasonPassReceipt = {
+  slug: string
+  title: string
+  newlyGranted: string[]
+  dayElapsed: number
+}
+
 type RecordResponse = {
   ok: boolean
   purchase?: PurchaseRow
@@ -37,6 +44,7 @@ type RecordResponse = {
     | 'created_at'
   >
   entry?: TournamentEntryRow
+  seasonPass?: SeasonPassReceipt
   shareSlug?: string
   error?: string
 }
@@ -52,6 +60,7 @@ export type RecordPurchaseResult = {
   purchase: PurchaseRow
   boast?: RecordResponse['boast']
   entry?: RecordResponse['entry']
+  seasonPass?: RecordResponse['seasonPass']
   shareSlug?: string
 }
 
@@ -92,6 +101,7 @@ export async function recordPurchaseReceipt(
     purchase: data.purchase,
     boast: data.boast,
     entry: data.entry,
+    seasonPass: data.seasonPass,
     shareSlug: data.shareSlug ?? data.boast?.share_slug,
   }
 }

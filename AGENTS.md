@@ -26,3 +26,4 @@
 - Charts are hand-authored JSON in-repo (chart clock drives tiles; no waveform analysis / MIDI pipeline in v1)
 - Boast attestation deploys via Foundry to Celo Sepolia (testnet; Alfajores sunset); player payments remain Celo Mainnet cUSD
 - G16 Blitz cups: Mainnet cUSD entry fees + app/edge payout stub; optional TournamentVault on Celo Sepolia; rake 15%
+- G17 Season Pass: $2.99 cUSD Mainnet; 4 weeks; continues + track unlocks only (no cosmetics); Edge `season-pass` grant schedule

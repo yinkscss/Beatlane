@@ -5,6 +5,7 @@ import BoastPage from '@/pages/Boast'
 import HomePage from '@/pages/Home'
 import LeaderboardPage from '@/pages/Leaderboard'
 import MusicPage from '@/pages/Music'
+import PassPage from '@/pages/Pass'
 import PlayPage from '@/pages/Play'
 import ResultsPage from '@/pages/Results'
 import TournamentPage from '@/pages/Tournament'
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/tournament" element={<TournamentPage />} />
+          <Route path="/pass" element={<PassPage />} />
           <Route path="/b/:slug" element={<BoastPage />} />
         </Routes>
       </main>

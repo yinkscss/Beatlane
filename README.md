@@ -121,6 +121,21 @@ cd contracts && forge test --match-contract TournamentVaultTest -vv
 Audit checklist (audit itself may be external): `docs/tournament-audit-checklist.md`.
 Optional vault: set `VITE_TOURNAMENT_CONTRACT_ADDRESS` after Sepolia deploy (`contracts/README.md`).
 
+## G17 Season Pass
+
+**Rhythm Pass** — $2.99 cUSD for 4 weeks (Q20): scheduled **continues** + **track unlocks**. No cosmetics / skins (Q23).
+
+| Surface | Network |
+|---|---|
+| Pass purchase | **Celo Mainnet** cUSD via `VITE_TREASURY_ADDRESS` (Q07; staging uses same Mainnet path) |
+| Entitlements + grant schedule | Supabase Edge `season-pass` + `record-purchase` sku `season_pass_<slug>` |
+| Optional cron | `action=grant_due` with Edge secret `SEASON_PASS_CRON_SECRET` |
+
+```bash
+# Home → Pass → /pass → Get Pass · $2.99 cUSD → progress nodes unlock on schedule
+node apps/web/scripts/verify-g17.mjs
+```
+
 ## G13 Upstash Redis (rate limits)
 
 Q16: create a free Upstash Redis DB when G13 starts. Dashboard login is required (no CLI creds in this environment).
