@@ -11,7 +11,9 @@ import {
   railMarks,
   SCORE_GREAT,
   SCORE_PERFECT,
+  holdAssistTargets,
   holdTileProgress,
+  nearestValidHoldPoint,
   tileFullyPastBottom,
   tilePartiallyOnPlayfield,
   withinHitWindow,
@@ -88,6 +90,35 @@ describe('chart judge — spatial grade', () => {
     expect(holdTileProgress(hitY, holdH, hitY)).toBe(1)
     // Still approaching — not started
     expect(holdTileProgress(hitY - holdH - 40, holdH, hitY)).toBe(0)
+  })
+
+  it('HOLD_TAP_LOCK earliest_pixel_auto snaps Y to tip or hit line', () => {
+    const hitY = 656
+    const holdH = 200
+    // Approaching: tip only
+    const approachingY = hitY - holdH - 40
+    expect(holdAssistTargets(approachingY, holdH, hitY)).toEqual([
+      approachingY + holdH,
+    ])
+    // Press high in lane → still snaps to tip
+    expect(
+      nearestValidHoldPoint(100, approachingY, holdH, hitY),
+    ).toBe(approachingY + holdH)
+
+    // Crossing hit line: tip + line are both valid
+    const crossingY = hitY - holdH / 2
+    expect(holdAssistTargets(crossingY, holdH, hitY)).toEqual([
+      crossingY + holdH,
+      hitY,
+    ])
+    // Press near tip → tip
+    expect(
+      nearestValidHoldPoint(crossingY + holdH - 5, crossingY, holdH, hitY),
+    ).toBe(crossingY + holdH)
+    // Press near line → line
+    expect(nearestValidHoldPoint(hitY + 3, crossingY, holdH, hitY)).toBe(hitY)
+    // Keyboard / no-Y: pressY = hit line → prefers line when available
+    expect(nearestValidHoldPoint(hitY, crossingY, holdH, hitY)).toBe(hitY)
   })
 
   it('late spatial taps grade GREAT (not miss) when far from hit line', () => {

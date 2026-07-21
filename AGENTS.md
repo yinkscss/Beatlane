@@ -11,6 +11,7 @@
 - Beatlane playfield should match classic Piano Tiles look (soft sky→lavender gradient, light lanes), not dark stage chrome
 - Beatlane should include hard/tricky obstacles (long holds, multi-lane bridges/hooks, fakes), not only basic black-tile taps
 - Classic miss/hit: taps and hold-starts remain valid while any part of the tile is on-screen; auto-miss only after the tile fully leaves the bottom; Second Chance must not reduce play speed on revive; Hold tiles require holding until the tile finishes (not a short tap)
+- Hold press target (`HOLD_TAP_LOCK: earliest_pixel_auto`): player aims the lane; Y is assisted to the nearest valid point on the hold (leading tip or hit line) while the hold is hittable — see `docs/hold-tap-pitch.html` / `docs/clarifications-answers.md`
 - Audio must use Web Audio API only (no Howler, Tone.js, or other extra audio libraries)
 
 ## Learned Workspace Facts

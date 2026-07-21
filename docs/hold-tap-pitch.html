@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beatlane — Hold tap: where do you press?</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #1a1424;
+      --soft: #5c5368;
+      --paper: #f7f2eb;
+      --white: #fffdf9;
+      --line: #e4dcd2;
+      --accent: #ff8a3d;
+      --accent-deep: #e85d04;
+      --sky: #7ec8ff;
+      --lav: #b8a0e8;
+      --tile: #14141c;
+      --tip: #ffd54a;
+      --ok: #3ecf8e;
+      --bad: #ff5c7a;
+      --muted: #9a92a6;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1000px 560px at 8% -8%, #d8ecff 0%, transparent 48%),
+        radial-gradient(900px 500px at 100% 0%, #e8dcf8 0%, transparent 46%),
+        radial-gradient(700px 420px at 50% 110%, #ffe4c8 0%, transparent 42%),
+        var(--paper);
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .logo {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+      text-decoration: none;
+      color: var(--ink);
+    }
+    .logo span { color: var(--accent); }
+    .links { display: flex; gap: 10px; flex-wrap: wrap; }
+    .links a {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--soft);
+      text-decoration: none;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.55);
+      border: 1px solid var(--line);
+    }
+    .links a:hover { color: var(--accent-deep); background: #fff; }
+
+    .hero {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 8px 24px 28px;
+    }
+    .hero h1 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 4.5vw, 2.85rem);
+      letter-spacing: -0.045em;
+      line-height: 1.05;
+      margin: 0 0 12px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+    .hero .lede {
+      font-size: 1.08rem;
+      line-height: 1.55;
+      color: var(--soft);
+      max-width: 58ch;
+      margin: 0 0 16px;
+    }
+    .locked {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+    .chip {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.7);
+      border: 1px solid var(--line);
+      color: var(--soft);
+    }
+    .chip strong { color: var(--ink); }
+
+    .ask {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.72);
+      border: 1px solid var(--line);
+      font-size: 0.98rem;
+      line-height: 1.45;
+      max-width: 62ch;
+    }
+    .ask strong { color: var(--ink); }
+
+    .grid {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 20px 40px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    @media (max-width: 820px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .opt {
+      position: relative;
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 14px;
+      align-items: stretch;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.78);
+      border: 2px solid var(--line);
+      cursor: pointer;
+      transition: border-color .15s, box-shadow .15s, transform .12s;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+    }
+    .opt:hover {
+      border-color: #d0c4b4;
+      box-shadow: 0 8px 24px rgba(26,20,36,.06);
+    }
+    .opt[aria-checked="true"] {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255,138,61,.22);
+      background: #fff;
+    }
+    .opt.locked-pick {
+      border-color: var(--ok);
+      box-shadow: 0 0 0 3px rgba(62,207,142,.28);
+      background: #fff;
+      cursor: default;
+    }
+    .opt.locked-pick .tag { color: #1f9a5a; }
+    .opt.is-rejected {
+      opacity: .42;
+      cursor: default;
+    }
+    .lock-banner {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #1f9a5a;
+      background: rgba(62,207,142,.18);
+      border: 1px solid rgba(62,207,142,.55);
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+    .opt .num {
+      position: absolute;
+      top: 10px;
+      right: 12px;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .opt[aria-checked="true"] .num { color: var(--accent-deep); }
+
+    .mini {
+      position: relative;
+      width: 118px;
+      height: 168px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(165deg, #c4b0f0 0%, #8ec8ff 45%, #d4b8f5 100%);
+      border: 1px solid rgba(255,255,255,.5);
+      flex-shrink: 0;
+    }
+    .mini .lanes {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .mini .lanes i {
+      border-right: 1px solid rgba(255,255,255,.35);
+    }
+    .mini .lanes i:last-child { border-right: 0; }
+    .mini .hline {
+      position: absolute;
+      left: 4%;
+      right: 4%;
+      height: 2px;
+      background: rgba(255,255,255,.85);
+      box-shadow: 0 0 0 1px rgba(0,0,0,.08);
+      z-index: 3;
+    }
+    .mini .hold {
+      position: absolute;
+      left: 26%;
+      width: 22%;
+      background: var(--tile);
+      border-radius: 3px;
+      z-index: 2;
+    }
+    .mini .hold .tip {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 18%;
+      background: linear-gradient(180deg, transparent, rgba(255,213,74,.55));
+      border-bottom: 2px solid var(--tip);
+    }
+    .mini .finger {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(255,138,61,.95);
+      border: 2px solid #fff;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+      z-index: 5;
+      transform: translate(-50%, -50%);
+    }
+    .mini .zone {
+      position: absolute;
+      left: 0; right: 0;
+      background: rgba(62,207,142,.28);
+      border-top: 1px dashed rgba(62,207,142,.9);
+      border-bottom: 1px dashed rgba(62,207,142,.9);
+      z-index: 1;
+    }
+    .mini .band {
+      position: absolute;
+      left: 26%;
+      width: 22%;
+      background: rgba(255,213,74,.35);
+      border: 1px solid var(--tip);
+      z-index: 3;
+      border-radius: 2px;
+    }
+    .mini .label {
+      position: absolute;
+      bottom: 4px;
+      left: 0; right: 0;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      color: rgba(255,255,255,.9);
+      text-shadow: 0 1px 2px rgba(0,0,0,.35);
+      z-index: 6;
+    }
+
+    .body h2 {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      font-size: 1.12rem;
+      letter-spacing: -0.03em;
+      margin: 0 28px 6px 0;
+      line-height: 1.2;
+    }
+    .body .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: var(--accent-deep);
+      margin-bottom: 6px;
+    }
+    .body p {
+      margin: 0 0 8px;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      color: var(--soft);
+    }
+    .body p strong { color: var(--ink); font-weight: 600; }
+    .body .trade {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .body .trade span { color: var(--soft); }
+
+    .now {
+      max-width: 1100px;
+      margin: 0 auto 18px;
+      padding: 0 20px;
+    }
+    .now-box {
+      padding: 12px 16px;
+      border-radius: 14px;
+      background: rgba(255,213,74,.18);
+      border: 1px solid rgba(255,213,74,.55);
+      font-size: 0.92rem;
+      line-height: 1.45;
+      color: var(--soft);
+    }
+    .now-box strong { color: var(--ink); }
+
+    .dock {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+      background: rgba(247,242,235,.88);
+      border-top: 1px solid var(--line);
+      padding: 12px 20px 16px;
+    }
+    .dock-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .pick {
+      font-size: 0.95rem;
+      color: var(--soft);
+    }
+    .pick strong { color: var(--ink); }
+    .pick code {
+      font-family: "JetBrains Mono", monospace;
+      font-size: 0.85rem;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      font-family: inherit;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: linear-gradient(180deg, #e07a45, var(--accent));
+      color: #fff;
+      box-shadow: 0 3px 0 var(--accent-deep);
+    }
+    .btn-primary:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-ghost {
+      background: var(--white);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+    .toast {
+      position: fixed;
+      bottom: 88px;
+      left: 50%;
+      transform: translateX(-50%) translateY(12px);
+      opacity: 0;
+      pointer-events: none;
+      background: var(--ink);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: .2s;
+      z-index: 30;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="./beat-pitch.html">Beat<span>lane</span></a>
+    <nav class="links">
+      <a href="./PRD.html">PRD</a>
+      <a href="./design-pack.html">Design</a>
+      <a href="./beat-pitch.html">Beat pitch</a>
+      <a href="./clarifications.html">Clarifications</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <h1>Hold: <em>where</em> does the tap happen?</h1>
+    <p class="lede">
+      Ten mutually exclusive rules for the <strong>press-down</strong> that starts a hold.
+      Duration is already locked (finger stays until the tile finishes). This page is only about
+      <em>where / when</em> that first contact must land.
+    </p>
+    <div class="locked">
+      <span class="chip"><strong>Locked:</strong> hold until tile finishes</span>
+      <span class="chip"><strong>Locked:</strong> not a short timed press</span>
+      <span class="chip"><strong>Locked:</strong> HOLD_TAP earliest_pixel_auto</span>
+    </div>
+    <div class="ask">
+      <strong>Decision locked.</strong> Option <code>10</code> —
+      <code>earliest_pixel_auto</code> — is written into
+      <code>docs/clarifications-answers.md</code> and wired in
+      <code>judging.ts</code> / <code>classicPlayfield.ts</code>.
+    </div>
+  </section>
+
+  <div class="now">
+    <div class="now-box">
+      <strong>Locked rule:</strong> player aims the <em>lane</em>; Y is assisted to the nearest
+      valid point on the hold (<em>leading tip</em> or <em>hit line</em>) while any part of the
+      hold remains on-screen. Sustain until the tile finishes (unchanged).
+    </div>
+  </div>
+
+  <div class="grid" id="options" role="radiogroup" aria-label="Hold tap location options"></div>
+
+  <div class="dock">
+    <div class="dock-inner">
+      <div class="pick" id="pickLabel">Selected: <strong>none</strong></div>
+      <div class="cta-row">
+        <button class="btn btn-ghost" type="button" id="clearBtn">Clear</button>
+        <button class="btn btn-primary" type="button" id="copyBtn" disabled>Copy lock line</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast">Copied</div>
+
+  <script>
+    /**
+     * Each option answers: where must finger-down land to START a hold?
+     * (Sustain to finish is already locked.)
+     */
+    const OPTIONS = [
+      {
+        id: "anywhere_on_tile",
+        num: "01",
+        vibe: "Forgiving",
+        title: "Anywhere on the visible tile",
+        rule: "Press anywhere the black hold body is drawn, as long as any pixel of it is still on-screen.",
+        trade: "Easiest to learn. Early presses on a tall hold feel mushy; grading must decide if early = GREAT or free.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:18%;height:58%"><div class="tip"></div></div>
+            <div class="finger" style="left:37%;top:40%"></div>
+            <div class="label">ANYWHERE</div>`;
+        },
+      },
+      {
+        id: "hit_line_band",
+        num: "02",
+        vibe: "Classic rhythm",
+        title: "Hit-line band only",
+        rule: "Press only while the hold intersects a fixed hit-line band (e.g. ±N% of playfield height). Touching the tile above/below that band does nothing / miss.",
+        trade: "Clear timing skill. Tall holds feel like “wait for the line,” not “tap the black.”",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="zone" style="top:62%;height:18%"></div>
+            <div class="hline" style="top:70%"></div>
+            <div class="hold" style="top:22%;height:55%"><div class="tip"></div></div>
+            <div class="finger" style="left:37%;top:70%"></div>
+            <div class="label">HIT BAND</div>`;
+        },
+      },
+      {
+        id: "leading_tip",
+        num: "03",
+        vibe: "Piano Tiles head",
+        title: "Leading tip only (bottom head)",
+        rule: "Only the bottom “head” of the hold is tappable. The long trail above is visual sustain — pressing the trail early does not start the hold.",
+        trade: "Reads like classic piano tiles. Harder on long_hold; tip must be visually obvious.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:16%;height:62%">
+              <div class="tip" style="height:22%;background:rgba(255,213,74,.45);border-bottom:3px solid #ffd54a"></div>
+            </div>
+            <div class="band" style="bottom:16%;height:14%;top:auto"></div>
+            <div class="finger" style="left:37%;top:78%"></div>
+            <div class="label">TIP ONLY</div>`;
+        },
+      },
+      {
+        id: "tip_at_hit_line",
+        num: "04",
+        vibe: "Strict onset",
+        title: "Tip must meet the hit line",
+        rule: "Finger-down is only valid when the hold’s bottom tip is inside the hit-line window. Too early on the tip = ignore or miss; too late after tip passes = miss.",
+        trade: "Most “rhythm game” of the set. Punishing on mobile latency; needs a generous tip window.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="zone" style="top:64%;height:14%"></div>
+            <div class="hline" style="top:70%"></div>
+            <div class="hold" style="top:28%;height:42%">
+              <div class="tip" style="height:20%"></div>
+            </div>
+            <div class="finger" style="left:37%;top:70%"></div>
+            <div class="label">TIP × LINE</div>`;
+        },
+      },
+      {
+        id: "lane_strip_armed",
+        num: "05",
+        vibe: "Lane muscle memory",
+        title: "Armed lane strip (ignore Y)",
+        rule: "Once a hold is “armed” (scheduled / on approach), press anywhere in that lane’s vertical strip — Y does not matter. Wrong lane = miss.",
+        trade: "Great for thumb spam. Weak spatial judging; early/late becomes almost irrelevant.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="zone" style="left:25%;width:25%;top:0;bottom:0;height:auto;border:0;background:rgba(62,207,142,.22);border-left:2px solid #3ecf8e;border-right:2px solid #3ecf8e"></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:20%;height:50%"></div>
+            <div class="finger" style="left:37%;top:48%"></div>
+            <div class="label">LANE Y-FREE</div>`;
+        },
+      },
+      {
+        id: "bottom_third",
+        num: "06",
+        vibe: "Mobile comfort",
+        title: "Bottom third of playfield",
+        rule: "Hold start only counts if the press is in the lower ~⅓ of the playfield AND hits the correct lane’s hold. Upper-screen presses on the same tile are dead.",
+        trade: "Matches how thumbs actually rest. Tall holds entering from the top can’t be started early by reaching up.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="zone" style="top:67%;height:33%;background:rgba(62,207,142,.3)"></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:18%;height:58%"></div>
+            <div class="finger" style="left:37%;top:82%"></div>
+            <div class="label">BOTTOM ⅓</div>`;
+        },
+      },
+      {
+        id: "center_vs_line",
+        num: "07",
+        vibe: "Same as taps",
+        title: "Tile center vs hit line (tap parity)",
+        rule: "Same spatial rule as short taps: press the tile body; grade / accept from |tileCenterY − hitLineY|. Hold then continues until finish.",
+        trade: "One mental model for every tile. Tall holds have a weird “center” far from the tip players watch.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:70%"></div>
+            <div class="hold" style="top:22%;height:52%"></div>
+            <div class="finger" style="left:37%;top:48%"></div>
+            <div style="position:absolute;left:37%;top:48%;width:8px;height:8px;border-radius:50%;background:#ffd54a;transform:translate(-50%,-50%);z-index:6;box-shadow:0 0 0 2px #fff"></div>
+            <div class="label">CENTER</div>`;
+        },
+      },
+      {
+        id: "press_through_body",
+        num: "08",
+        vibe: "Scrub the black",
+        title: "Press on body as it crosses the line",
+        rule: "You may start the hold whenever any part of the black body crosses the hit line — tip, middle, or top. Finger-down above the line before contact = dead.",
+        trade: "Mid-hold “catch” is allowed (recover a late tip). Less pure than tip-only; more arcade.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:70%"></div>
+            <div class="hold" style="top:38%;height:48%"></div>
+            <div class="finger" style="left:37%;top:70%"></div>
+            <div class="label">CROSS LINE</div>`;
+        },
+      },
+      {
+        id: "two_zone_tip_sustain",
+        num: "09",
+        vibe: "Explicit UX",
+        title: "Two-zone: tip start → lane sustain",
+        rule: "Start must hit a marked tip zone. After start, finger may slide anywhere in-lane (or even slightly off-tile) while held; release early still fails.",
+        trade: "Clearest teaching (“press gold, keep holding”). Extra art/state; tip zone size is a balance knob.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:14%;height:64%">
+              <div class="tip" style="height:24%;background:rgba(255,213,74,.55);border-bottom:3px solid #ffd54a"></div>
+            </div>
+            <div class="zone" style="left:25%;width:25%;top:0;height:100%;background:rgba(255,138,61,.12);border:0;border-left:1px dashed rgba(255,138,61,.7);border-right:1px dashed rgba(255,138,61,.7)"></div>
+            <div class="finger" style="left:37%;top:76%"></div>
+            <div class="label">TIP → HOLD</div>`;
+        },
+      },
+      {
+        id: "earliest_pixel_auto",
+        num: "10",
+        vibe: "Hybrid assist",
+        title: "Earliest valid pixel (auto-aim Y)",
+        rule: "Player aims the lane; Y is assisted — if the press is in-lane while the hold is hittable, the game treats it as hitting the nearest valid point on that hold (tip or line).",
+        trade: "Feels magical on phone; weaker “I earned that.” Needs cheat-proofing for score trust later.",
+        draw(el) {
+          el.innerHTML = `
+            <div class="lanes"><i></i><i></i><i></i><i></i></div>
+            <div class="hline" style="top:72%"></div>
+            <div class="hold" style="top:20%;height:55%"><div class="tip"></div></div>
+            <div class="finger" style="left:37%;top:36%;opacity:.45"></div>
+            <div class="finger" style="left:37%;top:74%"></div>
+            <div style="position:absolute;left:37%;top:36%;width:2px;height:38%;background:rgba(255,138,61,.7);z-index:4"></div>
+            <div class="label">Y ASSIST</div>`;
+        },
+      },
+    ];
+
+    const LOCKED_ID = "earliest_pixel_auto";
+    const root = document.getElementById("options");
+
+    function render() {
+      root.innerHTML = "";
+      for (const opt of OPTIONS) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "opt" + (opt.id === LOCKED_ID ? " locked-pick" : " is-rejected");
+        btn.setAttribute("role", "radio");
+        btn.setAttribute("aria-checked", opt.id === LOCKED_ID ? "true" : "false");
+        btn.disabled = true;
+        btn.dataset.id = opt.id;
+
+        const mini = document.createElement("div");
+        mini.className = "mini";
+        opt.draw(mini);
+
+        const body = document.createElement("div");
+        body.className = "body";
+        body.innerHTML = `
+          <span class="num">${opt.num}</span>
+          <div class="tag">${opt.id === LOCKED_ID ? "Locked" : opt.vibe}</div>
+          <h2>${opt.title}</h2>
+          <p><strong>Rule:</strong> ${opt.rule}</p>
+          <p class="trade"><span>Tradeoff — </span>${opt.trade}</p>
+          ${opt.id === LOCKED_ID ? `<div class="lock-banner">Selected · locked</div>` : ""}
+        `;
+
+        btn.append(mini, body);
+        root.appendChild(btn);
+      }
+    }
+
+    const locked = OPTIONS.find((o) => o.id === LOCKED_ID);
+    document.getElementById("pickLabel").innerHTML =
+      `Locked: <strong>${locked.num}</strong> · <code>${locked.id}</code> — ${locked.title}`;
+    document.getElementById("copyBtn").disabled = false;
+    document.getElementById("clearBtn").disabled = true;
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      const text = [
+        `HOLD_TAP_LOCK: ${locked.id}`,
+        `Title: ${locked.title}`,
+        `Rule: ${locked.rule}`,
+        `Sustain (already locked): finger-down until hold tile finishes; not a short timed press.`,
+      ].join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      const toast = document.getElementById("toast");
+      toast.textContent = "Lock line copied";
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1600);
+    });
+
+    render();
+  </script>
+</body>
+</html>
