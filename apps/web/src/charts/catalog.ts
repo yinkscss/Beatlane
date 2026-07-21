@@ -1,9 +1,9 @@
-/** In-repo sample charts (G5–G6). Storage catalog arrives in G12. */
+/** In-repo sample charts (G5–G11). Storage catalog arrives in G12. */
 
 export type SampleChartMeta = {
   id: string
   title: string
-  difficulty: 'easy' | 'normal'
+  difficulty: 'easy' | 'normal' | 'hard'
   /** Public URL under Vite `public/`. */
   url: string
 }
@@ -20,6 +20,12 @@ export const SAMPLE_CHARTS: readonly SampleChartMeta[] = [
     title: 'Pulse Run',
     difficulty: 'normal',
     url: '/charts/sample-normal.json',
+  },
+  {
+    id: 'sample-hard',
+    title: 'Obstacle Gauntlet',
+    difficulty: 'hard',
+    url: '/charts/sample-hard.json',
   },
 ] as const
 

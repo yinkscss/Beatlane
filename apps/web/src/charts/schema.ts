@@ -9,30 +9,115 @@ export const BANNER_DURATION_DEFAULT = 4
 
 export type ChartDifficulty = 'easy' | 'normal' | 'hard'
 
-/** G5 tap; G6 hold / bomb. */
-export type ChartNoteType = 'tap' | 'hold' | 'bomb'
+/** Optional per-note visual/score modifier (G11). */
+export type ChartNoteMod = 'ice' | 'gold'
+
+/** G5 tap; G6 hold / bomb; G11 hard shapes. */
+export type ChartNoteType =
+  | 'tap'
+  | 'hold'
+  | 'bomb'
+  | 'long_hold'
+  | 'bridge'
+  | 'triple'
+  | 'l_hook'
+  | 'fake_gap'
+  | 'slide'
 
 export type ChartTapNote = {
   t: number
   lane: 0 | 1 | 2 | 3
   type: 'tap'
+  mod?: ChartNoteMod
 }
 
 export type ChartHoldNote = {
   t: number
   lane: 0 | 1 | 2 | 3
   type: 'hold'
-  /** Hold duration in seconds — must press until length completes. */
+  /** Hold duration in seconds — must press until length finishes. */
   length: number
+  mod?: ChartNoteMod
 }
 
 export type ChartBombNote = {
   t: number
   lane: 0 | 1 | 2 | 3
   type: 'bomb'
+  mod?: ChartNoteMod
 }
 
-export type ChartNote = ChartTapNote | ChartHoldNote | ChartBombNote
+/** Extra-tall hold (~½ screen). Early release = miss. */
+export type ChartLongHoldNote = {
+  t: number
+  lane: 0 | 1 | 2 | 3
+  type: 'long_hold'
+  length: number
+  mod?: ChartNoteMod
+}
+
+/** 2-wide bar; `lane` is leftmost. */
+export type ChartBridgeNote = {
+  t: number
+  lane: 0 | 1 | 2
+  type: 'bridge'
+  mod?: ChartNoteMod
+}
+
+/** 3-wide bar; `lane` is leftmost (0 or 1). */
+export type ChartTripleNote = {
+  t: number
+  lane: 0 | 1
+  type: 'triple'
+  mod?: ChartNoteMod
+}
+
+/** Vertical stem + foot into neighbor. */
+export type ChartLHookNote = {
+  t: number
+  lane: 0 | 1 | 2 | 3
+  type: 'l_hook'
+  /** Foot direction relative to stem lane. */
+  foot: -1 | 1
+  length: number
+  mod?: ChartNoteMod
+}
+
+/**
+ * Long tile with a white “don’t tap” gap mid-body.
+ * Hold black segments only; re-press after the gap.
+ */
+export type ChartFakeGapNote = {
+  t: number
+  lane: 0 | 1 | 2 | 3
+  type: 'fake_gap'
+  length: number
+  /** Gap start as fraction of length (0–1). Default 0.4. */
+  gapAt?: number
+  /** Gap length as fraction of hold length. Default 0.2. */
+  gapLen?: number
+  mod?: ChartNoteMod
+}
+
+/** Starts in `lane`, slides to `endLane` before the hit line. */
+export type ChartSlideNote = {
+  t: number
+  lane: 0 | 1 | 2 | 3
+  type: 'slide'
+  endLane: 0 | 1 | 2 | 3
+  mod?: ChartNoteMod
+}
+
+export type ChartNote =
+  | ChartTapNote
+  | ChartHoldNote
+  | ChartBombNote
+  | ChartLongHoldNote
+  | ChartBridgeNote
+  | ChartTripleNote
+  | ChartLHookNote
+  | ChartFakeGapNote
+  | ChartSlideNote
 
 export type ChartSpeedUpEvent = {
   t: number
@@ -41,10 +126,29 @@ export type ChartSpeedUpEvent = {
   mult?: number
 }
 
-/** G6 obstacle banners (HOLD / DON'T TAP / DOUBLE). */
+/** G6 basic + G11 hard/modifier banners. */
+export type ChartObstacleEventType =
+  | 'hold'
+  | 'dont_tap'
+  | 'double'
+  | 'ice'
+  | 'gold'
+  | 'fog'
+  | 'reverse'
+  | 'long_hold'
+  | 'bridge'
+  | 'triple'
+  | 'l_hook'
+  | 'zig'
+  | 'split'
+  | 'fake_gap'
+  | 'slide'
+  | 'cascade'
+  | 'trap_double'
+
 export type ChartObstacleEvent = {
   t: number
-  type: 'hold' | 'dont_tap' | 'double'
+  type: ChartObstacleEventType
   /** Banner seconds; clamped to 3–8. Default 4. */
   duration?: number
 }
@@ -66,6 +170,26 @@ export type Chart = {
   events: ChartEvent[]
 }
 
+const OBSTACLE_EVENT_TYPES = new Set<string>([
+  'hold',
+  'dont_tap',
+  'double',
+  'ice',
+  'gold',
+  'fog',
+  'reverse',
+  'long_hold',
+  'bridge',
+  'triple',
+  'l_hook',
+  'zig',
+  'split',
+  'fake_gap',
+  'slide',
+  'cascade',
+  'trap_double',
+])
+
 export function isLane(n: unknown): n is 0 | 1 | 2 | 3 {
   return n === 0 || n === 1 || n === 2 || n === 3
 }
@@ -73,6 +197,19 @@ export function isLane(n: unknown): n is 0 | 1 | 2 | 3 {
 export function clampBannerDuration(sec: number | undefined): number {
   const v = sec === undefined ? BANNER_DURATION_DEFAULT : sec
   return Math.min(BANNER_DURATION_MAX, Math.max(BANNER_DURATION_MIN, v))
+}
+
+function parseMod(raw: unknown, i: number): ChartNoteMod | undefined {
+  if (raw === undefined) return undefined
+  if (raw === 'ice' || raw === 'gold') return raw
+  throw new Error(`Chart: note[${i}].mod must be ice|gold`)
+}
+
+function requireLength(note: Record<string, unknown>, i: number): number {
+  if (typeof note.length !== 'number' || !(note.length > 0)) {
+    throw new Error(`Chart: note[${i}].length required`)
+  }
+  return note.length
 }
 
 /** Lightweight runtime validation for fetched JSON. */
@@ -102,17 +239,94 @@ export function parseChart(raw: unknown): Chart {
     const note = n as Record<string, unknown>
     if (typeof note.t !== 'number') throw new Error(`Chart: note[${i}].t required`)
     if (!isLane(note.lane)) throw new Error(`Chart: note[${i}].lane must be 0–3`)
+    const mod = parseMod(note.mod, i)
+
     if (note.type === 'tap') {
-      return { t: note.t, lane: note.lane, type: 'tap' }
+      return mod ? { t: note.t, lane: note.lane, type: 'tap', mod } : { t: note.t, lane: note.lane, type: 'tap' }
     }
     if (note.type === 'bomb') {
-      return { t: note.t, lane: note.lane, type: 'bomb' }
+      return mod
+        ? { t: note.t, lane: note.lane, type: 'bomb', mod }
+        : { t: note.t, lane: note.lane, type: 'bomb' }
     }
     if (note.type === 'hold') {
-      if (typeof note.length !== 'number' || !(note.length > 0)) {
-        throw new Error(`Chart: note[${i}].length required for hold`)
+      const length = requireLength(note, i)
+      return mod
+        ? { t: note.t, lane: note.lane, type: 'hold', length, mod }
+        : { t: note.t, lane: note.lane, type: 'hold', length }
+    }
+    if (note.type === 'long_hold') {
+      const length = requireLength(note, i)
+      return mod
+        ? { t: note.t, lane: note.lane, type: 'long_hold', length, mod }
+        : { t: note.t, lane: note.lane, type: 'long_hold', length }
+    }
+    if (note.type === 'bridge') {
+      if (note.lane > 2) throw new Error(`Chart: note[${i}] bridge lane must be 0–2`)
+      return mod
+        ? { t: note.t, lane: note.lane as 0 | 1 | 2, type: 'bridge', mod }
+        : { t: note.t, lane: note.lane as 0 | 1 | 2, type: 'bridge' }
+    }
+    if (note.type === 'triple') {
+      if (note.lane > 1) throw new Error(`Chart: note[${i}] triple lane must be 0–1`)
+      return mod
+        ? { t: note.t, lane: note.lane as 0 | 1, type: 'triple', mod }
+        : { t: note.t, lane: note.lane as 0 | 1, type: 'triple' }
+    }
+    if (note.type === 'l_hook') {
+      const length = requireLength(note, i)
+      if (note.foot !== -1 && note.foot !== 1) {
+        throw new Error(`Chart: note[${i}].foot must be -1|1`)
       }
-      return { t: note.t, lane: note.lane, type: 'hold', length: note.length }
+      const footLane = note.lane + note.foot
+      if (!isLane(footLane)) {
+        throw new Error(`Chart: note[${i}] l_hook foot out of lanes`)
+      }
+      return mod
+        ? { t: note.t, lane: note.lane, type: 'l_hook', foot: note.foot, length, mod }
+        : { t: note.t, lane: note.lane, type: 'l_hook', foot: note.foot, length }
+    }
+    if (note.type === 'fake_gap') {
+      const length = requireLength(note, i)
+      const gapAt = note.gapAt === undefined ? 0.4 : note.gapAt
+      const gapLen = note.gapLen === undefined ? 0.2 : note.gapLen
+      if (typeof gapAt !== 'number' || gapAt < 0 || gapAt >= 1) {
+        throw new Error(`Chart: note[${i}].gapAt invalid`)
+      }
+      if (typeof gapLen !== 'number' || gapLen <= 0 || gapAt + gapLen > 1) {
+        throw new Error(`Chart: note[${i}].gapLen invalid`)
+      }
+      const base = {
+        t: note.t,
+        lane: note.lane,
+        type: 'fake_gap' as const,
+        length,
+        gapAt,
+        gapLen,
+      }
+      return mod ? { ...base, mod } : base
+    }
+    if (note.type === 'slide') {
+      if (!isLane(note.endLane)) {
+        throw new Error(`Chart: note[${i}].endLane must be 0–3`)
+      }
+      if (note.endLane === note.lane) {
+        throw new Error(`Chart: note[${i}] slide endLane must differ`)
+      }
+      return mod
+        ? {
+            t: note.t,
+            lane: note.lane,
+            type: 'slide',
+            endLane: note.endLane,
+            mod,
+          }
+        : {
+            t: note.t,
+            lane: note.lane,
+            type: 'slide',
+            endLane: note.endLane,
+          }
     }
     throw new Error(`Chart: note[${i}].type unsupported`)
   })
@@ -132,7 +346,7 @@ export function parseChart(raw: unknown): Chart {
         : { t: ev.t, type: 'speed_up', mult }
     }
 
-    if (ev.type === 'hold' || ev.type === 'dont_tap' || ev.type === 'double') {
+    if (typeof ev.type === 'string' && OBSTACLE_EVENT_TYPES.has(ev.type)) {
       const duration = ev.duration
       if (
         duration !== undefined &&
@@ -140,9 +354,10 @@ export function parseChart(raw: unknown): Chart {
       ) {
         throw new Error(`Chart: event[${i}].duration invalid`)
       }
+      const type = ev.type as ChartObstacleEventType
       return duration === undefined
-        ? { t: ev.t, type: ev.type }
-        : { t: ev.t, type: ev.type, duration }
+        ? { t: ev.t, type }
+        : { t: ev.t, type, duration }
     }
 
     throw new Error(`Chart: event[${i}].type unsupported`)

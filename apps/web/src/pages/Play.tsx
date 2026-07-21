@@ -9,6 +9,7 @@ import {
   ClassicPlayfield,
   type FailReason,
   type HitGrade,
+  type ModifierPhase,
   type ObstacleBannerKind,
   type ObstacleBannerPhase,
   type PlayMode,
@@ -53,6 +54,47 @@ const OBSTACLE_LABEL: Record<ObstacleBannerKind, string> = {
   hold: 'HOLD',
   dont_tap: "DON'T TAP",
   double: 'DOUBLE',
+  ice: 'ICE',
+  gold: 'GOLD',
+  fog: 'FOG',
+  reverse: 'REVERSE',
+  long_hold: 'HOLD LONG',
+  bridge: 'BRIDGE',
+  triple: 'TRIPLE',
+  l_hook: 'L-HOOK',
+  zig: 'ZIG',
+  split: 'SPLIT',
+  fake_gap: 'GAP',
+  slide: 'SLIDE',
+  cascade: 'CASCADE',
+  trap_double: 'TRAP',
+}
+
+function bannerClass(kind: ObstacleBannerKind): string {
+  switch (kind) {
+    case 'hold':
+    case 'long_hold':
+    case 'split':
+      return styles.bannerHold
+    case 'dont_tap':
+    case 'fake_gap':
+    case 'trap_double':
+    case 'reverse':
+    case 'triple':
+      return styles.bannerDontTap
+    case 'ice':
+      return styles.bannerIce
+    case 'gold':
+      return styles.bannerGold
+    case 'fog':
+    case 'double':
+    case 'bridge':
+    case 'zig':
+    case 'cascade':
+      return styles.bannerDouble
+    default:
+      return styles.bannerNeutral
+  }
 }
 
 function parseMode(raw: string | null): PlayMode {
@@ -104,6 +146,7 @@ export default function PlayPage() {
   const [reviveBusy, setReviveBusy] = useState(false)
   const [reviveError, setReviveError] = useState<string | null>(null)
   const [shieldUi, setShieldUi] = useState(false)
+  const [reverseUi, setReverseUi] = useState(false)
   const speedAtFailRef = useRef(1)
 
   useEffect(() => {
@@ -139,6 +182,7 @@ export default function PlayPage() {
     setReviveBusy(false)
     setReviveError(null)
     setShieldUi(false)
+    setReverseUi(false)
     speedAtFailRef.current = 1
 
     const songClock = () => {
@@ -181,6 +225,7 @@ export default function PlayPage() {
         setFail(reason)
         setSpeedUi(null)
         setObstacleUi(null)
+        setReverseUi(false)
         setCleared(false)
         setReviveError(null)
       },
@@ -198,6 +243,10 @@ export default function PlayPage() {
         } else {
           setObstacleUi(null)
         }
+      },
+      onModifier: (ev: ModifierPhase) => {
+        if (cancelled) return
+        if (ev.phase === 'reverse') setReverseUi(ev.active)
       },
       onChartComplete: (nextScore, nextCombo) => {
         if (cancelled) return
@@ -435,7 +484,11 @@ export default function PlayPage() {
             onClick={() => setChartId(c.id)}
             aria-pressed={chartId === c.id}
           >
-            {c.difficulty === 'easy' ? 'Easy' : 'Normal'}
+            {c.difficulty === 'easy'
+              ? 'Easy'
+              : c.difficulty === 'normal'
+                ? 'Normal'
+                : 'Hard'}
           </button>
         ))}
         {chartMeta ? (
@@ -514,18 +567,18 @@ export default function PlayPage() {
 
         {obstacleUi ? (
           <div
-            className={`${styles.obstacleBanner} ${
-              obstacleUi.kind === 'hold'
-                ? styles.bannerHold
-                : obstacleUi.kind === 'dont_tap'
-                  ? styles.bannerDontTap
-                  : styles.bannerDouble
-            }`}
+            className={`${styles.obstacleBanner} ${bannerClass(obstacleUi.kind)}`}
             role="status"
             aria-live="polite"
             data-duration={obstacleUi.durationSec}
           >
             {OBSTACLE_LABEL[obstacleUi.kind]}
+          </div>
+        ) : null}
+
+        {reverseUi ? (
+          <div className={styles.reverseHint} aria-hidden="true">
+            ← lanes flipped →
           </div>
         ) : null}
 

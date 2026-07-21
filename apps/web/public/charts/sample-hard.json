@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "id": "sample-hard",
+  "title": "Obstacle Gauntlet",
+  "difficulty": "hard",
+  "bpm": 128,
+  "offset": 0,
+  "audio": "/audio/bed.wav",
+  "scrollHeightsPerSec": 0.82,
+  "notes": [
+    { "t": 1.0, "lane": 0, "type": "tap" },
+    { "t": 1.4, "lane": 2, "type": "tap" },
+    { "t": 1.8, "lane": 1, "type": "tap" },
+    { "t": 2.2, "lane": 3, "type": "tap" },
+    { "t": 2.6, "lane": 0, "type": "tap" },
+    { "t": 3.0, "lane": 1, "type": "tap" },
+
+    { "t": 5.2, "lane": 1, "type": "long_hold", "length": 1.6 },
+    { "t": 7.4, "lane": 3, "type": "tap" },
+
+    { "t": 9.0, "lane": 1, "type": "bridge" },
+    { "t": 10.0, "lane": 0, "type": "tap" },
+    { "t": 10.4, "lane": 3, "type": "tap" },
+
+    { "t": 12.0, "lane": 0, "type": "triple" },
+    { "t": 13.0, "lane": 3, "type": "tap" },
+
+    { "t": 14.4, "lane": 1, "type": "l_hook", "foot": 1, "length": 1.1 },
+    { "t": 16.0, "lane": 0, "type": "tap" },
+
+    { "t": 17.2, "lane": 0, "type": "tap" },
+    { "t": 17.45, "lane": 1, "type": "tap" },
+    { "t": 17.7, "lane": 2, "type": "tap" },
+    { "t": 17.95, "lane": 3, "type": "tap" },
+
+    { "t": 19.4, "lane": 0, "type": "tap" },
+    { "t": 19.4, "lane": 3, "type": "tap" },
+    { "t": 20.1, "lane": 1, "type": "tap" },
+
+    { "t": 21.6, "lane": 2, "type": "fake_gap", "length": 1.5, "gapAt": 0.38, "gapLen": 0.22 },
+    { "t": 23.5, "lane": 0, "type": "tap" },
+
+    { "t": 24.8, "lane": 0, "type": "slide", "endLane": 2 },
+    { "t": 25.6, "lane": 3, "type": "slide", "endLane": 1 },
+    { "t": 26.4, "lane": 1, "type": "tap" },
+
+    { "t": 28.0, "lane": 0, "type": "tap" },
+    { "t": 28.18, "lane": 1, "type": "tap" },
+    { "t": 28.36, "lane": 2, "type": "tap" },
+    { "t": 28.54, "lane": 3, "type": "tap" },
+    { "t": 29.2, "lane": 2, "type": "tap" },
+
+    { "t": 30.6, "lane": 1, "type": "tap" },
+    { "t": 30.6, "lane": 2, "type": "bomb" },
+    { "t": 31.3, "lane": 0, "type": "tap" },
+
+    { "t": 33.0, "lane": 0, "type": "tap", "mod": "ice" },
+    { "t": 33.5, "lane": 2, "type": "tap", "mod": "ice" },
+    { "t": 34.0, "lane": 1, "type": "tap", "mod": "ice" },
+    { "t": 34.5, "lane": 3, "type": "tap" },
+
+    { "t": 36.4, "lane": 0, "type": "tap", "mod": "gold" },
+    { "t": 36.9, "lane": 2, "type": "tap", "mod": "gold" },
+    { "t": 37.4, "lane": 1, "type": "tap" },
+    { "t": 37.9, "lane": 3, "type": "tap", "mod": "gold" },
+
+    { "t": 39.6, "lane": 1, "type": "tap" },
+    { "t": 40.1, "lane": 3, "type": "tap" },
+    { "t": 40.6, "lane": 0, "type": "tap" },
+    { "t": 41.1, "lane": 2, "type": "tap" },
+
+    { "t": 43.0, "lane": 0, "type": "tap" },
+    { "t": 43.5, "lane": 3, "type": "tap" },
+    { "t": 44.0, "lane": 1, "type": "tap" },
+    { "t": 44.5, "lane": 2, "type": "tap" },
+
+    { "t": 46.0, "lane": 1, "type": "bridge" },
+    { "t": 47.0, "lane": 0, "type": "hold", "length": 0.9 },
+    { "t": 48.2, "lane": 2, "type": "tap" },
+    { "t": 48.7, "lane": 3, "type": "tap" }
+  ],
+  "events": [
+    { "t": 4.4, "type": "long_hold", "duration": 4 },
+    { "t": 8.3, "type": "bridge", "duration": 4 },
+    { "t": 11.3, "type": "triple", "duration": 4 },
+    { "t": 13.7, "type": "l_hook", "duration": 4 },
+    { "t": 16.6, "type": "zig", "duration": 4 },
+    { "t": 18.8, "type": "split", "duration": 4 },
+    { "t": 20.9, "type": "fake_gap", "duration": 5 },
+    { "t": 24.1, "type": "slide", "duration": 4 },
+    { "t": 27.3, "type": "cascade", "duration": 4 },
+    { "t": 29.9, "type": "trap_double", "duration": 4 },
+    { "t": 32.2, "type": "ice", "duration": 5 },
+    { "t": 35.6, "type": "gold", "duration": 5 },
+    { "t": 38.8, "type": "fog", "duration": 5 },
+    { "t": 42.2, "type": "reverse", "duration": 5 },
+    { "t": 45.3, "type": "bridge", "duration": 4 },
+    { "t": 46.5, "type": "hold", "duration": 3 }
+  ]
+}
