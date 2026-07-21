@@ -205,6 +205,7 @@ export default function PlayPage() {
   const blitzTickRef = useRef<number | null>(null)
   const startCountdownTimerRef = useRef<number | null>(null)
   const startRunRef = useRef<() => Promise<void>>(async () => {})
+  const startAudioGestureRef = useRef<() => void>(() => {})
   const blitzEndedRef = useRef(false)
 
   useEffect(() => {
@@ -436,7 +437,7 @@ export default function PlayPage() {
     const startMusic = async () => {
       if (cancelled || !bedArmedRef.current) return
       if (audioRuntime.getMusicStartTime() != null) {
-        await audioRuntime.unlock()
+        await audioRuntime.resumeContext()
         return
       }
       if (musicUrlBox.current) {
@@ -480,17 +481,15 @@ export default function PlayPage() {
       }, 100)
     }
 
+    /** Begin tiles immediately — never await audio (mobile can hang after gesture expires). */
     startRunRef.current = async () => {
       if (cancelled) return
       bedArmedRef.current = true
       runStartedAtRef.current = performance.now()
-      try {
-        await startMusic()
-      } catch (err) {
+      // Kick audio in parallel; do not block beginRun on it.
+      void startMusic().catch((err) => {
         console.error('Music start failed', err)
-      }
-      if (cancelled) return
-      // If audio never armed, drop the song clock so local time drives tiles.
+      })
       if (audioRuntime.getMusicStartTime() == null) {
         game.setSongClock(null)
       }
@@ -499,6 +498,16 @@ export default function PlayPage() {
       startBlitzClock()
       setRunPhase('playing')
     }
+
+    /** User-gesture path: resume + start music while Safari still allows it. */
+    const armAudioFromGesture = () => {
+      bedArmedRef.current = true
+      void audioRuntime.resumeContext().catch(() => {})
+      void startMusic().catch((err) => {
+        console.error('Music start failed', err)
+      })
+    }
+    startAudioGestureRef.current = armAudioFromGesture
 
     void (async () => {
       try {
@@ -779,6 +788,8 @@ export default function PlayPage() {
 
   const onPlayClick = () => {
     if (runPhase !== 'ready' || fail || cleared || chartError) return
+    // Arm audio inside the click gesture — waiting until after countdown breaks Safari.
+    startAudioGestureRef.current()
     setRunPhase('countdown')
     setStartCountdown(3)
     if (startCountdownTimerRef.current) {
