@@ -101,10 +101,9 @@ END CLARIFICATION ANSWERS
 Locked in chat after `docs/hold-tap-pitch.html` (Jul 21, 2026).
 
 ```
-HOLD_TAP_LOCK: earliest_pixel_auto
-Title: Earliest valid pixel (auto-aim Y)
-Rule: Player aims the lane; Y is assisted — if the press is in-lane while the hold
-is hittable (any part of the hold still on-screen), the game treats it as hitting
-the nearest valid point on that hold (leading tip or hit line).
+HOLD_TAP_LOCK: anywhere_on_tile
+Title: Anywhere on the visible tile
+Rule: Press anywhere the hold is still on-screen (any part of the black body).
+No visible hit line / hit band on the playfield for obstacles.
 Sustain (already locked): finger-down until hold tile finishes; not a short timed press.
 ```

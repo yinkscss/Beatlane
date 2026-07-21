@@ -424,21 +424,21 @@
     <div class="locked">
       <span class="chip"><strong>Locked:</strong> hold until tile finishes</span>
       <span class="chip"><strong>Locked:</strong> not a short timed press</span>
-      <span class="chip"><strong>Locked:</strong> HOLD_TAP earliest_pixel_auto</span>
+      <span class="chip"><strong>Locked:</strong> HOLD_TAP anywhere_on_tile</span>
+      <span class="chip"><strong>Locked:</strong> no visible hit line</span>
     </div>
     <div class="ask">
-      <strong>Decision locked.</strong> Option <code>10</code> —
-      <code>earliest_pixel_auto</code> — is written into
-      <code>docs/clarifications-answers.md</code> and wired in
-      <code>judging.ts</code> / <code>classicPlayfield.ts</code>.
+      <strong>Decision locked.</strong> Option <code>01</code> —
+      <code>anywhere_on_tile</code> — is written into
+      <code>docs/clarifications-answers.md</code>. Playfield draws no hit line / hit band.
     </div>
   </section>
 
   <div class="now">
     <div class="now-box">
-      <strong>Locked rule:</strong> player aims the <em>lane</em>; Y is assisted to the nearest
-      valid point on the hold (<em>leading tip</em> or <em>hit line</em>) while any part of the
-      hold remains on-screen. Sustain until the tile finishes (unchanged).
+      <strong>Locked rule:</strong> press <em>anywhere</em> while any part of the hold is still
+      on-screen. No tip/line assist. No visible hit line for obstacles. Sustain until the tile
+      finishes (unchanged).
     </div>
   </div>
 
@@ -464,7 +464,7 @@
       {
         id: "anywhere_on_tile",
         num: "01",
-        vibe: "Forgiving",
+        vibe: "Forgiving · locked",
         title: "Anywhere on the visible tile",
         rule: "Press anywhere the black hold body is drawn, as long as any pixel of it is still on-screen.",
         trade: "Easiest to learn. Early presses on a tall hold feel mushy; grading must decide if early = GREAT or free.",
@@ -638,7 +638,7 @@
       },
     ];
 
-    const LOCKED_ID = "earliest_pixel_auto";
+    const LOCKED_ID = "anywhere_on_tile";
     const root = document.getElementById("options");
 
     function render() {

@@ -10,10 +10,9 @@ export const PLAYFIELD = {
   ] as const,
   laneRule: 0xffffff,
   laneRuleAlpha: 0.55,
-  hitLine: 0xffffff,
   tile: 0x0d0d12,
   tileInsetHighlight: 0xffffff,
-  /** Hit band Y as fraction from top (beat-pitch hit-line at bottom: 18%). */
+  /** Internal timing band Y (fraction from top). Not drawn — no visible hit line. */
   hitLineY: 0.82,
   /** Tile height as fraction of playfield height. */
   tileHeight: 0.18,
