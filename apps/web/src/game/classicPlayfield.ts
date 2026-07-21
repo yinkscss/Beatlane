@@ -6,6 +6,8 @@ import {
   Rectangle,
 } from 'pixi.js'
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
+import { playHitSparkles } from '@/game/hitSparkles'
+import { pointsForGrade } from '@/game/judging'
 import {
   HIT_WINDOW_TILES,
   PERFECT_WINDOW_TILES,
@@ -17,8 +19,8 @@ export type FailReason = 'miss' | 'wrong'
 export type HitGrade = ShatterGrade
 
 export type ClassicPlayfieldHandlers = {
-  onHit?: (grade: HitGrade, score: number) => void
-  onFail?: (reason: FailReason) => void
+  onHit?: (grade: HitGrade, score: number, combo: number) => void
+  onFail?: (reason: FailReason, score: number, combo: number) => void
 }
 
 type Tile = {
@@ -36,8 +38,8 @@ type Tile = {
 type FxJob = { update: (dtMs: number) => boolean; destroy: () => void }
 
 /**
- * G2 Classic stub: four lanes, scrolling black tiles, hit band, glass-shatter,
- * miss / wrong-tap ends the run. No audio (G4), no judge HUD (G3).
+ * Classic stub playfield: four lanes, scrolling tiles, glass shatter + sparkles,
+ * score/combo for G3 HUD. No audio (G4).
  */
 export class ClassicPlayfield {
   private app: Application | null = null
@@ -54,6 +56,7 @@ export class ClassicPlayfield {
   private running = false
   private failed = false
   private score = 0
+  private combo = 0
   private spawnAcc = 0
   private spawnMs: number = SCROLL.spawnMs
   private lastLane = -1
@@ -69,6 +72,10 @@ export class ClassicPlayfield {
 
   getScore() {
     return this.score
+  }
+
+  getCombo() {
+    return this.combo
   }
 
   isFailed() {
@@ -135,6 +142,7 @@ export class ClassicPlayfield {
     this.running = true
     this.failed = false
     this.score = 0
+    this.combo = 0
     this.spawnAcc = 400
     this.spawnMs = SCROLL.spawnMs
 
@@ -169,6 +177,7 @@ export class ClassicPlayfield {
     this.failed = false
     this.running = true
     this.score = 0
+    this.combo = 0
     this.spawnAcc = 400
     this.spawnMs = SCROLL.spawnMs
     this.lastLane = -1
@@ -406,8 +415,9 @@ export class ClassicPlayfield {
     const grade: HitGrade =
       dist <= tile.h * PERFECT_WINDOW_TILES ? 'perfect' : 'great'
 
-    this.score += grade === 'perfect' ? 320 : 180
-    this.handlers.onHit?.(grade, this.score)
+    this.combo += 1
+    this.score += pointsForGrade(grade)
+    this.handlers.onHit?.(grade, this.score, this.combo)
 
     const job = playGlassShatter({
       tile: tile.root,
@@ -417,6 +427,16 @@ export class ClassicPlayfield {
       tileH: tile.h,
     })
     this.fxJobs.push(job)
+
+    const world = tile.root.getGlobalPosition()
+    const local = this.fxLayer.toLocal(world)
+    const sparkles = playHitSparkles({
+      fxLayer: this.fxLayer,
+      x: local.x + tile.w / 2,
+      y: local.y + tile.h / 2,
+      perfect: grade === 'perfect',
+    })
+    this.fxJobs.push(sparkles)
 
     // Remove tile from active list after shatter starts; visual stays until job hides it
     this.tiles = this.tiles.filter((t) => t !== tile)
@@ -429,7 +449,9 @@ export class ClassicPlayfield {
     if (this.failed) return
     this.failed = true
     this.running = false
-    this.handlers.onFail?.(reason)
+    const endedCombo = this.combo
+    this.combo = 0
+    this.handlers.onFail?.(reason, this.score, endedCombo)
   }
 
   private clearTiles() {

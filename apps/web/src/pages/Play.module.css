@@ -1,3 +1,5 @@
+/* Play HUD — design-pack play screens (star→crown rail, score-hero, judge bubbles). */
+
 .page {
   flex: 1;
   display: flex;
@@ -6,74 +8,6 @@
   min-height: 0;
   color: #fff;
   overflow: hidden;
-  background: #8ec8ff;
-}
-
-.hud {
-  position: absolute;
-  inset: 0 0 auto 0;
-  z-index: 4;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 14px 14px 0;
-  pointer-events: none;
-}
-
-.pill {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(6px);
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: #fff;
-}
-
-.scoreBlock {
-  text-align: right;
-}
-
-.gradeIdle,
-.gradeGreat,
-.gradePerfect {
-  display: block;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.75;
-  margin-bottom: 2px;
-}
-
-.gradeGreat {
-  color: #e8f7ff;
-  opacity: 1;
-}
-
-.gradePerfect {
-  color: #ffd54a;
-  opacity: 1;
-  text-shadow: 0 0 8px rgba(255, 213, 74, 0.55);
-}
-
-.score {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 1.35rem;
-  letter-spacing: -0.03em;
-  text-shadow: 0 2px 10px rgba(40, 30, 80, 0.35);
-}
-
-.canvasHost {
-  flex: 1;
-  min-height: 280px;
-  width: 100%;
-  position: relative;
-  z-index: 1;
-  /* Keeps CSS fallback visible before Pixi paints */
   background: linear-gradient(
     165deg,
     var(--playfield-top) 0%,
@@ -83,9 +17,225 @@
   );
 }
 
+.page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 48px,
+      rgba(255, 255, 255, 0.35) 48px,
+      rgba(255, 255, 255, 0.35) 50px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 48px,
+      rgba(255, 255, 255, 0.2) 48px,
+      rgba(255, 255, 255, 0.2) 50px
+    );
+}
+
+.page > * {
+  position: relative;
+  z-index: 1;
+}
+
+.progress {
+  margin: 14px 16px 0;
+  height: 14px;
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 99px;
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 6px;
+  height: 3px;
+  background: #fff;
+  border-radius: 99px;
+  box-shadow: 0 0 8px #fff;
+  transition: width 0.2s ease;
+}
+
+.marks {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  padding: 0 2px;
+}
+
+.marks span {
+  font-size: 11px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.markOn {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+.markOff {
+  opacity: 0.35;
+}
+
+.scoreHero {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 2.6rem;
+  letter-spacing: -0.04em;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(80, 60, 140, 0.35);
+  margin: 4px 0 0;
+  line-height: 1;
+  z-index: 4;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+  pointer-events: none;
+}
+
+.scorePop {
+  transform: scale(1.12);
+}
+
+.judge {
+  align-self: center;
+  margin-top: 6px;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding: 5px 14px;
+  border-radius: 999px;
+  z-index: 4;
+  flex-shrink: 0;
+  pointer-events: none;
+  animation: judgePop 0.4s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+
+.judgeSpacer {
+  height: 28px;
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+.judgeGreat {
+  background: rgba(125, 211, 252, 0.95);
+  color: #0b3a55;
+  box-shadow: 0 0 16px rgba(125, 211, 252, 0.7);
+}
+
+.judgePerfect {
+  background: rgba(255, 213, 74, 0.95);
+  color: #5a3d00;
+  box-shadow: 0 0 16px rgba(255, 213, 74, 0.65);
+}
+
+.judgeMiss {
+  background: rgba(255, 92, 122, 0.95);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(255, 92, 122, 0.55);
+}
+
+@keyframes judgePop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.playArea {
+  flex: 1;
+  min-height: 240px;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  display: flex;
+  flex-direction: column;
+}
+
+.canvasHost {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  position: relative;
+  background: transparent;
+}
+
+.comboBadge {
+  position: absolute;
+  right: 14px;
+  bottom: 22%;
+  z-index: 5;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(40, 30, 80, 0.4);
+  pointer-events: none;
+  animation: comboPop 0.35s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+}
+
+@keyframes comboPop {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
 .canvasHost canvas {
   width: 100% !important;
   height: 100% !important;
+}
+
+.missFlash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: rgba(255, 92, 122, 0.35);
+  pointer-events: none;
+  animation: fadeOut 0.45s ease-out forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .failOverlay {
@@ -116,6 +266,7 @@
   font-size: 13px;
   font-weight: 600;
   color: rgba(255, 253, 249, 0.9);
+  text-align: center;
 }
 
 .retry {
@@ -145,10 +296,7 @@
   font-weight: 600;
   color: rgba(255, 255, 255, 0.92);
   text-shadow: 0 1px 4px rgba(40, 30, 80, 0.35);
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(80, 60, 140, 0.18)
-  );
+  background: linear-gradient(180deg, transparent, rgba(80, 60, 140, 0.18));
   pointer-events: none;
+  flex-shrink: 0;
 }
