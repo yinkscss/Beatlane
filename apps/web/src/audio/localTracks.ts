@@ -12,19 +12,19 @@ export const LOCAL_TRACKS: LocalTrack[] = [
     id: 'dirty-mastered',
     title: 'Dirty',
     artist: 'BoySod',
-    url: '/audio/tracks/dirty-mastered.mp3',
+    url: '/audio/tracks/dirty-mastered.ogg',
   },
   {
     id: 'energy',
     title: 'ENERGY',
     artist: 'boysod',
-    url: '/audio/tracks/energy.mp3',
+    url: '/audio/tracks/energy.ogg',
   },
   {
     id: 'soro-mi',
     title: 'Soro Mi',
     artist: 'boysod',
-    url: '/audio/tracks/soro-mi.mp3',
+    url: '/audio/tracks/soro-mi.ogg',
   },
 ]
 
