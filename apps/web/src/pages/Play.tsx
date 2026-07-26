@@ -458,13 +458,23 @@ export default function PlayPage() {
 
     const startMusic = async () => {
       if (cancelled || !bedArmedRef.current) return
-      if (audioRuntime.getMusicStartTime() != null) {
+      const desired =
+        musicUrlBox.current ||
+        (classicEndless
+          ? localTrackById(trackParam || classicTrackId).url
+          : null)
+      // Already on the right bed — just keep the context alive (Safari).
+      if (
+        desired &&
+        audioRuntime.getMusicUrl() === desired &&
+        audioRuntime.getMusicStartTime() != null
+      ) {
         await audioRuntime.resumeContext()
         syncTrackDuration()
         return
       }
-      if (musicUrlBox.current) {
-        await audioRuntime.startMusic(musicUrlBox.current, {
+      if (desired) {
+        await audioRuntime.startMusic(desired, {
           loop: musicLoopBox.current,
         })
       } else {
@@ -518,8 +528,17 @@ export default function PlayPage() {
       runStartedAtRef.current = performance.now()
 
       // Keep music that was armed on the Play gesture (Safari). Restarting here
-      // (outside the gesture) often fails on iOS and leaves the run silent.
-      if (audioRuntime.getMusicStartTime() == null) {
+      // (outside the gesture) often fails on iOS and leaves the run silent —
+      // but still replace a sticky bed.wav if the classic track never armed.
+      const desired =
+        musicUrlBox.current ||
+        (classicEndless
+          ? localTrackById(trackParam || classicTrackId).url
+          : null)
+      const armedOk =
+        audioRuntime.getMusicStartTime() != null &&
+        (!desired || audioRuntime.getMusicUrl() === desired)
+      if (!armedOk) {
         void startMusic().catch((err) => {
           console.error('Music start failed', err)
         })
@@ -537,7 +556,17 @@ export default function PlayPage() {
           audioAnchor,
         }),
       )
+      // beginRun → prepareIdle resets the generator; sync beat grid after.
       game.beginRun()
+      if (classicEndless) {
+        const track = localTrackById(trackParam || classicTrackId)
+        const filePos = audioRuntime.getMusicFilePositionSec() ?? 0
+        game.syncEndlessBeatGrid({
+          bpm: track.bpm,
+          offsetSec: track.offsetSec,
+          musicFilePosSec: filePos,
+        })
+      }
       trackStartRun({ mode, chartId })
       startBlitzClock()
       setRunPhase('playing')
@@ -562,7 +591,7 @@ export default function PlayPage() {
             id: 'endless-classic',
             title: track.title,
             difficulty: 'normal',
-            bpm: 120,
+            bpm: track.bpm,
             offset: 0,
             audio: track.url,
             scrollHeightsPerSec: ENDLESS_BASE.startScroll,
@@ -572,7 +601,11 @@ export default function PlayPage() {
           musicUrlBox.current = track.url
           musicUrlRef.current = track.url
           musicLoopBox.current = true
-          game.enableEndless()
+          game.enableEndless(Date.now(), {
+            bpm: track.bpm,
+            offsetSec: track.offsetSec,
+            musicFilePosSec: 0,
+          })
           game.setChart(chart)
           setChartMeta(chart)
         } else {
@@ -796,6 +829,9 @@ export default function PlayPage() {
       const shieldMs = SECOND_CHANCE_SHIELD_DEFAULT_ON
         ? SECOND_CHANCE_SHIELD_MS
         : 0
+      // Capture before revive() clears failSongTime.
+      const resumeAt = game.getFailSongTime() ?? 0
+      const origin = classicEndless ? game.getEndlessMusicOriginSec() : 0
       game.revive({ shieldMs })
       const speedAfter = game.getSpeedMult()
       if (speedAfter !== speedBefore) {
@@ -814,11 +850,18 @@ export default function PlayPage() {
       setObstacleUi(null)
 
       bedArmedRef.current = true
-      // Ambience only — chart clock stays local from fail time (same speed).
+      // Resume bed at the file position that matches chart time so beats
+      // stay locked after Second Chance (chart clock continues from fail).
+      const dur = audioRuntime.getMusicDurationSec()
+      let offsetSec = Math.max(0, origin + resumeAt)
+      if (dur != null && dur > 0) {
+        offsetSec = ((offsetSec % dur) + dur) % dur
+      }
       const restartMusic = musicUrlRef.current
         ? audioRuntime.startMusic(musicUrlRef.current, {
             restart: true,
             loop: classicEndless || undefined,
+            offsetSec: classicEndless ? offsetSec : undefined,
           })
         : audioRuntime.startBed({ restart: true })
       void restartMusic.catch((err) => {
@@ -1181,7 +1224,9 @@ export default function PlayPage() {
                 ? 'Still in it?'
                 : fail === 'miss'
                   ? 'You missed'
-                  : 'Wrong tap'}
+                  : fail === 'bomb'
+                    ? "Don't tap"
+                    : 'Wrong tap'}
             </h2>
             <p className={styles.sheetBody}>
               {escalate

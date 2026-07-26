@@ -5,6 +5,10 @@ export type LocalTrack = {
   title: string
   artist: string
   url: string
+  /** Tempo for beat-locked procedural notes. */
+  bpm: number
+  /** Seconds from file start to the first downbeat. */
+  offsetSec: number
 }
 
 export const LOCAL_TRACKS: LocalTrack[] = [
@@ -12,19 +16,25 @@ export const LOCAL_TRACKS: LocalTrack[] = [
     id: 'dirty-mastered',
     title: 'Dirty',
     artist: 'BoySod',
-    url: '/audio/tracks/dirty-mastered.ogg',
+    url: '/audio/tracks/dirty-mastered.mp3',
+    bpm: 88,
+    offsetSec: 0.186,
   },
   {
     id: 'energy',
     title: 'ENERGY',
     artist: 'boysod',
-    url: '/audio/tracks/energy.ogg',
+    url: '/audio/tracks/energy.mp3',
+    bpm: 92,
+    offsetSec: 0.627,
   },
   {
     id: 'soro-mi',
     title: 'Soro Mi',
     artist: 'boysod',
-    url: '/audio/tracks/soro-mi.ogg',
+    url: '/audio/tracks/soro-mi.mp3',
+    bpm: 112,
+    offsetSec: 0.464,
   },
 ]
 

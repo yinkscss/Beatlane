@@ -29,6 +29,10 @@ export class AudioRuntime {
   private muted = false
   /** AudioContext.currentTime when the bed started (sync ref for G5+). */
   private musicStartTime: number | null = null
+  /** Offset into the buffer where playback began (revive seek). */
+  private musicOffsetSec = 0
+  /** URL of the buffer currently routed through the music bus (if any). */
+  private musicUrl: string | null = null
   /** Decoded bed length — used for Classic level-up on song loop. */
   private musicDurationSec: number | null = null
   private loadPromise: Promise<void> | null = null
@@ -85,6 +89,26 @@ export class AudioRuntime {
     return this.musicStartTime
   }
 
+  /** URL currently playing on the music bus, or null if idle. */
+  getMusicUrl(): string | null {
+    return this.musicUrl
+  }
+
+  /**
+   * Current playhead inside the looping bed file (seconds), or null if idle.
+   * Accounts for start offset (revive) and wrap on loop.
+   */
+  getMusicFilePositionSec(): number | null {
+    if (this.musicStartTime == null || !this.ctx) return null
+    const elapsed =
+      this.ctx.currentTime - this.musicStartTime + this.musicOffsetSec
+    const dur = this.musicDurationSec
+    if (dur != null && dur > 0) {
+      return ((elapsed % dur) + dur) % dur
+    }
+    return Math.max(0, elapsed)
+  }
+
   /** Resume AudioContext only — safe to call from a user gesture. */
   async resumeContext(): Promise<void> {
     const ctx = this.ensureGraph()
@@ -134,7 +158,7 @@ export class AudioRuntime {
    */
   startMusic(
     url: string,
-    opts: { restart?: boolean; loop?: boolean } = {},
+    opts: { restart?: boolean; loop?: boolean; offsetSec?: number } = {},
   ): Promise<number> {
     const run = () => this.startMusicUnlocked(url, opts)
     const result = this.startGate.then(run, run)
@@ -147,11 +171,22 @@ export class AudioRuntime {
 
   private async startMusicUnlocked(
     url: string,
-    opts: { restart?: boolean; loop?: boolean } = {},
+    opts: { restart?: boolean; loop?: boolean; offsetSec?: number } = {},
   ): Promise<number> {
-    const restart = opts.restart === true
     const loop = opts.loop !== false
-    if (!restart && this.bedSource && this.musicStartTime != null) {
+    const wantOffset = Math.max(0, opts.offsetSec ?? 0)
+    // Different URL must replace the current bed (e.g. sticky bed.wav → track).
+    const restart =
+      opts.restart === true ||
+      (this.musicUrl != null && this.musicUrl !== url) ||
+      (opts.offsetSec != null &&
+        Math.abs(wantOffset - this.musicOffsetSec) > 1e-3)
+    if (
+      !restart &&
+      this.bedSource &&
+      this.musicStartTime != null &&
+      this.musicUrl === url
+    ) {
       await this.resumeContext()
       return this.musicStartTime
     }
@@ -168,8 +203,15 @@ export class AudioRuntime {
     if (!music) throw new Error('Music gain missing')
 
     const buf = await this.loadBuffer(url)
-    // Another queued start may have won while we awaited decode — don't clobber.
-    if (!restart && this.bedSource && this.musicStartTime != null) {
+    // Another queued start may have won while we awaited decode — don't clobber
+    // unless it is still the wrong URL (or we were asked to restart).
+    if (
+      this.bedSource &&
+      this.musicStartTime != null &&
+      this.musicUrl === url &&
+      !opts.restart &&
+      opts.offsetSec == null
+    ) {
       return this.musicStartTime
     }
 
@@ -178,9 +220,13 @@ export class AudioRuntime {
     src.loop = loop
     src.connect(music)
     const when = ctx.currentTime
-    src.start(when)
+    const offset =
+      buf.duration > 0 ? wantOffset % buf.duration : wantOffset
+    src.start(when, offset)
     this.bedSource = src
     this.musicStartTime = when
+    this.musicOffsetSec = offset
+    this.musicUrl = url
     this.musicDurationSec = buf.duration > 0 ? buf.duration : null
     return when
   }
@@ -214,6 +260,8 @@ export class AudioRuntime {
       this.bedSource = null
     }
     this.musicStartTime = null
+    this.musicOffsetSec = 0
+    this.musicUrl = null
     this.musicDurationSec = null
   }
 

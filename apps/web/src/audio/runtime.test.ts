@@ -112,5 +112,21 @@ describe('AudioRuntime.startMusic', () => {
     const second = await rt.startMusic('/audio/bed.wav')
     expect(second).toBe(first)
     expect(rt.getMusicStartTime()).toBe(first)
+    expect(rt.getMusicUrl()).toBe('/audio/bed.wav')
+  })
+
+  it('replaces sticky bed.wav when a different track URL is requested', async () => {
+    const mock = installWebAudioMock({ loadDelayMs: 5 })
+    const rt = new AudioRuntime()
+    const bedStart = await rt.startMusic('/audio/bed.wav')
+    expect(rt.getMusicUrl()).toBe('/audio/bed.wav')
+
+    const trackStart = await rt.startMusic('/audio/tracks/dirty-mastered.mp3')
+    expect(trackStart).not.toBe(bedStart)
+    expect(rt.getMusicUrl()).toBe('/audio/tracks/dirty-mastered.mp3')
+    expect(rt.getMusicStartTime()).toBe(trackStart)
+    expect(mock.sources.filter((s) => s.start.mock.calls.length > 0)).toHaveLength(
+      2,
+    )
   })
 })

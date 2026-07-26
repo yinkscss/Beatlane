@@ -1,9 +1,10 @@
 /**
- * Procedural Classic endless note stream.
+ * Procedural Classic endless note stream — beat-locked to the bed BPM.
  * Never emits triple/four-lane walls or hold/long_hold tiles.
  */
 
 import type { ChartNote } from '@/charts/schema'
+import { beatSecForBpm, gapSecForBeats, nextBeatChartTime } from '@/game/beatGrid'
 import type { DifficultyProfile } from '@/game/difficultyProfiles'
 
 export type ProceduralSeed = number
@@ -20,24 +21,70 @@ export function createRng(seed: number): () => number {
   }
 }
 
+export type BeatGridConfig = {
+  bpm: number
+  offsetSec: number
+  musicFilePosSec: number
+}
+
 export type GeneratorState = {
   nextT: number
   lastLane: number
   rng: () => number
   profile: DifficultyProfile
   notesEmitted: number
+  /** Bed tempo — required for beat-locked gaps. */
+  bpm: number
+  offsetSec: number
+  musicFilePosSec: number
 }
 
 export function createGeneratorState(
   profile: DifficultyProfile,
   seed: ProceduralSeed = Date.now(),
+  grid: BeatGridConfig = { bpm: 120, offsetSec: 0, musicFilePosSec: 0 },
 ): GeneratorState {
+  const nextT = nextBeatChartTime({
+    bpm: grid.bpm,
+    offsetSec: grid.offsetSec,
+    musicFilePosSec: grid.musicFilePosSec,
+    minChartT: 0.35,
+  })
   return {
-    nextT: 0.35,
+    nextT,
     lastLane: 1,
     rng: createRng(seed),
     profile,
     notesEmitted: 0,
+    bpm: grid.bpm,
+    offsetSec: grid.offsetSec,
+    musicFilePosSec: grid.musicFilePosSec,
+  }
+}
+
+/** Re-phase the stream to the live bed (beginRun / post-revive). */
+export function syncGeneratorToMusic(
+  state: GeneratorState,
+  grid: BeatGridConfig,
+  minChartT = 0.35,
+): void {
+  state.bpm = grid.bpm
+  state.offsetSec = grid.offsetSec
+  state.musicFilePosSec = grid.musicFilePosSec
+  const aligned = nextBeatChartTime({
+    bpm: grid.bpm,
+    offsetSec: grid.offsetSec,
+    musicFilePosSec: grid.musicFilePosSec,
+    minChartT,
+  })
+  // Never schedule behind notes already emitted; jump forward onto the grid.
+  if (aligned >= state.nextT - 1e-6) {
+    state.nextT = aligned
+  } else {
+    const beatSec = beatSecForBpm(grid.bpm)
+    let t = aligned
+    while (t < state.nextT - 1e-6) t += beatSec
+    state.nextT = t
   }
 }
 
@@ -51,14 +98,18 @@ function pickLane(rng: () => number, last: number, avoid?: number): number {
   return lanes[Math.floor(rng() * lanes.length)]!
 }
 
-function gapFor(speedMult: number, profile: DifficultyProfile): number {
-  const g = profile.baseGapSec / Math.max(1, speedMult * 0.92)
-  return Math.max(profile.minGapSec, g)
+function gapSec(state: GeneratorState, speedMult: number): number {
+  return gapSecForBeats({
+    bpm: state.bpm,
+    speedMult,
+    baseGapBeats: state.profile.baseGapBeats,
+    minGapBeats: state.profile.minGapBeats,
+  })
 }
 
 /**
- * Emit notes due at or before `songTime` (with lead foresight handled by caller).
- * Returns newly generated notes and mutates state.
+ * Emit notes due at or before `untilT` (lead foresight handled by caller).
+ * Hit times land on the bed beat grid.
  */
 export function pullNotes(
   state: GeneratorState,
@@ -67,26 +118,26 @@ export function pullNotes(
 ): ChartNote[] {
   const out: ChartNote[] = []
   const aggressive = speedMult >= state.profile.aggressiveAtMult
+  const eighth = beatSecForBpm(state.bpm) * 0.5
 
   while (state.nextT <= untilT) {
     const t = state.nextT
     const roll = state.rng()
 
     if (aggressive && roll < 0.12) {
-      // Staggered double: two taps close in time, different lanes (never same beat wall of 3+)
+      // Staggered double on beat + eighth — never a 3+ wall
       const laneA = pickLane(state.rng, state.lastLane)
       let laneB = pickLane(state.rng, laneA, laneA)
       if (laneB === laneA) laneB = (laneA + 1) % 4
       out.push({ t, lane: laneA as 0 | 1 | 2 | 3, type: 'tap' })
       out.push({
-        t: t + 0.08,
+        t: t + eighth,
         lane: laneB as 0 | 1 | 2 | 3,
         type: 'tap',
       })
       state.lastLane = laneB
       state.notesEmitted += 2
     } else if (aggressive && roll < 0.2) {
-      // Bridge (2-wide) — fair; never triple
       const lane = state.rng() < 0.5 ? 0 : 1
       const start = lane + (state.rng() < 0.5 ? 0 : 1)
       const bridgeLane = Math.min(2, start) as 0 | 1 | 2
@@ -94,12 +145,12 @@ export function pullNotes(
       state.lastLane = bridgeLane
       state.notesEmitted += 1
     } else if (aggressive && roll < 0.28) {
-      // Fake / bomb distraction in empty lane + real tap
+      // Trap: safe tap + Don't Tap on the same beat
       const lane = pickLane(state.rng, state.lastLane)
       const bombLane = pickLane(state.rng, lane, lane)
       out.push({ t, lane: lane as 0 | 1 | 2 | 3, type: 'tap' })
       out.push({
-        t: t + 0.02,
+        t,
         lane: bombLane as 0 | 1 | 2 | 3,
         type: 'bomb',
       })
@@ -126,10 +177,9 @@ export function pullNotes(
       state.notesEmitted += 1
     }
 
-    state.nextT = t + gapFor(speedMult, state.profile)
-    // Staggered double already advanced conceptually; ensure next gap from last note
+    state.nextT = t + gapSec(state, speedMult)
     if (out.length >= 2 && out[out.length - 1]!.t > t) {
-      state.nextT = out[out.length - 1]!.t + gapFor(speedMult, state.profile)
+      state.nextT = out[out.length - 1]!.t + gapSec(state, speedMult)
     }
   }
 
@@ -146,7 +196,6 @@ export function assertLegalNotes(notes: ChartNote[]): void {
       throw new Error('Bridge would overflow lanes')
     }
   }
-  // Same timestamp: at most 2 lanes covered
   const byT = new Map<number, ChartNote[]>()
   for (const n of notes) {
     const list = byT.get(n.t) ?? []

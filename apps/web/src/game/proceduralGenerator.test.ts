@@ -15,8 +15,10 @@ import {
 } from '@/game/judging'
 
 describe('proceduralGenerator', () => {
+  const grid = { bpm: 120, offsetSec: 0, musicFilePosSec: 0 }
+
   it('never emits triple/hold or 3+ simultaneous covers', () => {
-    const state = createGeneratorState(profileForLevel(8), 42)
+    const state = createGeneratorState(profileForLevel(8), 42, grid)
     const notes = pullNotes(state, 120, 2.0)
     expect(notes.length).toBeGreaterThan(40)
     expect(() => assertLegalNotes(notes)).not.toThrow()
@@ -26,11 +28,28 @@ describe('proceduralGenerator', () => {
   })
 
   it('is deterministic for the same seed', () => {
-    const a = createGeneratorState(ENDLESS_BASE, 7)
-    const b = createGeneratorState(ENDLESS_BASE, 7)
+    const a = createGeneratorState(ENDLESS_BASE, 7, grid)
+    const b = createGeneratorState(ENDLESS_BASE, 7, grid)
     const na = pullNotes(a, 20, 1.2)
     const nb = pullNotes(b, 20, 1.2)
     expect(na).toEqual(nb)
+  })
+
+  it('lands primary hits on the bed beat grid', () => {
+    const state = createGeneratorState(ENDLESS_BASE, 9, {
+      bpm: 120,
+      offsetSec: 0.1,
+      musicFilePosSec: 3.2,
+    })
+    const notes = pullNotes(state, 8, 1)
+    const taps = notes.filter((n) => n.type === 'tap' || n.type === 'bridge')
+    expect(taps.length).toBeGreaterThan(4)
+    // At 120 BPM with filePos 3.2 / offset 0.1, beats in chart time are 0.4, 0.9, …
+    for (const n of taps) {
+      const phase = (n.t - 0.4 + 1e-6) % 0.5
+      // Allow eighth-note staggers (0.25) for aggressive doubles; L1 has none.
+      expect(phase < 0.02 || Math.abs(phase - 0.25) < 0.02).toBe(true)
+    }
   })
 })
 

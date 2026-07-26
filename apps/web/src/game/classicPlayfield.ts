@@ -30,13 +30,21 @@ import { PLAYFIELD, SCROLL } from '@/game/playfieldTheme'
 import {
   createGeneratorState,
   pullNotes,
+  syncGeneratorToMusic,
+  type BeatGridConfig,
   type GeneratorState,
 } from '@/game/proceduralGenerator'
 import { spawnYForSongTime } from '@/game/spawnPlacement'
+import {
+  pickLaneTarget,
+  pickTapTarget,
+  type TapTargetCandidate,
+} from '@/game/tapTarget'
 import { audioRuntime } from '@/audio/runtime'
 import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
-export type FailReason = 'miss' | 'wrong'
+/** miss = tile left screen; bomb = Don't Tap; wrong = empty / gap. */
+export type FailReason = 'miss' | 'wrong' | 'bomb'
 export type HitGrade = ShatterGrade
 /**
  * Classic/Daily end the run on miss; Zen/Blitz break combo only.
@@ -215,6 +223,14 @@ export class ClassicPlayfield {
   private genState: GeneratorState | null = null
   private endlessSeed = 0
   private lastAnnouncedStar = 0
+  /** Bed file position when chart t=0 — seek target for revive sync. */
+  private endlessMusicOriginSec = 0
+  /** Last beat grid (survives beginRun → resetChartCursor). */
+  private endlessBeatGrid: BeatGridConfig = {
+    bpm: 120,
+    offsetSec: 0,
+    musicFilePosSec: 0,
+  }
   /** Song loop length — level ups when run time crosses N × duration. */
   private trackDurationSec = 0
   private endlessLevel = 1
@@ -312,8 +328,13 @@ export class ClassicPlayfield {
   /**
    * Classic endless: procedural notes; difficulty steps when the song loops.
    * Call before beginRun. Chart JSON is optional (title/meta only).
+   * Pass track bpm/offset so notes lock to the bed; refine with
+   * `syncEndlessBeatGrid` at beginRun once the music playhead is known.
    */
-  enableEndless(seed = Date.now()): void {
+  enableEndless(
+    seed = Date.now(),
+    grid: BeatGridConfig = { bpm: 120, offsetSec: 0, musicFilePosSec: 0 },
+  ): void {
     this.endless = true
     this.endlessSeed = seed
     this.endlessLevel = 1
@@ -323,9 +344,29 @@ export class ClassicPlayfield {
     this.endlessProfile = profile
     this.baseHeightsPerSec = profile.startScroll
     this.speedMult = 1
-    this.genState = createGeneratorState(profile, seed)
+    this.endlessBeatGrid = { ...grid }
+    this.endlessMusicOriginSec = grid.musicFilePosSec
+    this.genState = createGeneratorState(profile, seed, grid)
     this.chartDone = false
     this.lastAnnouncedStar = 0
+  }
+
+  /** Phase-align the procedural stream to the live bed playhead. */
+  syncEndlessBeatGrid(grid: BeatGridConfig, minChartT = 0.35): void {
+    if (!this.endless || !this.genState) return
+    this.endlessBeatGrid = { ...grid }
+    this.endlessMusicOriginSec = grid.musicFilePosSec
+    syncGeneratorToMusic(this.genState, grid, minChartT)
+  }
+
+  /** File playhead that corresponded to chart t=0 (endless beat sync). */
+  getEndlessMusicOriginSec(): number {
+    return this.endlessMusicOriginSec
+  }
+
+  /** Song time when the run failed (for revive music seek). */
+  getFailSongTime(): number | null {
+    return this.failSongTime
   }
 
   /** Wire decoded bed length so level-ups fire at each song finish. */
@@ -590,6 +631,7 @@ export class ClassicPlayfield {
       this.genState = createGeneratorState(
         profile,
         this.endlessSeed || Date.now(),
+        this.endlessBeatGrid,
       )
       this.speedMult = 1
       this.lastAnnouncedStar = 0
@@ -826,25 +868,37 @@ export class ClassicPlayfield {
   private drawBombBody(body: Graphics, w: number, h: number) {
     body.clear()
     body.roundRect(0, 0, w, h, 4).fill({ color: BOMB_STRIPE_B })
-    const stripe = 7
-    body.setStrokeStyle({ width: 0 })
+    const stripe = 8
     for (let i = -h; i < w + h; i += stripe * 2) {
       body
-        .poly([
-          i,
-          0,
-          i + stripe,
-          0,
-          i + stripe + h,
-          h,
-          i + h,
-          h,
-        ])
+        .poly(
+          [
+            i,
+            0,
+            i + stripe,
+            0,
+            i + stripe + h,
+            h,
+            i + h,
+            h,
+          ],
+          true,
+        )
         .fill({ color: BOMB_STRIPE_A })
     }
+    // Clear X so Don’t Tap never reads as a plain black tile.
+    const m = Math.min(w, h) * 0.22
+    const cx = w / 2
+    const cy = h / 2
+    body
+      .moveTo(cx - m, cy - m)
+      .lineTo(cx + m, cy + m)
+      .moveTo(cx + m, cy - m)
+      .lineTo(cx - m, cy + m)
+      .stroke({ width: 3.5, color: 0xffffff, alpha: 0.95 })
     body
       .roundRect(0, 0, w, h, 4)
-      .stroke({ width: 2, color: BOMB_STRIPE_A, alpha: 0.9 })
+      .stroke({ width: 2.5, color: BOMB_STRIPE_A, alpha: 1 })
   }
 
   private drawBarBody(
@@ -1433,7 +1487,12 @@ export class ClassicPlayfield {
     } catch {
       /* ignore — capture is best-effort */
     }
-    this.pressLane(lane, { source: 'pointer', pointerId })
+    this.pressLane(lane, {
+      source: 'pointer',
+      pointerId,
+      x: local.x,
+      y: local.y,
+    })
   }
 
   private onPointerUp = (e: { pointerId?: number }) => {
@@ -1463,42 +1522,68 @@ export class ClassicPlayfield {
 
   private pressLane(
     rawLane: number,
-    opts: { source: 'pointer'; pointerId: number } | { source: 'key' },
+    opts:
+      | { source: 'pointer'; pointerId: number; x: number; y: number }
+      | { source: 'key' },
   ) {
     if (this.failed || !this.running) return
     if (this.chart && this.songTimeSec() == null) return
 
     const lane = this.mapInputLane(rawLane)
     const hitY = this.h * PLAYFIELD.hitLineY
-    const candidates = this.tiles.filter((t) => {
+    const pressable = this.tiles.filter((t) => {
       if (t.hit || t.dying) return false
-      if (!this.tileCoversLane(t, lane)) return false
       // Already holding (except L-hook foot press)
       if (this.isHoldLike(t.kind) && t.holding && t.kind !== 'l_hook') {
         return false
       }
-      if (t.kind === 'l_hook' && t.holding && lane === t.lane + t.foot) {
-        return true
+      if (t.kind === 'l_hook' && t.holding) {
+        return this.tileCoversLane(t, lane) || opts.source === 'pointer'
       }
       return this.inHitWindow(t)
     })
 
-    if (candidates.length === 0) {
+    let tile: Tile | undefined
+
+    if (opts.source === 'pointer' && !this.reverseActive) {
+      const targets: TapTargetCandidate[] = pressable.map((t, id) => ({
+        id,
+        kind: t.kind === 'bomb' ? 'bomb' : 'other',
+        x: t.root.x,
+        y: t.y,
+        w: t.w,
+        h: t.h,
+        lane: t.lane,
+      }))
+      const picked = pickTapTarget(targets, {
+        tapX: opts.x,
+        tapY: opts.y,
+        hitY,
+        padPx: Math.max(8, this.laneWidth() * 0.06),
+      })
+      tile = picked ? pressable[picked.id] : undefined
+    } else {
+      const inLane = pressable.filter((t) => this.tileCoversLane(t, lane))
+      const targets: TapTargetCandidate[] = inLane.map((t, id) => ({
+        id,
+        kind: t.kind === 'bomb' ? 'bomb' : 'other',
+        x: t.root.x,
+        y: t.y,
+        w: t.w,
+        h: t.h,
+        lane: t.lane,
+      }))
+      const picked = pickLaneTarget(targets, hitY)
+      tile = picked ? inLane[picked.id] : undefined
+    }
+
+    if (!tile) {
       this.fail('wrong')
       return
     }
 
-    candidates.sort((a, b) => {
-      if (this.isHoldLike(a.kind) && !this.isHoldLike(b.kind)) return -1
-      if (this.isHoldLike(b.kind) && !this.isHoldLike(a.kind)) return 1
-      const ca = a.y + a.h / 2
-      const cb = b.y + b.h / 2
-      return Math.abs(ca - hitY) - Math.abs(cb - hitY)
-    })
-    const tile = candidates[0]
-
     if (tile.kind === 'bomb') {
-      this.fail('wrong')
+      this.fail('bomb')
       return
     }
 
