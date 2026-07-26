@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { localTrackById } from '@/audio/localTracks'
 import { audioRuntime } from '@/audio/runtime'
 import { elapsedSongTimeSec } from '@/audio/songClock'
 import { SAMPLE_CHARTS, sampleChartById } from '@/charts/catalog'
 import { loadChart } from '@/charts/loadChart'
 import type { Chart } from '@/charts/schema'
+import { CHART_SCHEMA_VERSION } from '@/charts/schema'
 import {
   sanitizeBlitzChart,
 } from '@/game/blitzWhitelist'
@@ -20,9 +22,12 @@ import {
   type SpeedUpPhase,
   type TapRecord,
 } from '@/game/classicPlayfield'
+import { ENDLESS_BASE } from '@/game/difficultyProfiles'
 import {
   railFillPct,
+  railFillPctFromSpeed,
   railMarks,
+  railMarksFromSpeed,
   type JudgeGrade,
 } from '@/game/judging'
 import { resolveChartAssets } from '@/lib/catalog'
@@ -139,6 +144,7 @@ export default function PlayPage() {
   const [searchParams] = useSearchParams()
   const mode = parseMode(searchParams.get('mode'))
   const chartParam = searchParams.get('chart')
+  const trackParam = searchParams.get('track')
   const cupSlug = searchParams.get('cup')?.trim() || DEFAULT_CUP_SLUG
   const { status } = useAuth()
 
@@ -146,6 +152,13 @@ export default function PlayPage() {
   const toggleMute = useAppStore((s) => s.toggleMute)
   const setPlayMode = useAppStore((s) => s.setPlayMode)
   const setLastRun = useAppStore((s) => s.setLastRun)
+  const classicTrackId = useAppStore((s) => s.classicTrackId)
+  const setClassicTrackId = useAppStore((s) => s.setClassicTrackId)
+
+  /** Classic endless unless a non-sample catalog chart is requested. */
+  const classicEndless =
+    mode === 'classic' &&
+    (!chartParam || Boolean(sampleChartById(chartParam)))
 
   // auth_all (Q14): no guest play — gate before chart/Pixi boot
   useEffect(() => {
@@ -191,6 +204,8 @@ export default function PlayPage() {
   const [tournamentId, setTournamentId] = useState<string | null>(null)
   const [runPhase, setRunPhase] = useState<RunPhase>('loading')
   const [startCountdown, setStartCountdown] = useState<number | null>(null)
+  const [speedMultUi, setSpeedMultUi] = useState(1)
+  const [endlessLevelUi, setEndlessLevelUi] = useState(1)
   const speedAtFailRef = useRef(1)
   const blitzTickRef = useRef<number | null>(null)
   const startCountdownTimerRef = useRef<number | null>(null)
@@ -206,6 +221,10 @@ export default function PlayPage() {
   useEffect(() => {
     setPlayMode(mode)
   }, [mode, setPlayMode])
+
+  useEffect(() => {
+    if (trackParam) setClassicTrackId(trackParam)
+  }, [trackParam, setClassicTrackId])
 
   // Daily: resolve server seed → chart before playfield boot
   useEffect(() => {
@@ -307,6 +326,8 @@ export default function PlayPage() {
     setBlitzTimedOut(false)
     blitzEndedRef.current = false
     speedAtFailRef.current = 1
+    setSpeedMultUi(1)
+    setEndlessLevelUi(1)
     if (blitzTickRef.current) {
       window.clearInterval(blitzTickRef.current)
       blitzTickRef.current = null
@@ -390,8 +411,19 @@ export default function PlayPage() {
         if (cancelled) return
         if (ev.phase === 'reverse') setReverseUi(ev.active)
       },
+      onSpeedMult: (mult) => {
+        if (cancelled) return
+        setSpeedMultUi(mult)
+      },
+      onLevelUp: (level, mult) => {
+        if (cancelled) return
+        setEndlessLevelUi(level)
+        setSpeedMultUi(mult)
+      },
       onChartComplete: (nextScore, nextCombo) => {
         if (cancelled) return
+        // Classic endless never clears via chart end.
+        if (classicEndless) return
         bedArmedRef.current = false
         audioRuntime.stopBed()
         setScore(nextScore)
@@ -415,18 +447,30 @@ export default function PlayPage() {
     gameRef.current = game
 
     const musicUrlBox = { current: null as string | null }
+    const musicLoopBox = { current: classicEndless }
+
+    const syncTrackDuration = () => {
+      const dur = audioRuntime.getMusicDurationSec()
+      if (dur != null && classicEndless) {
+        game.setTrackDurationSec(dur)
+      }
+    }
 
     const startMusic = async () => {
       if (cancelled || !bedArmedRef.current) return
       if (audioRuntime.getMusicStartTime() != null) {
         await audioRuntime.resumeContext()
+        syncTrackDuration()
         return
       }
       if (musicUrlBox.current) {
-        await audioRuntime.startMusic(musicUrlBox.current)
+        await audioRuntime.startMusic(musicUrlBox.current, {
+          loop: musicLoopBox.current,
+        })
       } else {
         await audioRuntime.startBed()
       }
+      syncTrackDuration()
     }
 
     const startBlitzClock = () => {
@@ -511,27 +555,50 @@ export default function PlayPage() {
 
     void (async () => {
       try {
-        // Daily always uses catalog Storage charts (never local samples)
-        const sample =
-          mode === 'daily' ? undefined : sampleChartById(chartId)
-        let chart: Chart
-        if (sample) {
-          chart = await loadChart(sample.url)
-          musicUrlBox.current = null
-          musicUrlRef.current = null
+        if (classicEndless) {
+          const track = localTrackById(trackParam || classicTrackId)
+          const chart: Chart = {
+            schemaVersion: CHART_SCHEMA_VERSION,
+            id: 'endless-classic',
+            title: track.title,
+            difficulty: 'normal',
+            bpm: 120,
+            offset: 0,
+            audio: track.url,
+            scrollHeightsPerSec: ENDLESS_BASE.startScroll,
+            notes: [],
+            events: [],
+          }
+          musicUrlBox.current = track.url
+          musicUrlRef.current = track.url
+          musicLoopBox.current = true
+          game.enableEndless()
+          game.setChart(chart)
+          setChartMeta(chart)
         } else {
-          const assets = await resolveChartAssets(chartId)
-          chart = await loadChart(assets.chartUrl)
-          musicUrlBox.current = assets.audioUrl
-          musicUrlRef.current = assets.audioUrl
+          // Daily always uses catalog Storage charts (never local samples)
+          const sample =
+            mode === 'daily' ? undefined : sampleChartById(chartId)
+          let chart: Chart
+          if (sample) {
+            chart = await loadChart(sample.url)
+            musicUrlBox.current = null
+            musicUrlRef.current = null
+          } else {
+            const assets = await resolveChartAssets(chartId)
+            chart = await loadChart(assets.chartUrl)
+            musicUrlBox.current = assets.audioUrl
+            musicUrlRef.current = assets.audioUrl
+          }
+          if (cancelled) return
+          if (mode === 'blitz') {
+            chart = sanitizeBlitzChart(chart)
+          }
+          game.setChart(chart)
+          setChartMeta(chart)
         }
-        if (cancelled) return
-        if (mode === 'blitz') {
-          chart = sanitizeBlitzChart(chart)
-        }
-        game.setChart(chart)
-        setChartMeta(chart)
 
+        if (cancelled) return
         await game.mount(host)
         if (cancelled) return
         setRunPhase('ready')
@@ -560,7 +627,18 @@ export default function PlayPage() {
       game.destroy()
       gameRef.current = null
     }
-  }, [chartId, mode, setLastRun, status, dailyMeta, cupSlug, tournamentId])
+  }, [
+    chartId,
+    mode,
+    setLastRun,
+    status,
+    dailyMeta,
+    cupSlug,
+    tournamentId,
+    classicEndless,
+    classicTrackId,
+    trackParam,
+  ])
 
   if (status !== 'authenticated') {
     return (
@@ -738,7 +816,10 @@ export default function PlayPage() {
       bedArmedRef.current = true
       // Ambience only — chart clock stays local from fail time (same speed).
       const restartMusic = musicUrlRef.current
-        ? audioRuntime.startMusic(musicUrlRef.current, { restart: true })
+        ? audioRuntime.startMusic(musicUrlRef.current, {
+            restart: true,
+            loop: classicEndless || undefined,
+          })
         : audioRuntime.startBed({ restart: true })
       void restartMusic.catch((err) => {
         console.error('Music restart failed', err)
@@ -815,8 +896,12 @@ export default function PlayPage() {
     void audioRuntime.unlock()
   }
 
-  const fill = railFillPct(combo)
-  const marks = railMarks(combo)
+  const fill = classicEndless
+    ? railFillPctFromSpeed(speedMultUi)
+    : railFillPct(combo)
+  const marks = classicEndless
+    ? railMarksFromSpeed(speedMultUi)
+    : railMarks(combo)
   const judgeLabel =
     judge === 'perfect'
       ? 'PERFECT'
@@ -840,6 +925,7 @@ export default function PlayPage() {
   const escalate = reviveCount > 0
 
   const sampleDifficultySelectable =
+    !classicEndless &&
     mode !== 'daily' &&
     mode !== 'blitz' &&
     (!chartParam || Boolean(sampleChartById(chartParam)))
@@ -896,6 +982,10 @@ export default function PlayPage() {
         <p className={styles.failSub} style={{ marginTop: -8 }}>
           TILES
         </p>
+      ) : classicEndless && runPhase === 'playing' ? (
+        <p className={styles.failSub} style={{ marginTop: -8 }}>
+          LEVEL {endlessLevelUi}
+        </p>
       ) : null}
 
       {judgeLabel ? (
@@ -937,6 +1027,12 @@ export default function PlayPage() {
                 ) : mode === 'blitz' ? (
                   <span className={styles.readyChartInfo}>
                     {chartMeta?.title ?? 'Cup chart'}
+                  </span>
+                ) : classicEndless ? (
+                  <span className={styles.readyChartInfo}>
+                    {localTrackById(trackParam || classicTrackId).title}
+                    {' · '}
+                    Level up when the song finishes
                   </span>
                 ) : sampleDifficultySelectable ? (
                   <>

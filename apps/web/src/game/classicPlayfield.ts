@@ -15,6 +15,11 @@ import {
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
 import {
+  LEVEL_UP,
+  profileForLevel,
+  type DifficultyProfile,
+} from '@/game/difficultyProfiles'
+import {
   gradeSpatialHit,
   holdTileProgress,
   pointsForGrade,
@@ -22,7 +27,13 @@ import {
   tilePartiallyOnPlayfield,
 } from '@/game/judging'
 import { PLAYFIELD, SCROLL } from '@/game/playfieldTheme'
+import {
+  createGeneratorState,
+  pullNotes,
+  type GeneratorState,
+} from '@/game/proceduralGenerator'
 import { spawnYForSongTime } from '@/game/spawnPlacement'
+import { audioRuntime } from '@/audio/runtime'
 import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
 
 export type FailReason = 'miss' | 'wrong'
@@ -91,6 +102,10 @@ export type ClassicPlayfieldHandlers = {
   onObstacleBanner?: (ev: ObstacleBannerPhase) => void
   onModifier?: (ev: ModifierPhase) => void
   onChartComplete?: (score: number, combo: number) => void
+  /** Classic endless: speedMult changed (checkpoint / song level-up). */
+  onSpeedMult?: (mult: number) => void
+  /** Classic endless: song finished a loop → level stepped up. */
+  onLevelUp?: (level: number, speedMult: number) => void
 }
 
 type TileKind =
@@ -194,6 +209,16 @@ export class ClassicPlayfield {
   private baseHeightsPerSec: number = SCROLL.heightsPerSec
   private localStartMs = 0
   private chartDone = false
+  /** Classic procedural endless (no chart end). */
+  private endless = false
+  private endlessProfile: DifficultyProfile | null = null
+  private genState: GeneratorState | null = null
+  private endlessSeed = 0
+  private lastAnnouncedStar = 0
+  /** Song loop length — level ups when run time crosses N × duration. */
+  private trackDurationSec = 0
+  private endlessLevel = 1
+  private loopsCompleted = 0
   private speedTimers: number[] = []
   private bannerTimers: number[] = []
   private iceTimers: number[] = []
@@ -277,9 +302,43 @@ export class ClassicPlayfield {
 
   setChart(chart: Chart | null) {
     this.chart = chart
-    this.baseHeightsPerSec =
-      chart?.scrollHeightsPerSec ?? SCROLL.heightsPerSec
+    if (!this.endless) {
+      this.baseHeightsPerSec =
+        chart?.scrollHeightsPerSec ?? SCROLL.heightsPerSec
+    }
     this.resetChartCursor()
+  }
+
+  /**
+   * Classic endless: procedural notes; difficulty steps when the song loops.
+   * Call before beginRun. Chart JSON is optional (title/meta only).
+   */
+  enableEndless(seed = Date.now()): void {
+    this.endless = true
+    this.endlessSeed = seed
+    this.endlessLevel = 1
+    this.loopsCompleted = 0
+    this.trackDurationSec = 0
+    const profile = profileForLevel(1)
+    this.endlessProfile = profile
+    this.baseHeightsPerSec = profile.startScroll
+    this.speedMult = 1
+    this.genState = createGeneratorState(profile, seed)
+    this.chartDone = false
+    this.lastAnnouncedStar = 0
+  }
+
+  /** Wire decoded bed length so level-ups fire at each song finish. */
+  setTrackDurationSec(sec: number): void {
+    if (sec > 1) this.trackDurationSec = sec
+  }
+
+  isEndless(): boolean {
+    return this.endless
+  }
+
+  getEndlessLevel(): number {
+    return this.endlessLevel
   }
 
   async mount(host: HTMLElement): Promise<void> {
@@ -523,6 +582,19 @@ export class ClassicPlayfield {
     this.noteIndex = 0
     this.eventIndex = 0
     this.chartDone = false
+    if (this.endless) {
+      this.endlessLevel = 1
+      this.loopsCompleted = 0
+      const profile = profileForLevel(1)
+      this.endlessProfile = profile
+      this.genState = createGeneratorState(
+        profile,
+        this.endlessSeed || Date.now(),
+      )
+      this.speedMult = 1
+      this.lastAnnouncedStar = 0
+      this.baseHeightsPerSec = profile.startScroll
+    }
   }
 
   private clearSpeedTimers() {
@@ -1093,12 +1165,71 @@ export class ClassicPlayfield {
     }
 
     if (
+      !this.endless &&
       !this.chartDone &&
       this.noteIndex >= chart.notes.length &&
       this.tiles.length === 0
     ) {
       this.chartDone = true
       this.handlers.onChartComplete?.(this.score, this.combo)
+    }
+  }
+
+  /** Procedural endless: level up on song loop + pull notes ahead of the hit window. */
+  private scheduleEndless(songTime: number) {
+    const profile = this.endlessProfile
+    const gen = this.genState
+    if (!profile || !gen) return
+
+    if (this.trackDurationSec <= 1) {
+      const dur = audioRuntime.getMusicDurationSec()
+      if (dur != null && dur > 1) this.trackDurationSec = dur
+    }
+    if (this.trackDurationSec > 1) {
+      const loops = Math.floor(songTime / this.trackDurationSec)
+      while (
+        this.loopsCompleted < loops &&
+        this.endlessLevel < LEVEL_UP.maxLevel
+      ) {
+        this.advanceEndlessLevel()
+      }
+    }
+
+    const lead = this.travelTimeSec() + 0.35
+    const due = pullNotes(gen, songTime + lead, this.speedMult)
+    for (const note of due) {
+      if (note.t + 0.05 < songTime) continue
+      this.spawnNote(note, songTime)
+    }
+  }
+
+  private advanceEndlessLevel(): void {
+    this.loopsCompleted += 1
+    this.endlessLevel = Math.min(LEVEL_UP.maxLevel, this.endlessLevel + 1)
+    const next = profileForLevel(this.endlessLevel)
+    this.endlessProfile = next
+    this.baseHeightsPerSec = next.startScroll
+    if (this.genState) {
+      this.genState.profile = next
+    }
+    const prev = this.speedMult
+    this.speedMult = Math.min(
+      next.maxSpeedMult,
+      this.speedMult + LEVEL_UP.speedBump,
+    )
+    this.handlers.onSpeedMult?.(this.speedMult)
+    this.handlers.onLevelUp?.(this.endlessLevel, this.speedMult)
+
+    this.handlers.onSpeedUp?.({ phase: 'banner' })
+    const id = window.setTimeout(() => {
+      this.handlers.onSpeedUp?.({ phase: 'clear' })
+    }, 900)
+    this.speedTimers.push(id)
+
+    for (const cp of [1.2, 1.5, 2.0] as const) {
+      if (prev < cp && this.speedMult >= cp && this.lastAnnouncedStar < cp) {
+        this.lastAnnouncedStar = cp
+      }
     }
   }
 
@@ -1163,8 +1294,12 @@ export class ClassicPlayfield {
 
     // Schedule only when the song clock is live. Still scroll existing tiles if
     // the audio clock is briefly null (overlapping startMusic used to stall here).
-    if (this.chart && songTime != null) {
-      this.scheduleFromChart(songTime)
+    if (songTime != null) {
+      if (this.endless) {
+        this.scheduleEndless(songTime)
+      } else if (this.chart) {
+        this.scheduleFromChart(songTime)
+      }
     }
 
     const speed = this.scrollSpeed()

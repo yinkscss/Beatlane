@@ -90,7 +90,17 @@ Deno.serve(async (req: Request) => {
       )
       .single()
 
-    if (error) throw error
+    if (error) {
+      // PostgrestError is a plain object — not always `instanceof Error`.
+      const detail = [error.message, error.details, error.hint, error.code]
+        .filter((x) => typeof x === 'string' && x.trim())
+        .join(' · ')
+      throw new Error(detail || 'Profile upsert failed')
+    }
+
+    if (!data) {
+      throw new Error('Profile upsert returned no row')
+    }
 
     return jsonResponse(
       {
@@ -102,11 +112,25 @@ Deno.serve(async (req: Request) => {
       req,
     )
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Upsert failed'
+    const message = errorMessage(err)
     const status =
-      message.includes('DID') || message.includes('issuer') || message.includes('token')
+      message.includes('DID') ||
+      message.includes('issuer') ||
+      message.includes('token') ||
+      message.includes('expired')
         ? 401
         : 500
     return jsonResponse({ ok: false, error: message }, status, req)
   }
 })
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) return err.message
+  if (err && typeof err === 'object') {
+    const o = err as { message?: unknown; details?: unknown; code?: unknown }
+    const parts = [o.message, o.details, o.code]
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    if (parts.length) return parts.join(' · ')
+  }
+  return 'Profile upsert failed'
+}

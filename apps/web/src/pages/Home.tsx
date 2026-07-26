@@ -1,6 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
-import MiniPayCta from '@/components/MiniPayCta'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Home.module.css'
 
@@ -9,7 +8,7 @@ const modes = [
     kind: 'play' as const,
     mode: 'classic' as const,
     title: 'Classic',
-    blurb: 'Fail on miss · songs or endless',
+    blurb: 'Fail on miss · level up each song loop',
     icon: '▶',
     iconClass: styles.accent,
   },
@@ -135,20 +134,19 @@ export default function HomePage() {
         )}
       </div>
 
-      <p className={styles.celoHint}>On Celo · MiniPay ready</p>
+      <p className={styles.celoHint}>On Celo · Magic wallet</p>
 
       <div className={styles.actions}>
         <Link to="/music" className={`${styles.btn} ${styles.btnLight}`}>
           Music
         </Link>
-        <MiniPayCta variant="home" className={`${styles.btn} ${styles.btnDark}`} />
         <Link
           to={
             authed
               ? '/pass'
               : `/wallet?next=${encodeURIComponent('/pass')}`
           }
-          className={`${styles.btn} ${styles.btnLight}`}
+          className={`${styles.btn} ${styles.btnDark}`}
         >
           Pass
         </Link>

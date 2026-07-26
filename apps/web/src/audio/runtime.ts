@@ -29,6 +29,8 @@ export class AudioRuntime {
   private muted = false
   /** AudioContext.currentTime when the bed started (sync ref for G5+). */
   private musicStartTime: number | null = null
+  /** Decoded bed length — used for Classic level-up on song loop. */
+  private musicDurationSec: number | null = null
   private loadPromise: Promise<void> | null = null
   /** Serialize starts so overlapping kickBed/startMusic cannot stopBed mid-flight. */
   private startGate: Promise<void> = Promise.resolve()
@@ -179,7 +181,13 @@ export class AudioRuntime {
     src.start(when)
     this.bedSource = src
     this.musicStartTime = when
+    this.musicDurationSec = buf.duration > 0 ? buf.duration : null
     return when
+  }
+
+  /** Length of the current bed in seconds, or null if not loaded. */
+  getMusicDurationSec(): number | null {
+    return this.musicDurationSec
   }
 
   /**
@@ -206,6 +214,7 @@ export class AudioRuntime {
       this.bedSource = null
     }
     this.musicStartTime = null
+    this.musicDurationSec = null
   }
 
   /** Fire-and-forget one-shot through the SFX bus (never stops the bed). */

@@ -119,3 +119,26 @@ export function railMarks(combo: number): RailMark[] {
     { kind: 'crown', on: lit >= 6 },
   ]
 }
+
+/** Classic endless: stars at speed checkpoints 1.2× / 1.5× / 2×. */
+export const SPEED_STAR_AT = [1.2, 1.5, 2.0] as const
+export const SPEED_CROWN_AT = [2.2, 2.5, 2.8] as const
+
+export function railFillPctFromSpeed(speedMult: number): number {
+  const max = SPEED_CROWN_AT[SPEED_CROWN_AT.length - 1]
+  if (speedMult <= 1) return 0
+  return Math.min(100, ((speedMult - 1) / (max - 1)) * 100)
+}
+
+export function railMarksFromSpeed(speedMult: number): RailMark[] {
+  const fill = railFillPctFromSpeed(speedMult)
+  return [
+    { kind: 'star', on: speedMult >= SPEED_STAR_AT[0] },
+    { kind: 'star', on: speedMult >= SPEED_STAR_AT[1] },
+    { kind: 'star', on: speedMult >= SPEED_STAR_AT[2] },
+    { kind: 'flag', on: fill >= 50 || speedMult >= SPEED_STAR_AT[1] },
+    { kind: 'crown', on: speedMult >= SPEED_CROWN_AT[0] },
+    { kind: 'crown', on: speedMult >= SPEED_CROWN_AT[1] },
+    { kind: 'crown', on: speedMult >= SPEED_CROWN_AT[2] },
+  ]
+}

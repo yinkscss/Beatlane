@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
+import { LOCAL_TRACKS, type LocalTrack } from '@/audio/localTracks'
 import {
   fetchListedCharts,
   fetchMyUnlocks,
@@ -68,6 +69,8 @@ function subtitle(track: CatalogTrack, unlocked: boolean): string {
 export default function MusicPage() {
   const navigate = useNavigate()
   const playMode = useAppStore((s) => s.playMode)
+  const classicTrackId = useAppStore((s) => s.classicTrackId)
+  const setClassicTrackId = useAppStore((s) => s.setClassicTrackId)
   const { status, identity } = useAuth()
 
   const [tracks, setTracks] = useState<CatalogTrack[]>([])
@@ -79,6 +82,7 @@ export default function MusicPage() {
   const [diffPick, setDiffPick] = useState<ChartDifficulty>('normal')
   const [busy, setBusy] = useState(false)
   const [buyError, setBuyError] = useState<string | null>(null)
+  const [localSheet, setLocalSheet] = useState<LocalTrack | null>(null)
 
   const reload = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -163,6 +167,16 @@ export default function MusicPage() {
     navigate(`/play?mode=${playMode}&chart=${encodeURIComponent(chart.id)}`)
   }
 
+  const startLocalEndless = (track: LocalTrack) => {
+    setClassicTrackId(track.id)
+    const next = `/play?mode=classic&track=${encodeURIComponent(track.id)}`
+    if (status !== 'authenticated') {
+      navigate(`/wallet?next=${encodeURIComponent(next)}`)
+      return
+    }
+    navigate(next)
+  }
+
   const purchase = async (sku: string, amountCusd: number, meta: Record<string, unknown>) => {
     if (!isTreasuryConfigured()) {
       setBuyError(
@@ -216,6 +230,44 @@ export default function MusicPage() {
         <h1 className={styles.title}>Choose a track</h1>
       </div>
 
+      <p className={styles.sectionLabel}>Classic beds · endless</p>
+      <div className={styles.list}>
+        {LOCAL_TRACKS.map((track) => (
+          <button
+            key={track.id}
+            type="button"
+            className={styles.track}
+            onClick={() => {
+              setLocalSheet(track)
+              setBuyError(null)
+            }}
+          >
+            <div
+              className={styles.art}
+              style={{
+                background:
+                  track.id === 'dirty-mastered'
+                    ? 'linear-gradient(135deg,#1a1a1a,#c45c26)'
+                    : track.id === 'energy'
+                      ? 'linear-gradient(135deg,#0d1b2a,#e9c46a)'
+                      : 'linear-gradient(135deg,#2d6a4f,#95d5b2)',
+              }}
+              aria-hidden
+            />
+            <div className={styles.trackMeta}>
+              <strong>{track.title}</strong>
+              <small>
+                {track.artist} · Looping bed
+                {classicTrackId === track.id ? ' · Selected' : ''}
+              </small>
+            </div>
+            <span className={`${styles.lock} ${styles.lockFree}`}>▶</span>
+          </button>
+        ))}
+      </div>
+
+      <p className={styles.sectionLabel}>Packs &amp; catalog</p>
+
       {afrobeats && !packUnlocked ? (
         <button
           type="button"
@@ -247,10 +299,13 @@ export default function MusicPage() {
         <p className={styles.muted}>Loading catalog…</p>
       ) : null}
 
-      {!error && !loading && tracks.length === 0 ? (
+      {!loading && tracks.length === 0 ? (
         <div className={styles.empty} role="status">
-          <strong>No tracks yet</strong>
-          <p>Catalog is empty — check Supabase charts seed or try again later.</p>
+          <strong>No pack catalog</strong>
+          <p>
+            Classic beds above still work. Pack catalog needs Supabase charts
+            seed{error ? ` — ${error}` : ''}.
+          </p>
           <button type="button" className={styles.retry} onClick={() => void reload()}>
             Retry
           </button>
@@ -295,6 +350,34 @@ export default function MusicPage() {
               </button>
             )
           })}
+        </div>
+      ) : null}
+
+      {localSheet ? (
+        <div className={styles.sheet} role="dialog" aria-modal>
+          <div className={styles.sheetCard}>
+            <h2 className={styles.sheetTitle}>{localSheet.title}</h2>
+            <p className={styles.sheetBlurb}>
+              Endless Classic · {localSheet.artist}. Level rises each time the
+              song finishes.
+            </p>
+            <div className={styles.sheetActions}>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnPrimary}`}
+                onClick={() => startLocalEndless(localSheet)}
+              >
+                Start playing
+              </button>
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnLight}`}
+                onClick={() => setLocalSheet(null)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 

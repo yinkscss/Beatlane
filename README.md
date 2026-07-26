@@ -166,7 +166,7 @@ Vercel Hobby production deploy, MiniPay stub CTA (Q21), soft spend caps, mute pe
 | Item | Location |
 |---|---|
 | Vercel config | `vercel.json` (build `apps/web`) |
-| MiniPay stub | Home + Wallet → `MiniPayCta` |
+| MiniPay | CTA removed — Magic wallet path only (Celopedia for later) |
 | Spend caps | `apps/web/src/lib/spendCaps.ts` (UTC day, localStorage) |
 | Mute defaults | `apps/web/src/lib/mutePref.ts` (persisted) |
 | Perf budget | `docs/g19-perf-budget.md` |
