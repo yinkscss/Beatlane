@@ -1,18 +1,14 @@
 /**
- * G9: Upsert profiles from a Magic session.
+ * Upsert profiles from Magic DID or MiniPay wallet session.
  *
- * Client sends Magic DID token + issuer/email/wallet from magic.user.getInfo().
- * verify_jwt is OFF — auth is Magic DID, not Supabase JWT.
- * When MAGIC_SECRET_KEY is set, DID is validated via Magic Admin SDK.
+ * Client sends Authorization: Bearer <Magic DID | minipay:0x…>
+ * plus issuer/email/wallet. verify_jwt is OFF.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   issuer?: string
@@ -30,34 +26,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
-    if (!didToken) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-
     const body = (await req.json()) as Body
-    const issuer = body.issuer?.trim()
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
-
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
-
-    const magicSecret = Deno.env.get('MAGIC_SECRET_KEY')
-    if (magicSecret) {
-      const { Magic } = await import('npm:@magic-sdk/admin@2')
-      const magic = new Magic(magicSecret)
-      magic.token.validate(didToken)
-      const meta = await magic.users.getMetadataByToken(didToken)
-      if (meta.issuer && meta.issuer !== issuer) {
-        return jsonResponse({ ok: false, error: 'Issuer mismatch' }, 401, req)
-      }
-    }
+    const session = await resolveSessionAuth(req, body.issuer)
+    const issuer = session.issuer
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -68,10 +39,12 @@ Deno.serve(async (req: Request) => {
     const admin = createClient(supabaseUrl, serviceKey)
     const id = await profileIdFromIssuer(issuer)
     const email = body.email?.trim() || null
-    const wallet = body.walletAddress?.trim() || null
+    const wallet =
+      body.walletAddress?.trim() || session.walletAddress || null
     const displayName =
       body.displayName?.trim() ||
       (email ? email.split('@')[0] : null) ||
+      (wallet ? `player-${wallet.slice(2, 6)}` : null) ||
       'player'
 
     const { data, error } = await admin
@@ -91,7 +64,6 @@ Deno.serve(async (req: Request) => {
       .single()
 
     if (error) {
-      // PostgrestError is a plain object — not always `instanceof Error`.
       const detail = [error.message, error.details, error.hint, error.code]
         .filter((x) => typeof x === 'string' && x.trim())
         .join(' · ')
@@ -106,7 +78,8 @@ Deno.serve(async (req: Request) => {
       {
         ok: true,
         profile: data,
-        didVerified: Boolean(magicSecret),
+        didVerified: session.mode === 'magic',
+        authMode: session.mode,
       },
       200,
       req,
@@ -117,7 +90,9 @@ Deno.serve(async (req: Request) => {
       message.includes('DID') ||
       message.includes('issuer') ||
       message.includes('token') ||
-      message.includes('expired')
+      message.includes('expired') ||
+      message.includes('MiniPay') ||
+      message.includes('mismatch')
         ? 401
         : 500
     return jsonResponse({ ok: false, error: message }, status, req)

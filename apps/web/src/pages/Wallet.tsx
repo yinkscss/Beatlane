@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthProvider'
 import { fetchMyUnlocks } from '@/lib/catalog'
+import { getCusdBalance } from '@/lib/celo'
 import { countHelperUnlocks } from '@/lib/helpers'
 import { formatSpendSummary } from '@/lib/spendCaps'
 import { useAppStore } from '@/store/appStore'
 import styles from '@/pages/Wallet.module.css'
+import type { Address } from 'viem'
 
 function truncateAddress(addr: string): string {
   if (addr.length < 12) return addr
@@ -21,16 +23,20 @@ export default function WalletPage() {
   const {
     status,
     magicReady,
+    isMiniPay,
+    provider,
     identity,
     profile,
     error,
     loginWithEmail,
     logout,
+    refresh,
   } = useAuth()
 
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [balance, setBalance] = useState<string | null>(null)
   const [inventory, setInventory] = useState({
     slowMo: 0,
     shield: 0,
@@ -42,6 +48,13 @@ export default function WalletPage() {
     const addr = profile?.wallet_address ?? identity?.walletAddress
     return addr ? truncateAddress(addr) : null
   }, [profile, identity])
+
+  const playerLabel = useMemo(() => {
+    if (profile?.display_name) return profile.display_name
+    if (identity?.email) return identity.email
+    if (provider === 'minipay') return 'MiniPay player'
+    return 'Player'
+  }, [profile, identity, provider])
 
   useEffect(() => {
     if (status !== 'authenticated') return
@@ -64,6 +77,27 @@ export default function WalletPage() {
       cancelled = true
     }
   }, [status])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    const addr = (profile?.wallet_address ?? identity?.walletAddress) as
+      | Address
+      | null
+      | undefined
+    if (!addr) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const bal = await getCusdBalance(addr)
+        if (!cancelled) setBalance(bal)
+      } catch {
+        if (!cancelled) setBalance(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [status, profile, identity])
 
   const onLogin = async (e: FormEvent) => {
     e.preventDefault()
@@ -89,10 +123,25 @@ export default function WalletPage() {
     }
   }
 
+  const onRetryMiniPay = async () => {
+    setBusy(true)
+    setFormError(null)
+    try {
+      await refresh()
+      navigate(afterAuth, { replace: true })
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Connect failed')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (status === 'loading') {
     return (
       <div className={styles.page}>
-        <p className={styles.muted}>Checking session…</p>
+        <p className={styles.muted}>
+          {isMiniPay ? 'Connecting wallet…' : 'Checking session…'}
+        </p>
       </div>
     )
   }
@@ -105,17 +154,14 @@ export default function WalletPage() {
             ✓
           </div>
           <h1 className={styles.readyTitle}>You’re in</h1>
-          <p className={styles.muted}>Celo · Magic wallet</p>
+          <p className={styles.muted}>
+            Celo · {provider === 'minipay' ? 'MiniPay' : 'Magic wallet'}
+          </p>
+          <p className={styles.email}>{playerLabel}</p>
           {walletLabel ? (
-            <div className={styles.address}>{walletLabel}</div>
-          ) : null}
-          {identity?.email ? (
-            <p className={styles.email}>{identity.email}</p>
-          ) : null}
-          {profile?.display_name ? (
-            <p className={styles.profileHint}>
-              Profile · {profile.display_name}
-            </p>
+            <div className={styles.address} title="Wallet hint">
+              {walletLabel}
+            </div>
           ) : null}
           {error ? (
             <p className={styles.warn} role="status">
@@ -126,8 +172,10 @@ export default function WalletPage() {
 
         <div className={styles.bottom}>
           <div className={styles.balance}>
-            <span>cUSD</span>
-            <span className={styles.balanceVal}>—</span>
+            <span>USDm (cUSD)</span>
+            <span className={styles.balanceVal}>
+              {balance != null ? Number(balance).toFixed(2) : '—'}
+            </span>
           </div>
 
           <div className={styles.inventory} aria-label="Purchases inventory">
@@ -164,19 +212,50 @@ export default function WalletPage() {
           >
             Start tapping
           </Link>
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnLight}`}
-            onClick={() => void onLogout()}
-            disabled={busy}
-          >
-            Sign out
-          </button>
+          {provider === 'minipay' ? null : (
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnLight}`}
+              onClick={() => void onLogout()}
+              disabled={busy}
+            >
+              Sign out
+            </button>
+          )}
           <p className={styles.minipayHint}>
-            Fund this Magic address with cUSD + a little CELO (gas) on Celo
-            Mainnet for Second Chance, Slow-mo ($0.19), and Shield ($0.29).
+            Pays in USDm (cUSD). Network fee is covered by your stablecoin
+            balance — no separate gas token needed.
           </p>
         </div>
+      </div>
+    )
+  }
+
+  // Anonymous inside MiniPay — retry auto-connect (no Magic-email-only door).
+  if (isMiniPay) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.hero}>
+          <h1 className={styles.brand}>
+            BEAT<span className={styles.lane}>LANE</span>
+          </h1>
+          <p className={styles.tagline}>
+            Connecting your wallet automatically…
+          </p>
+        </div>
+        <button
+          type="button"
+          className={`${styles.btn} ${styles.btnLight} ${styles.btnWide}`}
+          onClick={() => void onRetryMiniPay()}
+          disabled={busy}
+        >
+          {busy ? 'Connecting…' : 'Retry connect'}
+        </button>
+        {(formError || error) && (
+          <p className={styles.warn} role="alert">
+            {formError || error}
+          </p>
+        )}
       </div>
     )
   }

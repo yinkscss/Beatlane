@@ -1,6 +1,6 @@
 /**
  * G13: Ensure + return today's seeded Daily Track (UTC).
- * Auth: Magic DID required (auth_all — Daily needs session).
+ * Auth: Magic DID or MiniPay wallet session required.
  * verify_jwt OFF.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
@@ -11,11 +11,8 @@ import {
   dailySeedForDay,
   utcDayString,
 } from '../_shared/dailySeed.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   issuer?: string
@@ -30,20 +27,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
     const body = (await req.json().catch(() => ({}))) as Body
-    const issuer = body.issuer?.trim()
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
-
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
-    await profileIdFromIssuer(issuer)
+    const session = await resolveSessionAuth(req, body.issuer)
+    await profileIdFromIssuer(session.issuer)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')

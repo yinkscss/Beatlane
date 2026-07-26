@@ -21,14 +21,19 @@ type UpsertResponse = {
 }
 
 /**
- * Magic DID → Edge Function → profiles upsert (service role).
+ * Session (Magic DID or MiniPay wallet) → Edge Function → profiles upsert.
  * See supabase/functions/magic-profile.
  */
 async function invokeUpsertOnce(
   identity: MagicIdentity,
-  didToken: string,
+  authToken: string,
 ): Promise<ProfileRow> {
   const supabase = getSupabase()
+  const displayName =
+    identity.email?.split('@')[0] ??
+    (identity.walletAddress
+      ? `player-${identity.walletAddress.slice(2, 6)}`
+      : null)
   const { data, error } = await supabase.functions.invoke<UpsertResponse>(
     'magic-profile',
     {
@@ -36,10 +41,10 @@ async function invokeUpsertOnce(
         issuer: identity.issuer,
         email: identity.email,
         walletAddress: identity.walletAddress,
-        displayName: identity.email?.split('@')[0] ?? null,
+        displayName,
       },
       headers: {
-        Authorization: `Bearer ${didToken}`,
+        Authorization: `Bearer ${authToken}`,
       },
     },
   )
@@ -55,7 +60,7 @@ async function invokeUpsertOnce(
 
 export async function upsertMagicProfile(
   identity: MagicIdentity,
-  didToken: string,
+  authToken: string,
 ): Promise<ProfileRow> {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured')
@@ -63,7 +68,7 @@ export async function upsertMagicProfile(
 
   // One retry for Edge cold starts / transient 5xx.
   try {
-    return await invokeUpsertOnce(identity, didToken)
+    return await invokeUpsertOnce(identity, authToken)
   } catch (err) {
     const msg = err instanceof Error ? err.message : ''
     const retryable =
@@ -71,6 +76,6 @@ export async function upsertMagicProfile(
       msg === 'Profile upsert failed'
     if (!retryable) throw err
     await new Promise((r) => setTimeout(r, 450))
-    return invokeUpsertOnce(identity, didToken)
+    return invokeUpsertOnce(identity, authToken)
   }
 }

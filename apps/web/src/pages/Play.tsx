@@ -1240,8 +1240,8 @@ export default function PlayPage() {
               </p>
             ) : (
               <p className={styles.sheetHint}>
-                Celo Mainnet · fund Magic wallet with cUSD + a little CELO for
-                gas
+                Celo Mainnet · pays in USDm (cUSD); network fee from your
+                stablecoin balance
               </p>
             )}
           </div>

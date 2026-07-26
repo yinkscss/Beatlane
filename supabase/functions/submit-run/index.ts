@@ -1,18 +1,15 @@
 /**
  * G13: Submit a run with tap timestamps; Daily revalidates vs chart.
  * Upstash rate limit on submit (degrades open when Redis unset).
- * Auth: Magic DID. verify_jwt OFF.
+ * Auth: Magic DID or MiniPay wallet. verify_jwt OFF.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { captureEdgeException } from '../_shared/sentry.ts'
 import { utcDayString } from '../_shared/dailySeed.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 import {
   type ChartNoteLite,
   type TapInput,
@@ -51,26 +48,9 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
     const body = (await req.json()) as Body
-    const issuer = body.issuer?.trim()
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
-
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
-
-    const magicSecret = Deno.env.get('MAGIC_SECRET_KEY')
-    if (magicSecret) {
-      const { Magic } = await import('npm:@magic-sdk/admin@2')
-      const magic = new Magic(magicSecret)
-      magic.token.validate(didToken)
-    }
+    const session = await resolveSessionAuth(req, body.issuer)
+    const issuer = session.issuer
 
     const userId = await profileIdFromIssuer(issuer)
     const rl = await rateLimitSubmit(userId)

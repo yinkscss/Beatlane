@@ -1,17 +1,14 @@
 /**
  * G13: HTTP-pollable leaderboard (Daily / Classic).
- * Public read of validated scores; optional Magic DID for "you" row.
+ * Public read of validated scores; optional session for "you" row.
  * verify_jwt OFF.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { utcDayString } from '../_shared/dailySeed.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   board?: string
@@ -69,10 +66,8 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get('Authorization')
     if (authHeader?.startsWith('Bearer ') && issuer) {
       try {
-        const didToken = authHeader.slice('Bearer '.length).trim()
-        const claim = parseDidClaim(didToken)
-        assertDidClaim(claim, issuer)
-        youId = await profileIdFromIssuer(issuer)
+        const session = await resolveSessionAuth(req, issuer)
+        youId = await profileIdFromIssuer(session.issuer)
       } catch {
         youId = null
       }

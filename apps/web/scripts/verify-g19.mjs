@@ -76,6 +76,9 @@ const markers = [
   ['src/lib/mutePref.ts', 'beatlane:muted'],
   ['src/game/proceduralGenerator.ts', 'pullNotes'],
   ['src/audio/localTracks.ts', 'dirty-mastered'],
+  ['src/lib/minipay.ts', 'isMiniPay'],
+  ['src/lib/celo.ts', 'feeCurrency'],
+  ['src/auth/AuthProvider.tsx', 'connectMiniPay'],
 ]
 for (const [rel, needle] of markers) {
   const p = join(webRoot, rel)

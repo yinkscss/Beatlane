@@ -1,6 +1,6 @@
 /**
- * Celo Mainnet helpers for cUSD transfers via Magic EIP-1193 provider.
- * Network locked to Mainnet (Q07) — not Alfajores/testnet.
+ * Celo Mainnet helpers for USDm (cUSD) transfers via Magic or MiniPay EIP-1193.
+ * Network locked to Mainnet (Q07). Fee abstraction: pay network fee in USDm.
  */
 
 import {
@@ -15,14 +15,22 @@ import {
   type Hex,
 } from 'viem'
 import { celo } from 'viem/chains'
-import { getMagic } from '@/lib/magic'
+import { getMagic, isMagicConfigured } from '@/lib/magic'
+import {
+  getMiniPayEthereum,
+  isMiniPayBrowser,
+  openMiniPayDeposit,
+} from '@/lib/minipay'
 
-/** Official cUSD on Celo Mainnet. */
+/** Official USDm (cUSD) on Celo Mainnet — token == feeCurrency adapter. */
 export const CUSD_MAINNET =
   (import.meta.env.VITE_CUSD_TOKEN_ADDRESS as Address | undefined) ??
   ('0x765DE816845861e75A25fCA122bb6898B8B1282a' as Address)
 
 export const CUSD_DECIMALS = 18
+
+/** Pay network fee in USDm (CIP-64 fee abstraction). */
+export const FEE_CURRENCY_USDM = CUSD_MAINNET
 
 const CELO_RPC =
   (import.meta.env.VITE_CELO_RPC_URL as string | undefined) ??
@@ -75,10 +83,15 @@ function publicClient() {
 }
 
 function walletClient() {
-  const magic = getMagic()
+  const mini = getMiniPayEthereum()
+  if (!mini && !isMagicConfigured()) {
+    throw new Error('Sign in required')
+  }
+  const provider = mini ?? getMagic().rpcProvider
   return createWalletClient({
     chain: celo,
-    transport: custom(magic.rpcProvider),
+    // EIP-1193 from MiniPay inject or Magic embedded wallet
+    transport: custom(provider as Parameters<typeof custom>[0]),
   })
 }
 
@@ -95,7 +108,7 @@ export async function getCusdBalance(address: Address): Promise<string> {
 
 /**
  * Transfer `amountCusd` (human dollars, e.g. 0.49) to the treasury.
- * Requires Magic session + cUSD balance + CELO for gas.
+ * Requires session + USDm balance. Network fee paid in USDm (fee abstraction).
  * Returns mainnet tx hash.
  */
 export async function transferCusdToTreasury(
@@ -106,9 +119,12 @@ export async function transferCusdToTreasury(
   const accounts = await wallet.getAddresses()
   let sender = accounts[0]
   if (!sender) {
+    if (isMiniPayBrowser()) {
+      throw new Error('MiniPay wallet address missing — reopen the app')
+    }
     const info = await getMagic().user.getInfo()
     const addr = (info as { publicAddress?: string | null }).publicAddress
-    if (!addr) throw new Error('Magic wallet address missing — sign in again')
+    if (!addr) throw new Error('Wallet address missing — sign in again')
     sender = addr as Address
   }
 
@@ -127,8 +143,14 @@ export async function transferCusdToTreasury(
     args: [sender],
   })
   if (bal < value) {
+    if (isMiniPayBrowser()) {
+      openMiniPayDeposit()
+      throw new Error(
+        `Insufficient USDm (cUSD): need ${amountCusd.toFixed(2)}. Opening Deposit…`,
+      )
+    }
     throw new Error(
-      `Insufficient cUSD: need ${amountCusd.toFixed(2)}, have ${formatUnits(bal, CUSD_DECIMALS)}. Fund your Magic wallet on Celo Mainnet, then retry.`,
+      `Insufficient USDm (cUSD): need ${amountCusd.toFixed(2)}, have ${formatUnits(bal, CUSD_DECIMALS)}. Deposit stablecoin on Celo Mainnet, then retry.`,
     )
   }
 
@@ -137,6 +159,8 @@ export async function transferCusdToTreasury(
     to: CUSD_MAINNET,
     data,
     chain: celo,
+    // CIP-64: network fee in USDm — never ask users to fund CELO.
+    feeCurrency: FEE_CURRENCY_USDM,
   })
 
   const receipt = await pub.waitForTransactionReceipt({
@@ -144,7 +168,7 @@ export async function transferCusdToTreasury(
     confirmations: 1,
   })
   if (receipt.status !== 'success') {
-    throw new Error('cUSD transfer reverted on-chain')
+    throw new Error('USDm transfer reverted on-chain')
   }
 
   return { txHash, from: sender, to }

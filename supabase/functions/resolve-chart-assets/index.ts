@@ -2,17 +2,14 @@
  * G12: Resolve signed Storage URLs for a chart after access check.
  *
  * Public charts: no auth required.
- * Paid charts: Magic DID + pack/track unlock required.
- * verify_jwt OFF — Magic DID when present.
+ * Paid charts: session (Magic DID or MiniPay) + pack/track unlock required.
+ * verify_jwt OFF — session when present.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   chartId?: string
@@ -75,17 +72,24 @@ Deno.serve(async (req: Request) => {
 
     if (!allowed) {
       const authHeader = req.headers.get('Authorization')
-      const issuer = body.issuer?.trim()
-      if (!authHeader?.startsWith('Bearer ') || !issuer) {
+      if (!authHeader?.startsWith('Bearer ') || !body.issuer?.trim()) {
         return jsonResponse(
           { ok: false, error: 'Unlock required' },
           403,
           req,
         )
       }
-      const didToken = authHeader.slice('Bearer '.length).trim()
-      const claim = parseDidClaim(didToken)
-      assertDidClaim(claim, issuer)
+      let issuer: string
+      try {
+        const session = await resolveSessionAuth(req, body.issuer)
+        issuer = session.issuer
+      } catch {
+        return jsonResponse(
+          { ok: false, error: 'Unlock required' },
+          403,
+          req,
+        )
+      }
 
       const userId = await profileIdFromIssuer(issuer)
       const { data: unlocks, error: unlockErr } = await admin

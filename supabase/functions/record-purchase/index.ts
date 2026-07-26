@@ -1,8 +1,8 @@
 /**
  * G10/G12/G14/G15/G16/G17: Record cUSD purchase receipt after on-chain transfer.
  *
- * Client sends Magic DID + sku/amount/txHash.
- * verify_jwt is OFF — auth is Magic DID (same as magic-profile).
+ * Client sends Magic DID or MiniPay wallet bearer + sku/amount/txHash.
+ * verify_jwt is OFF — auth is session (same as magic-profile).
  * Inserts purchases row (status=confirmed) + unlocks for continues / packs / tracks / helpers.
  * Boast (sku=boast): also inserts public.boasts + returns shareSlug.
  * Tournament entry (sku=tournament_entry_<uuid|slug>): inserts tournament_entries.
@@ -14,11 +14,8 @@ import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
 import { captureEdgeException } from '../_shared/sentry.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 import {
   grantDueSeasonRewards,
   isSeasonPassSku,
@@ -72,24 +69,11 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
-    if (!didToken) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-
     const body = (await req.json()) as Body
-    const issuer = body.issuer?.trim()
     const sku = body.sku?.trim()
     const txHash = body.txHash?.trim()
     const amountCusd = body.amountCusd
 
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
     if (!sku) {
       return jsonResponse({ ok: false, error: 'Missing sku' }, 400, req)
     }
@@ -100,19 +84,8 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ ok: false, error: 'Invalid txHash' }, 400, req)
     }
 
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
-
-    const magicSecret = Deno.env.get('MAGIC_SECRET_KEY')
-    if (magicSecret) {
-      const { Magic } = await import('npm:@magic-sdk/admin@2')
-      const magic = new Magic(magicSecret)
-      magic.token.validate(didToken)
-      const meta = await magic.users.getMetadataByToken(didToken)
-      if (meta.issuer && meta.issuer !== issuer) {
-        return jsonResponse({ ok: false, error: 'Issuer mismatch' }, 401, req)
-      }
-    }
+    const session = await resolveSessionAuth(req, body.issuer)
+    const issuer = session.issuer
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -128,6 +101,7 @@ Deno.serve(async (req: Request) => {
       {
         id: userId,
         magic_issuer: issuer,
+        wallet_address: session.walletAddress,
       },
       { onConflict: 'id' },
     )

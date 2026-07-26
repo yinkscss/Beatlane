@@ -2,7 +2,7 @@
  * G13 Daily Track + run submit + leaderboard poll helpers.
  */
 
-import { getMagic } from '@/lib/magic'
+import { getSessionAuth, trySessionAuth } from '@/lib/sessionAuth'
 import {
   edgeFunctionErrorMessage,
   getSupabase,
@@ -76,19 +76,11 @@ export type LeaderboardResponse = {
   error?: string
 }
 
-async function magicAuth(): Promise<{ issuer: string; did: string }> {
-  const magic = getMagic()
-  const info = await magic.user.getInfo()
-  if (!info.issuer) throw new Error('Magic session missing issuer')
-  const did = await magic.user.getIdToken()
-  return { issuer: info.issuer, did }
-}
-
 export async function fetchDailyChallenge(): Promise<DailyChallenge> {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured')
   }
-  const { issuer, did } = await magicAuth()
+  const session = await getSessionAuth()
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<{
     ok: boolean
@@ -98,8 +90,8 @@ export async function fetchDailyChallenge(): Promise<DailyChallenge> {
     chart?: DailyChallenge['chart']
     error?: string
   }>('daily-challenge', {
-    body: { issuer },
-    headers: { Authorization: `Bearer ${did}` },
+    body: { issuer: session.issuer },
+    headers: { Authorization: session.authorization },
   })
   if (error) {
     throw new Error(await edgeFunctionErrorMessage(error, 'Daily challenge failed'))
@@ -121,13 +113,13 @@ export async function submitRun(
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured')
   }
-  const { issuer, did } = await magicAuth()
+  const session = await getSessionAuth()
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<SubmitRunResult>(
     'submit-run',
     {
-      body: { issuer, ...input },
-      headers: { Authorization: `Bearer ${did}` },
+      body: { issuer: session.issuer, ...input },
+      headers: { Authorization: session.authorization },
     },
   )
   if (error) {
@@ -146,15 +138,7 @@ export async function fetchLeaderboard(opts: {
     throw new Error('Supabase is not configured')
   }
 
-  let issuer: string | undefined
-  let did: string | undefined
-  try {
-    const auth = await magicAuth()
-    issuer = auth.issuer
-    did = auth.did
-  } catch {
-    // anonymous poll OK
-  }
+  const session = await trySessionAuth()
 
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<LeaderboardResponse>(
@@ -164,9 +148,11 @@ export async function fetchLeaderboard(opts: {
         board: opts.board,
         day: opts.day,
         limit: opts.limit ?? 50,
-        issuer,
+        issuer: session?.issuer,
       },
-      headers: did ? { Authorization: `Bearer ${did}` } : undefined,
+      headers: session
+        ? { Authorization: session.authorization }
+        : undefined,
     },
   )
   if (error) throw error

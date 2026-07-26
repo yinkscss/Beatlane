@@ -15,7 +15,7 @@ Copy `.env.example` → `.env` and fill placeholders (Magic / Supabase / treasur
 
 ### Second Chance (G10)
 
-Requires `VITE_TREASURY_ADDRESS` and a Magic wallet funded with **cUSD + CELO (gas)** on Celo Mainnet. See root README “Funding Second Chance”.
+Requires `VITE_TREASURY_ADDRESS` and a wallet funded with **USDm (cUSD)** on Celo Mainnet. Network fee uses fee abstraction (paid in USDm) — no separate CELO balance required. See root README “Funding Second Chance”.
 
 ### Daily + leaderboards (G13)
 
@@ -88,7 +88,7 @@ node apps/web/scripts/verify-g18.mjs
 ### Launch polish (G19)
 
 - Vercel: repo-root `vercel.json` → build `apps/web`
-- MiniPay CTA removed (Magic-only login; Celopedia retained for a future deep-link)
+- No MiniPay CTA (listing path: `isMiniPay` auto-connect + fee abstraction; Magic email outside MiniPay)
 - Soft spend caps (`src/lib/spendCaps.ts`) + mute persistence (`src/lib/mutePref.ts`)
 - Empty/error states on Music / Pass / Results / boards
 - Deploy helper (no secret printing): `node apps/web/scripts/deploy-g19-vercel.mjs`

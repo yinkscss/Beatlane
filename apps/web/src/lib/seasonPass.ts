@@ -4,7 +4,7 @@
  */
 
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
-import { getMagic } from '@/lib/magic'
+import { getSessionAuth } from '@/lib/sessionAuth'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import {
@@ -62,24 +62,16 @@ export type SeasonPassStatus = {
   noCosmetics: boolean
 }
 
-async function magicAuth(): Promise<{ issuer: string; did: string }> {
-  const magic = getMagic()
-  const info = await magic.user.getInfo()
-  if (!info.issuer) throw new Error('Magic session missing issuer')
-  const did = await magic.user.getIdToken()
-  return { issuer: info.issuer, did }
-}
-
 export async function fetchSeasonPassStatus(
   slug = DEFAULT_SEASON_SLUG,
 ): Promise<SeasonPassStatus> {
   if (!isSupabaseConfigured()) throw new Error('Supabase is not configured')
-  const { issuer, did } = await magicAuth()
+  const session = await getSessionAuth()
   const { data, error } = await getSupabase().functions.invoke<
     SeasonPassStatus & { ok: boolean; error?: string }
   >('season-pass', {
-    body: { issuer, action: 'status', slug },
-    headers: { Authorization: `Bearer ${did}` },
+    body: { issuer: session.issuer, action: 'status', slug },
+    headers: { Authorization: session.authorization },
   })
   if (error) {
     throw new Error(

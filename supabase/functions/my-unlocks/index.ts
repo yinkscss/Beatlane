@@ -1,15 +1,12 @@
 /**
- * G12: List unlocks for a Magic user (service role — no Supabase JWT).
- * verify_jwt OFF — auth is Magic DID.
+ * G12: List unlocks for a session user (service role — no Supabase JWT).
+ * verify_jwt OFF — auth is Magic DID or MiniPay wallet.
  */
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   issuer?: string
@@ -24,19 +21,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
     const body = (await req.json()) as Body
-    const issuer = body.issuer?.trim()
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
-
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
+    const session = await resolveSessionAuth(req, body.issuer)
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -45,7 +31,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const admin = createClient(supabaseUrl, serviceKey)
-    const userId = await profileIdFromIssuer(issuer)
+    const userId = await profileIdFromIssuer(session.issuer)
 
     const { data, error } = await admin
       .from('unlocks')

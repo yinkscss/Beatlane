@@ -1,7 +1,7 @@
 /**
  * G16 Blitz tournaments — lobby, enter receipt hook, submit run, rank, payout stub.
  *
- * Auth: Magic DID (verify_jwt OFF).
+ * Auth: Magic DID or MiniPay wallet (verify_jwt OFF).
  * Entry fee money path: Celo Mainnet cUSD via record-purchase (sku tournament_entry_<id>).
  * Optional TournamentVault (Celo Sepolia) address is informational / on-chain stub.
  * Rake: 15% (Q19). Helpers off — enforced client-side via helpersDisabled('blitz').
@@ -9,11 +9,8 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts'
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 import { handleCors, jsonResponse } from '../_shared/cors.ts'
-import {
-  assertDidClaim,
-  parseDidClaim,
-  profileIdFromIssuer,
-} from '../_shared/magicProfile.ts'
+import { profileIdFromIssuer } from '../_shared/magicProfile.ts'
+import { resolveSessionAuth } from '../_shared/sessionAuth.ts'
 
 type Body = {
   issuer?: string
@@ -49,21 +46,10 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ ok: false, error: 'Missing DID token' }, 401, req)
-    }
-    const didToken = authHeader.slice('Bearer '.length).trim()
     const body = (await req.json()) as Body
-    const issuer = body.issuer?.trim()
     const action = body.action ?? 'lobby'
-
-    if (!issuer) {
-      return jsonResponse({ ok: false, error: 'Missing issuer' }, 400, req)
-    }
-
-    const claim = parseDidClaim(didToken)
-    assertDidClaim(claim, issuer)
+    const session = await resolveSessionAuth(req, body.issuer)
+    const issuer = session.issuer
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -75,7 +61,11 @@ Deno.serve(async (req: Request) => {
     const userId = await profileIdFromIssuer(issuer)
 
     await admin.from('profiles').upsert(
-      { id: userId, magic_issuer: issuer },
+      {
+        id: userId,
+        magic_issuer: issuer,
+        wallet_address: session.walletAddress,
+      },
       { onConflict: 'id' },
     )
 

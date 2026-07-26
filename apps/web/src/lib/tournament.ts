@@ -7,7 +7,7 @@
  */
 
 import { isTreasuryConfigured, transferCusdToTreasury } from '@/lib/celo'
-import { getMagic } from '@/lib/magic'
+import { getSessionAuth } from '@/lib/sessionAuth'
 import { recordPurchaseReceipt } from '@/lib/purchases'
 import { assertSpendAllowed, recordSpend } from '@/lib/spendCaps'
 import {
@@ -102,27 +102,19 @@ export type TournamentRank = {
   you: TournamentBoardEntry | null
 }
 
-async function magicAuth(): Promise<{ issuer: string; did: string }> {
-  const magic = getMagic()
-  const info = await magic.user.getInfo()
-  if (!info.issuer) throw new Error('Magic session missing issuer')
-  const did = await magic.user.getIdToken()
-  return { issuer: info.issuer, did }
-}
-
 async function invokeCup<T>(
   body: Record<string, unknown>,
 ): Promise<T & { ok: boolean; error?: string }> {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase is not configured')
   }
-  const { issuer, did } = await magicAuth()
+  const session = await getSessionAuth()
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<
     T & { ok: boolean; error?: string }
   >('tournament-cup', {
-    body: { issuer, ...body },
-    headers: { Authorization: `Bearer ${did}` },
+    body: { issuer: session.issuer, ...body },
+    headers: { Authorization: session.authorization },
   })
   if (error) {
     throw new Error(

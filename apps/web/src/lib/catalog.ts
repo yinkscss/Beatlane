@@ -2,7 +2,7 @@
  * G12 catalog: packs, track groups, unlock SKUs, signed asset resolve.
  */
 
-import { getMagic } from '@/lib/magic'
+import { getSessionAuth, trySessionAuth } from '@/lib/sessionAuth'
 import {
   edgeFunctionErrorMessage,
   getSupabase,
@@ -130,18 +130,15 @@ export function isTrackUnlocked(
 
 export async function fetchMyUnlocks(): Promise<UnlockRow[]> {
   if (!isSupabaseConfigured()) throw new Error('Supabase is not configured')
-  const magic = getMagic()
-  const info = await magic.user.getInfo()
-  if (!info.issuer) throw new Error('Magic session missing issuer')
-  const did = await magic.user.getIdToken()
+  const session = await getSessionAuth()
 
   const { data, error } = await getSupabase().functions.invoke<{
     ok: boolean
     unlocks?: UnlockRow[]
     error?: string
   }>('my-unlocks', {
-    body: { issuer: info.issuer },
-    headers: { Authorization: `Bearer ${did}` },
+    body: { issuer: session.issuer },
+    headers: { Authorization: session.authorization },
   })
 
   if (error) {
@@ -158,19 +155,10 @@ export async function resolveChartAssets(
 
   const headers: Record<string, string> = {}
   let issuer: string | undefined
-  try {
-    const magic = getMagic()
-    const loggedIn = await magic.user.isLoggedIn()
-    if (loggedIn) {
-      const info = await magic.user.getInfo()
-      if (info.issuer) {
-        issuer = info.issuer
-        const did = await magic.user.getIdToken()
-        headers.Authorization = `Bearer ${did}`
-      }
-    }
-  } catch {
-    /* public charts may resolve without Magic */
+  const session = await trySessionAuth()
+  if (session) {
+    issuer = session.issuer
+    headers.Authorization = session.authorization
   }
 
   const { data, error } = await getSupabase().functions.invoke<{

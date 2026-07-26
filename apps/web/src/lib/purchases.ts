@@ -3,7 +3,7 @@
  * App writes + chain receipt (tx hash) — stack lock.
  */
 
-import { getMagic } from '@/lib/magic'
+import { getSessionAuth } from '@/lib/sessionAuth'
 import {
   edgeFunctionErrorMessage,
   getSupabase,
@@ -75,24 +75,21 @@ export async function recordPurchaseReceipt(
     throw new Error('Supabase is not configured')
   }
 
-  const magic = getMagic()
-  const info = await magic.user.getInfo()
-  if (!info.issuer) throw new Error('Magic session missing issuer')
-  const did = await magic.user.getIdToken()
+  const session = await getSessionAuth()
 
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<RecordResponse>(
     'record-purchase',
     {
       body: {
-        issuer: info.issuer,
+        issuer: session.issuer,
         sku: input.sku,
         amountCusd: input.amountCusd,
         txHash: input.txHash,
         metadata: input.metadata ?? {},
       },
       headers: {
-        Authorization: `Bearer ${did}`,
+        Authorization: session.authorization,
       },
     },
   )

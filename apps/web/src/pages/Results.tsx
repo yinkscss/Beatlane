@@ -250,8 +250,8 @@ export default function ResultsPage() {
             </div>
             {error ? <p className={styles.err}>{error}</p> : null}
             <p className={styles.hint}>
-              G15: Boast attestation on Celo Sepolia (testnet; Alfajores sunset). Continues stay
-              Mainnet. Needs Sepolia cUSD + CELO gas.
+              G15: Boast attestation on Celo Sepolia (testnet; Alfajores sunset).
+              Continues stay Mainnet USDm. Boast needs Sepolia test USDm.
             </p>
           </div>
         </div>
