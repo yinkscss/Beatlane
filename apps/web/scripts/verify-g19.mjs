@@ -50,13 +50,32 @@ for (const rel of [
   else fail(`${rel} missing`)
 }
 
-// 3. Source markers
+// 3. Source markers — MiniPay CTA removed; assert absence
+const minipayGone = [
+  'src/components/MiniPayCta.tsx',
+  'src/pages/Home.tsx',
+  'src/pages/Wallet.tsx',
+]
+for (const rel of minipayGone) {
+  const p = join(webRoot, rel)
+  if (rel.endsWith('MiniPayCta.tsx')) {
+    if (!existsSync(p)) ok(`${rel} removed`)
+    else fail(`${rel} still exists (MiniPay CTA should be gone)`)
+    continue
+  }
+  const src = existsSync(p) ? readFileSync(p, 'utf8') : ''
+  if (!src.includes('MiniPayCta') && !src.includes('Play with MiniPay')) {
+    ok(`${rel} has no MiniPay CTA`)
+  } else {
+    fail(`${rel} still references MiniPay CTA`)
+  }
+}
+
 const markers = [
-  ['src/components/MiniPayCta.tsx', 'Play with MiniPay'],
   ['src/lib/spendCaps.ts', 'DAILY_CONTINUE_CAP_CUSD'],
   ['src/lib/mutePref.ts', 'beatlane:muted'],
-  ['src/pages/Home.tsx', 'MiniPayCta'],
-  ['src/pages/Wallet.tsx', 'MiniPayCta'],
+  ['src/game/proceduralGenerator.ts', 'pullNotes'],
+  ['src/audio/localTracks.ts', 'dirty-mastered'],
 ]
 for (const [rel, needle] of markers) {
   const p = join(webRoot, rel)

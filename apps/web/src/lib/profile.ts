@@ -24,14 +24,10 @@ type UpsertResponse = {
  * Magic DID → Edge Function → profiles upsert (service role).
  * See supabase/functions/magic-profile.
  */
-export async function upsertMagicProfile(
+async function invokeUpsertOnce(
   identity: MagicIdentity,
   didToken: string,
 ): Promise<ProfileRow> {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase is not configured')
-  }
-
   const supabase = getSupabase()
   const { data, error } = await supabase.functions.invoke<UpsertResponse>(
     'magic-profile',
@@ -55,4 +51,26 @@ export async function upsertMagicProfile(
     throw new Error(data?.error ?? 'Profile upsert failed')
   }
   return data.profile
+}
+
+export async function upsertMagicProfile(
+  identity: MagicIdentity,
+  didToken: string,
+): Promise<ProfileRow> {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured')
+  }
+
+  // One retry for Edge cold starts / transient 5xx.
+  try {
+    return await invokeUpsertOnce(identity, didToken)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : ''
+    const retryable =
+      /fetch|network|cold|timeout|5\d\d|Failed to fetch/i.test(msg) ||
+      msg === 'Profile upsert failed'
+    if (!retryable) throw err
+    await new Promise((r) => setTimeout(r, 450))
+    return invokeUpsertOnce(identity, didToken)
+  }
 }

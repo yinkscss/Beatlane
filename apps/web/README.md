@@ -88,7 +88,7 @@ node apps/web/scripts/verify-g18.mjs
 ### Launch polish (G19)
 
 - Vercel: repo-root `vercel.json` → build `apps/web`
-- MiniPay stub CTA on Home + Wallet (`src/components/MiniPayCta.tsx`, Q21)
+- MiniPay CTA removed (Magic-only login; Celopedia retained for a future deep-link)
 - Soft spend caps (`src/lib/spendCaps.ts`) + mute persistence (`src/lib/mutePref.ts`)
 - Empty/error states on Music / Pass / Results / boards
 - Deploy helper (no secret printing): `node apps/web/scripts/deploy-g19-vercel.mjs`

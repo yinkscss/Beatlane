@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { audioRuntime } from '@/audio/runtime'
+import { DEFAULT_LOCAL_TRACK_ID } from '@/audio/localTracks'
 import type { PlayMode } from '@/game/classicPlayfield'
 import { readMutedDefault, writeMutedPref } from '@/lib/mutePref'
 
@@ -32,11 +33,14 @@ type AppState = {
   ready: boolean
   muted: boolean
   playMode: PlayMode
+  /** Local looping bed id for Classic endless. */
+  classicTrackId: string
   bestCombo: number
   lastRun: LastRun | null
   setMuted: (muted: boolean) => void
   toggleMute: () => void
   setPlayMode: (mode: PlayMode) => void
+  setClassicTrackId: (id: string) => void
   setLastRun: (run: LastRun) => void
 }
 
@@ -45,6 +49,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   ready: true,
   muted: initialMuted,
   playMode: 'classic',
+  classicTrackId: DEFAULT_LOCAL_TRACK_ID,
   bestCombo: 0,
   lastRun: null,
   setMuted: (muted) => {
@@ -59,6 +64,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ muted: next })
   },
   setPlayMode: (mode) => set({ playMode: mode }),
+  setClassicTrackId: (classicTrackId) => set({ classicTrackId }),
   setLastRun: (run) =>
     set((s) => ({
       lastRun: run,
