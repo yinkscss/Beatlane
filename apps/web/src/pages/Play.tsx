@@ -340,7 +340,7 @@ export default function PlayPage() {
     const game = new ClassicPlayfield({
       onHit: (grade: HitGrade, nextScore, nextCombo) => {
         if (cancelled) return
-        audioRuntime.playSfx(grade === 'perfect' ? 'perfect' : 'great')
+        // No hit tones — bed music is already playing (classic beds / chart audio).
         setScore(nextScore)
         setCombo(nextCombo)
         if (nextCombo > maxComboRef.current) maxComboRef.current = nextCombo
