@@ -88,6 +88,20 @@ describe('proceduralGenerator', () => {
     expect(() => assertLegalNotes(notes)).not.toThrow()
   })
 
+  it('does not blank the intro when only late onsets are globally strong', () => {
+    // Mimics real beds: verse peaks ~0.1–0.3, drop peaks ~1.0 after global p95 norm.
+    const onsets: Onset[] = []
+    for (let t = 0.4; t < 20; t += 0.28) {
+      onsets.push({ t, strength: 0.14 + (t % 1.1) * 0.05 })
+    }
+    onsets.push({ t: 22, strength: 1 })
+    const state = createGeneratorState(ENDLESS_BASE, 11, grid)
+    setGeneratorOnsets(state, onsets, 40)
+    const notes = pullNotes(state, 4, 1)
+    expect(notes.length).toBeGreaterThanOrEqual(2)
+    expect(notes[0]!.t).toBeLessThan(1.2)
+  })
+
   it('can emit simultaneous doubles (exactly 2 lanes) when aggressive', () => {
     const state = createGeneratorState(profileForLevel(8), 1, grid)
     setGeneratorOnsets(state, syntheticOnsets(20, 0.3), 20)

@@ -242,9 +242,14 @@ function minGapChartSec(state: GeneratorState, speedMult: number): number {
   return Math.max(0.18, (state.profile.minGapBeats * beatSec) / Math.max(1, speedMult))
 }
 
-/** Strength threshold lowers as speed rises so denser tracks feel busier. */
+/**
+ * Strength threshold for emitting a tile.
+ * Onsets are normalized to the track's global p95, so quiet verses sit ~0.1–0.3
+ * while drops hit ~1.0. A high floor (e.g. 0.55) blanks the whole intro —
+ * keep this low; the gap floor already caps unplayable density.
+ */
 function strengthThreshold(speedMult: number): number {
-  return Math.max(0.22, 0.55 - (speedMult - 1) * 0.12)
+  return Math.max(0.08, 0.14 - (speedMult - 1) * 0.03)
 }
 
 function emitSingle(
@@ -275,6 +280,9 @@ function pullNotesOnsets(
   const gapFloor = minGapChartSec(state, speedMult)
   const thresh = strengthThreshold(speedMult)
   const maxLoops = 64 // safety: don't infinite-loop empty/sparse tracks
+  /** Force a single after this many consecutive strength skips — never go blank. */
+  const maxStrengthSkips = 3
+  let strengthSkips = 0
 
   let guard = 0
   while (guard++ < 5000) {
@@ -309,8 +317,11 @@ function pullNotesOnsets(
       continue
     }
     if (onset.strength < thresh && state.zigLeft <= 0) {
-      continue
+      strengthSkips += 1
+      if (strengthSkips < maxStrengthSkips) continue
+      // Fall through: emit a single so quiet stretches still have tiles.
     }
+    strengthSkips = 0
 
     // Zig-zag continuation consumes consecutive accepted onsets.
     if (state.zigLeft > 0) {
