@@ -4,6 +4,7 @@ import { AudioRuntime } from '@/audio/runtime'
 type FakeSource = {
   buffer: AudioBuffer | null
   loop: boolean
+  playbackRate: { value: number }
   connect: ReturnType<typeof vi.fn>
   start: ReturnType<typeof vi.fn>
   stop: ReturnType<typeof vi.fn>
@@ -32,6 +33,7 @@ function installWebAudioMock(opts: { loadDelayMs?: number } = {}) {
       const src: FakeSource = {
         buffer: null,
         loop: false,
+        playbackRate: { value: 1 },
         connect: vi.fn(),
         start: vi.fn(() => {
           currentTime += 0.01

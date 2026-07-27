@@ -4,7 +4,10 @@
  * No Howler / Tone / extra audio libs.
  */
 
+import { detectOnsets, type Onset } from '@/audio/onsets'
+
 export type SfxId = 'perfect' | 'great' | 'miss' | 'ui'
+export type { Onset }
 
 const BED_URL = '/audio/bed.wav'
 
@@ -38,6 +41,14 @@ export class AudioRuntime {
   private loadPromise: Promise<void> | null = null
   /** Serialize starts so overlapping kickBed/startMusic cannot stopBed mid-flight. */
   private startGate: Promise<void> = Promise.resolve()
+  /** Current playbackRate on the bed (Classic loop doubling). */
+  private musicRate = 1
+  /** File-position anchor for rate-aware playhead math. */
+  private fileAnchorSec = 0
+  /** AudioContext.currentTime when fileAnchorSec was last set. */
+  private ctxAnchorTime: number | null = null
+  private onsetCache = new Map<string, Onset[]>()
+  private onsetPromises = new Map<string, Promise<Onset[]>>()
 
   /** Lazily create the shared graph. Does not resume a suspended context. */
   ensureGraph(): AudioContext {
@@ -96,17 +107,68 @@ export class AudioRuntime {
 
   /**
    * Current playhead inside the looping bed file (seconds), or null if idle.
-   * Accounts for start offset (revive) and wrap on loop.
+   * Rate-aware: filePos = fileAnchor + (ctxNow - ctxAnchor) * rate, then modulo.
    */
   getMusicFilePositionSec(): number | null {
-    if (this.musicStartTime == null || !this.ctx) return null
+    if (this.musicStartTime == null || !this.ctx || this.ctxAnchorTime == null) {
+      return null
+    }
     const elapsed =
-      this.ctx.currentTime - this.musicStartTime + this.musicOffsetSec
+      (this.ctx.currentTime - this.ctxAnchorTime) * this.musicRate
+    const pos = this.fileAnchorSec + elapsed
     const dur = this.musicDurationSec
     if (dur != null && dur > 0) {
-      return ((elapsed % dur) + dur) % dur
+      return ((pos % dur) + dur) % dur
     }
-    return Math.max(0, elapsed)
+    return Math.max(0, pos)
+  }
+
+  getMusicRate(): number {
+    return this.musicRate
+  }
+
+  /**
+   * Instantly set bed playbackRate (no ramp — ramps desync onset-locked tiles).
+   * Re-anchors the file playhead so getMusicFilePositionSec stays correct.
+   */
+  setMusicRate(rate: number): void {
+    const r = Math.max(0.05, Math.min(8, rate))
+    if (!this.bedSource || !this.ctx || this.ctxAnchorTime == null) {
+      this.musicRate = r
+      return
+    }
+    const pos = this.getMusicFilePositionSec() ?? this.fileAnchorSec
+    this.fileAnchorSec = pos
+    this.ctxAnchorTime = this.ctx.currentTime
+    this.musicRate = r
+    try {
+      this.bedSource.playbackRate.value = r
+    } catch {
+      /* source may have ended */
+    }
+  }
+
+  /**
+   * Analyze (and cache) onsets for a music URL. Reuses the decode cache.
+   * Returns [] when the track is too sparse — callers fall back to beat grid.
+   */
+  async getOnsets(url: string): Promise<Onset[]> {
+    const hit = this.onsetCache.get(url)
+    if (hit) return hit
+    const inflight = this.onsetPromises.get(url)
+    if (inflight) return inflight
+    const p = (async () => {
+      const buf = await this.loadBuffer(url)
+      const onsets = await detectOnsets(buf)
+      this.onsetCache.set(url, onsets)
+      this.onsetPromises.delete(url)
+      return onsets
+    })().catch((err) => {
+      this.onsetPromises.delete(url)
+      throw err
+    })
+    this.onsetPromises.set(url, p)
+    return p
   }
 
   /** Resume AudioContext only — safe to call from a user gesture. */
@@ -218,6 +280,7 @@ export class AudioRuntime {
     const src = ctx.createBufferSource()
     src.buffer = buf
     src.loop = loop
+    src.playbackRate.value = 1
     src.connect(music)
     const when = ctx.currentTime
     const offset =
@@ -228,12 +291,21 @@ export class AudioRuntime {
     this.musicOffsetSec = offset
     this.musicUrl = url
     this.musicDurationSec = buf.duration > 0 ? buf.duration : null
+    this.musicRate = 1
+    this.fileAnchorSec = offset
+    this.ctxAnchorTime = when
     return when
   }
 
   /** Length of the current bed in seconds, or null if not loaded. */
   getMusicDurationSec(): number | null {
     return this.musicDurationSec
+  }
+
+  /** Duration of a decoded (cached) buffer, or null if not yet loaded. */
+  getBufferDurationSec(url: string): number | null {
+    const buf = this.buffers.get(url)
+    return buf && buf.duration > 0 ? buf.duration : null
   }
 
   /**
@@ -263,6 +335,9 @@ export class AudioRuntime {
     this.musicOffsetSec = 0
     this.musicUrl = null
     this.musicDurationSec = null
+    this.musicRate = 1
+    this.fileAnchorSec = 0
+    this.ctxAnchorTime = null
   }
 
   /** Fire-and-forget one-shot through the SFX bus (never stops the bed). */

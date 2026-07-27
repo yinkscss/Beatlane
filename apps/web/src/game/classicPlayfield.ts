@@ -15,6 +15,7 @@ import {
 import { playGlassShatter, type ShatterGrade } from '@/game/glassShatter'
 import { playHitSparkles } from '@/game/hitSparkles'
 import {
+  ENDLESS_BASE,
   LEVEL_UP,
   profileForLevel,
   type DifficultyProfile,
@@ -28,20 +29,30 @@ import {
 } from '@/game/judging'
 import { PLAYFIELD, SCROLL } from '@/game/playfieldTheme'
 import {
+  advanceGeneratorLoop,
   createGeneratorState,
   pullNotes,
+  setGeneratorOnsets,
   syncGeneratorToMusic,
   type BeatGridConfig,
   type GeneratorState,
 } from '@/game/proceduralGenerator'
+import {
+  loopStartChartT,
+  loopsCompletedAt,
+  speedMultForLoop,
+} from '@/game/songLoops'
 import { spawnYForSongTime } from '@/game/spawnPlacement'
 import {
   pickLaneTarget,
   pickTapTarget,
   type TapTargetCandidate,
 } from '@/game/tapTarget'
-import { audioRuntime } from '@/audio/runtime'
+import { audioRuntime, type Onset } from '@/audio/runtime'
 import { SLOW_MO_SCROLL_MULT } from '@/lib/helpers'
+
+/** Chart-time silence after a speed double so on-screen tiles don't rush the hit line. */
+const SPEED_BREATH_SEC = 0.6
 
 /** miss = tile left screen; bomb = Don't Tap; wrong = empty / gap. */
 export type FailReason = 'miss' | 'wrong' | 'bomb'
@@ -113,7 +124,7 @@ export type ClassicPlayfieldHandlers = {
   /** Classic endless: speedMult changed (checkpoint / song level-up). */
   onSpeedMult?: (mult: number) => void
   /** Classic endless: song finished a loop → level stepped up. */
-  onLevelUp?: (level: number, speedMult: number) => void
+  onLevelUp?: (level: number, speedMult: number, loopsCompleted: number) => void
 }
 
 type TileKind =
@@ -222,7 +233,6 @@ export class ClassicPlayfield {
   private endlessProfile: DifficultyProfile | null = null
   private genState: GeneratorState | null = null
   private endlessSeed = 0
-  private lastAnnouncedStar = 0
   /** Bed file position when chart t=0 — seek target for revive sync. */
   private endlessMusicOriginSec = 0
   /** Last beat grid (survives beginRun → resetChartCursor). */
@@ -235,11 +245,19 @@ export class ClassicPlayfield {
   private trackDurationSec = 0
   private endlessLevel = 1
   private loopsCompleted = 0
+  /** Chart time of the next song-loop boundary (rate-aware). */
+  private nextLoopChartT = Infinity
+  /** Suppress note emission until this chart time after a speed double. */
+  private breathUntilChartT = 0
+  /** Cached waveform onsets for Classic endless (re-applied on reset). */
+  private endlessOnsets: Onset[] = []
   private speedTimers: number[] = []
   private bannerTimers: number[] = []
   private iceTimers: number[] = []
   private helperSlowTimers: number[] = []
   private failSongTime: number | null = null
+  /** File playhead at fail — revive seeks here (chart ≠ file after rate changes). */
+  private failFilePosSec: number | null = null
   private shieldUntilMs = 0
   /** G14 Shield helper — one miss per charge (distinct from timed post-revive shield). */
   private shieldCharges = 0
@@ -340,15 +358,32 @@ export class ClassicPlayfield {
     this.endlessLevel = 1
     this.loopsCompleted = 0
     this.trackDurationSec = 0
+    this.nextLoopChartT = Infinity
+    this.breathUntilChartT = 0
+    this.endlessOnsets = []
     const profile = profileForLevel(1)
     this.endlessProfile = profile
-    this.baseHeightsPerSec = profile.startScroll
+    // Pin scroll base so tile speed matches music rate exactly (speedMult × base).
+    this.baseHeightsPerSec = ENDLESS_BASE.startScroll
     this.speedMult = 1
     this.endlessBeatGrid = { ...grid }
     this.endlessMusicOriginSec = grid.musicFilePosSec
     this.genState = createGeneratorState(profile, seed, grid)
     this.chartDone = false
-    this.lastAnnouncedStar = 0
+  }
+
+  /**
+   * Attach waveform onsets (async from Play). Safe to call before or after beginRun;
+   * empty array keeps the BPM-grid fallback.
+   */
+  setEndlessOnsets(onsets: Onset[], fileDurationSec: number): void {
+    if (!this.endless) return
+    this.endlessOnsets = onsets
+    if (fileDurationSec > 1) this.trackDurationSec = fileDurationSec
+    if (this.genState) {
+      setGeneratorOnsets(this.genState, onsets, fileDurationSec)
+    }
+    this.recomputeNextLoopChartT()
   }
 
   /** Phase-align the procedural stream to the live bed playhead. */
@@ -357,6 +392,7 @@ export class ClassicPlayfield {
     this.endlessBeatGrid = { ...grid }
     this.endlessMusicOriginSec = grid.musicFilePosSec
     syncGeneratorToMusic(this.genState, grid, minChartT)
+    this.recomputeNextLoopChartT()
   }
 
   /** File playhead that corresponded to chart t=0 (endless beat sync). */
@@ -369,9 +405,21 @@ export class ClassicPlayfield {
     return this.failSongTime
   }
 
+  /** File playhead at fail — preferred revive seek under variable playbackRate. */
+  getFailFilePosSec(): number | null {
+    return this.failFilePosSec
+  }
+
+  getLoopsCompleted(): number {
+    return this.loopsCompleted
+  }
+
   /** Wire decoded bed length so level-ups fire at each song finish. */
   setTrackDurationSec(sec: number): void {
-    if (sec > 1) this.trackDurationSec = sec
+    if (sec > 1) {
+      this.trackDurationSec = sec
+      this.recomputeNextLoopChartT()
+    }
   }
 
   isEndless(): boolean {
@@ -380,6 +428,20 @@ export class ClassicPlayfield {
 
   getEndlessLevel(): number {
     return this.endlessLevel
+  }
+
+  private recomputeNextLoopChartT(): void {
+    if (!this.endless || this.trackDurationSec <= 1) {
+      this.nextLoopChartT = Infinity
+      return
+    }
+    const maxSpeedMult =
+      this.endlessProfile?.maxSpeedMult ?? ENDLESS_BASE.maxSpeedMult
+    this.nextLoopChartT = loopStartChartT(this.loopsCompleted + 1, {
+      durationSec: this.trackDurationSec,
+      originSec: this.endlessMusicOriginSec,
+      maxSpeedMult,
+    })
   }
 
   async mount(host: HTMLElement): Promise<void> {
@@ -493,6 +555,7 @@ export class ClassicPlayfield {
     this.score = 0
     this.combo = 0
     this.failSongTime = null
+    this.failFilePosSec = null
     this.shieldUntilMs = 0
     this.shieldCharges = 0
     this.iceMult = 1
@@ -543,6 +606,7 @@ export class ClassicPlayfield {
     this.running = true
     this.combo = 0
     this.failSongTime = null
+    this.failFilePosSec = null
     this.shieldUntilMs =
       shieldMs > 0 ? performance.now() + shieldMs : 0
   }
@@ -626,6 +690,7 @@ export class ClassicPlayfield {
     if (this.endless) {
       this.endlessLevel = 1
       this.loopsCompleted = 0
+      this.breathUntilChartT = 0
       const profile = profileForLevel(1)
       this.endlessProfile = profile
       this.genState = createGeneratorState(
@@ -633,9 +698,17 @@ export class ClassicPlayfield {
         this.endlessSeed || Date.now(),
         this.endlessBeatGrid,
       )
+      if (this.endlessOnsets.length && this.trackDurationSec > 1) {
+        setGeneratorOnsets(
+          this.genState,
+          this.endlessOnsets,
+          this.trackDurationSec,
+        )
+      }
       this.speedMult = 1
-      this.lastAnnouncedStar = 0
-      this.baseHeightsPerSec = profile.startScroll
+      this.baseHeightsPerSec = ENDLESS_BASE.startScroll
+      audioRuntime.setMusicRate(1)
+      this.recomputeNextLoopChartT()
     }
   }
 
@@ -1237,54 +1310,98 @@ export class ClassicPlayfield {
 
     if (this.trackDurationSec <= 1) {
       const dur = audioRuntime.getMusicDurationSec()
-      if (dur != null && dur > 1) this.trackDurationSec = dur
-    }
-    if (this.trackDurationSec > 1) {
-      const loops = Math.floor(songTime / this.trackDurationSec)
-      while (
-        this.loopsCompleted < loops &&
-        this.endlessLevel < LEVEL_UP.maxLevel
-      ) {
-        this.advanceEndlessLevel()
+      if (dur != null && dur > 1) {
+        this.trackDurationSec = dur
+        this.recomputeNextLoopChartT()
       }
     }
 
+    if (this.trackDurationSec > 1) {
+      const targetLoops = loopsCompletedAt(songTime, {
+        durationSec: this.trackDurationSec,
+        originSec: this.endlessMusicOriginSec,
+        maxSpeedMult: profile.maxSpeedMult,
+        maxLevel: LEVEL_UP.maxLevel,
+      })
+      while (
+        this.loopsCompleted < targetLoops &&
+        this.endlessLevel < LEVEL_UP.maxLevel
+      ) {
+        this.advanceEndlessLevel(songTime)
+      }
+    }
+
+    // Breath window: don't spawn into a screen that is about to rush 2×.
+    if (songTime < this.breathUntilChartT) return
+
     const lead = this.travelTimeSec() + 0.35
-    const due = pullNotes(gen, songTime + lead, this.speedMult)
+    // Also don't schedule notes that would land inside the upcoming breath.
+    const until = Math.min(
+      songTime + lead,
+      this.nextLoopChartT + SPEED_BREATH_SEC,
+    )
+    if (until <= songTime) return
+
+    const due = pullNotes(gen, until, this.speedMult)
     for (const note of due) {
       if (note.t + 0.05 < songTime) continue
+      if (note.t < this.breathUntilChartT) continue
       this.spawnNote(note, songTime)
     }
   }
 
-  private advanceEndlessLevel(): void {
+  private advanceEndlessLevel(songTime: number): void {
     this.loopsCompleted += 1
     this.endlessLevel = Math.min(LEVEL_UP.maxLevel, this.endlessLevel + 1)
     const next = profileForLevel(this.endlessLevel)
     this.endlessProfile = next
-    this.baseHeightsPerSec = next.startScroll
+    this.baseHeightsPerSec = ENDLESS_BASE.startScroll
     if (this.genState) {
       this.genState.profile = next
     }
-    const prev = this.speedMult
-    this.speedMult = Math.min(
+
+    this.speedMult = speedMultForLoop(
+      this.loopsCompleted,
       next.maxSpeedMult,
-      this.speedMult + LEVEL_UP.speedBump,
     )
+    audioRuntime.setMusicRate(this.speedMult)
+
+    // Breath + generator re-anchor at the loop boundary.
+    const boundary = loopStartChartT(this.loopsCompleted, {
+      durationSec: this.trackDurationSec,
+      originSec: this.endlessMusicOriginSec,
+      maxSpeedMult: next.maxSpeedMult,
+    })
+    this.breathUntilChartT = Math.max(songTime, boundary) + SPEED_BREATH_SEC
+    if (this.genState) {
+      advanceGeneratorLoop(this.genState, this.loopsCompleted, boundary)
+      // Kill accumulated drift: snap to measured file playhead.
+      const filePos = audioRuntime.getMusicFilePositionSec()
+      if (filePos != null) {
+        syncGeneratorToMusic(
+          this.genState,
+          {
+            ...this.endlessBeatGrid,
+            musicFilePosSec: filePos,
+          },
+          this.breathUntilChartT,
+        )
+      }
+    }
+    this.recomputeNextLoopChartT()
+
     this.handlers.onSpeedMult?.(this.speedMult)
-    this.handlers.onLevelUp?.(this.endlessLevel, this.speedMult)
+    this.handlers.onLevelUp?.(
+      this.endlessLevel,
+      this.speedMult,
+      this.loopsCompleted,
+    )
 
     this.handlers.onSpeedUp?.({ phase: 'banner' })
     const id = window.setTimeout(() => {
       this.handlers.onSpeedUp?.({ phase: 'clear' })
     }, 900)
     this.speedTimers.push(id)
-
-    for (const cp of [1.2, 1.5, 2.0] as const) {
-      if (prev < cp && this.speedMult >= cp && this.lastAnnouncedStar < cp) {
-        this.lastAnnouncedStar = cp
-      }
-    }
   }
 
   /** Fraction of hold consumed as the tile scrolls through the hit band. */
@@ -1843,6 +1960,7 @@ export class ClassicPlayfield {
     }
     const songAtFail = this.songTimeSec()
     this.failSongTime = songAtFail
+    this.failFilePosSec = audioRuntime.getMusicFilePositionSec()
     this.failed = true
     this.running = false
     this.clearSpeedTimers()

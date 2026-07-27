@@ -25,9 +25,9 @@ import {
 import { ENDLESS_BASE } from '@/game/difficultyProfiles'
 import {
   railFillPct,
-  railFillPctFromSpeed,
+  railFillPctFromLoops,
   railMarks,
-  railMarksFromSpeed,
+  railMarksFromLoops,
   type JudgeGrade,
 } from '@/game/judging'
 import { resolveChartAssets } from '@/lib/catalog'
@@ -204,8 +204,8 @@ export default function PlayPage() {
   const [tournamentId, setTournamentId] = useState<string | null>(null)
   const [runPhase, setRunPhase] = useState<RunPhase>('loading')
   const [startCountdown, setStartCountdown] = useState<number | null>(null)
-  const [speedMultUi, setSpeedMultUi] = useState(1)
   const [endlessLevelUi, setEndlessLevelUi] = useState(1)
+  const [loopsCompletedUi, setLoopsCompletedUi] = useState(0)
   const speedAtFailRef = useRef(1)
   const blitzTickRef = useRef<number | null>(null)
   const startCountdownTimerRef = useRef<number | null>(null)
@@ -326,8 +326,8 @@ export default function PlayPage() {
     setBlitzTimedOut(false)
     blitzEndedRef.current = false
     speedAtFailRef.current = 1
-    setSpeedMultUi(1)
     setEndlessLevelUi(1)
+    setLoopsCompletedUi(0)
     if (blitzTickRef.current) {
       window.clearInterval(blitzTickRef.current)
       blitzTickRef.current = null
@@ -411,14 +411,10 @@ export default function PlayPage() {
         if (cancelled) return
         if (ev.phase === 'reverse') setReverseUi(ev.active)
       },
-      onSpeedMult: (mult) => {
-        if (cancelled) return
-        setSpeedMultUi(mult)
-      },
-      onLevelUp: (level, mult) => {
+      onLevelUp: (level, _mult, loops) => {
         if (cancelled) return
         setEndlessLevelUi(level)
-        setSpeedMultUi(mult)
+        setLoopsCompletedUi(loops)
       },
       onChartComplete: (nextScore, nextCombo) => {
         if (cancelled) return
@@ -608,6 +604,21 @@ export default function PlayPage() {
           })
           game.setChart(chart)
           setChartMeta(chart)
+          // Warm decode + analyze onsets (falls back to BPM grid if sparse / late).
+          void audioRuntime
+            .getOnsets(track.url)
+            .then((onsets) => {
+              if (cancelled) return
+              const dur =
+                audioRuntime.getBufferDurationSec(track.url) ??
+                audioRuntime.getMusicDurationSec() ??
+                0
+              game.setEndlessOnsets(onsets, dur)
+              if (dur > 1) game.setTrackDurationSec(dur)
+            })
+            .catch((err) => {
+              console.error('Onset analysis failed; using beat grid', err)
+            })
         } else {
           // Daily always uses catalog Storage charts (never local samples)
           const sample =
@@ -829,8 +840,9 @@ export default function PlayPage() {
       const shieldMs = SECOND_CHANCE_SHIELD_DEFAULT_ON
         ? SECOND_CHANCE_SHIELD_MS
         : 0
-      // Capture before revive() clears failSongTime.
+      // Capture before revive() clears fail markers.
       const resumeAt = game.getFailSongTime() ?? 0
+      const failFilePos = classicEndless ? game.getFailFilePosSec() : null
       const origin = classicEndless ? game.getEndlessMusicOriginSec() : 0
       game.revive({ shieldMs })
       const speedAfter = game.getSpeedMult()
@@ -850,10 +862,13 @@ export default function PlayPage() {
       setObstacleUi(null)
 
       bedArmedRef.current = true
-      // Resume bed at the file position that matches chart time so beats
-      // stay locked after Second Chance (chart clock continues from fail).
+      // Resume bed at the file playhead captured at fail (chart ≠ file once
+      // playbackRate has doubled). Fall back to origin+resumeAt at 1× only.
       const dur = audioRuntime.getMusicDurationSec()
-      let offsetSec = Math.max(0, origin + resumeAt)
+      let offsetSec =
+        failFilePos != null
+          ? failFilePos
+          : Math.max(0, origin + resumeAt)
       if (dur != null && dur > 0) {
         offsetSec = ((offsetSec % dur) + dur) % dur
       }
@@ -864,9 +879,15 @@ export default function PlayPage() {
             offsetSec: classicEndless ? offsetSec : undefined,
           })
         : audioRuntime.startBed({ restart: true })
-      void restartMusic.catch((err) => {
-        console.error('Music restart failed', err)
-      })
+      void restartMusic
+        .then(() => {
+          if (classicEndless) {
+            audioRuntime.setMusicRate(game.getSpeedMult())
+          }
+        })
+        .catch((err) => {
+          console.error('Music restart failed', err)
+        })
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Second Chance payment failed'
@@ -940,10 +961,10 @@ export default function PlayPage() {
   }
 
   const fill = classicEndless
-    ? railFillPctFromSpeed(speedMultUi)
+    ? railFillPctFromLoops(loopsCompletedUi)
     : railFillPct(combo)
   const marks = classicEndless
-    ? railMarksFromSpeed(speedMultUi)
+    ? railMarksFromLoops(loopsCompletedUi)
     : railMarks(combo)
   const judgeLabel =
     judge === 'perfect'

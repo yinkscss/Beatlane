@@ -120,10 +120,39 @@ export function railMarks(combo: number): RailMark[] {
   ]
 }
 
-/** Classic endless: stars at speed checkpoints 1.2× / 1.5× / 2×. */
+/**
+ * Classic endless star rail — driven by completed song loops.
+ * Stars at loops 1/2/3; crowns at 4/5/6. (Speed doubles each loop, so the
+ * old 1.2×/1.5×/2.0× checkpoints would all light at once on the first finish.)
+ */
+export const LOOP_STAR_AT = [1, 2, 3] as const
+export const LOOP_CROWN_AT = [4, 5, 6] as const
+
+/** @deprecated Prefer LOOP_STAR_AT / railMarksFromLoops — kept for non-Classic callers. */
 export const SPEED_STAR_AT = [1.2, 1.5, 2.0] as const
+/** @deprecated Prefer LOOP_CROWN_AT. */
 export const SPEED_CROWN_AT = [2.2, 2.5, 2.8] as const
 
+export function railFillPctFromLoops(loopsCompleted: number): number {
+  const max = LOOP_CROWN_AT[LOOP_CROWN_AT.length - 1]
+  if (loopsCompleted <= 0) return 0
+  return Math.min(100, (loopsCompleted / max) * 100)
+}
+
+export function railMarksFromLoops(loopsCompleted: number): RailMark[] {
+  const fill = railFillPctFromLoops(loopsCompleted)
+  return [
+    { kind: 'star', on: loopsCompleted >= LOOP_STAR_AT[0] },
+    { kind: 'star', on: loopsCompleted >= LOOP_STAR_AT[1] },
+    { kind: 'star', on: loopsCompleted >= LOOP_STAR_AT[2] },
+    { kind: 'flag', on: fill >= 50 || loopsCompleted >= LOOP_STAR_AT[1] },
+    { kind: 'crown', on: loopsCompleted >= LOOP_CROWN_AT[0] },
+    { kind: 'crown', on: loopsCompleted >= LOOP_CROWN_AT[1] },
+    { kind: 'crown', on: loopsCompleted >= LOOP_CROWN_AT[2] },
+  ]
+}
+
+/** Legacy speed-based rail (chart / non-endless modes). */
 export function railFillPctFromSpeed(speedMult: number): number {
   const max = SPEED_CROWN_AT[SPEED_CROWN_AT.length - 1]
   if (speedMult <= 1) return 0

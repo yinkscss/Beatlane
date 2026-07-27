@@ -2,15 +2,15 @@
 
 - Prefers reviewing product and UI as HTML under `docs/` (PRD → design pack → beat pitch → roadmap → prompt pack → stack; hold-tap options via `docs/hold-tap-pitch.html`)
 - During Play: fullscreen (hide bottom nav); no Shield or Slow-mo on the gameplay HUD; game mode/difficulty selection belongs on the pre-play ready screen, not the play HUD
-- Celo + MiniPay is a hard product constraint for consumer games
+- Celo + MiniPay is a hard product constraint for consumer games; use Celopedia (`.agents/skills/celopedia-skill/`) for MiniPay listing / App Fit guidance
 - Player-facing prices use cUSD (stablecoin), not native CELO
 - Hard bans for v1: no ads, no skins shop, no game token; monetize via impulse microspends (continues/helpers) and real content packs
-- Wallet auth: Magic.link for now; MiniPay path when on Celo; auth required before any play (no guest play)
+- Wallet auth: Magic.link and/or MiniPay (isMiniPay auto-connect when in MiniPay; no MiniPay CTA; dual session — not Magic-email-only); auth required before any play (no guest play)
 - Web-only distribution (no app stores / native wrappers in v1)
 - Working title Beatlane (piano-tiles / four-lane); playfield matches classic Piano Tiles look (soft sky→lavender gradient, light lanes), not dark stage chrome
-- Include hard/tricky but fair obstacles (fakes, staggered doubles, lane pressure); never require 3+ simultaneous taps (no triple/four-lane walls); no hold / long_hold tiles; Classic Play is true endless (procedural from tap one — die on miss, not chart end); no Easy/Normal/Hard picker — one game; level steps up each time the song finishes a loop; stars at speed checkpoints (e.g. 1.2x / 1.5x / 2x)
+- Include hard/tricky but fair obstacles (fakes, staggered doubles, zig-zag, lane pressure); never require 3+ simultaneous taps (no triple/four-lane walls); no hold / long_hold tiles; Classic Play is true endless (procedural from tap one — die on miss, not chart end); no Easy/Normal/Hard picker — one game; each song loop doubles music + tile speed (capped ~3.2x); stars at completed loops (1/2/3)
 - Classic miss/hit: taps remain valid while any part of the tile is on-screen; auto-miss only after the tile fully leaves the bottom; Second Chance must not reduce play speed on revive; no visible hit line on the playfield
-- Audio must use Web Audio API only (no Howler, Tone.js, or other extra audio libraries); Play starts via Play button then ~3s countdown, and tiles must begin after countdown without waiting on music
+- Audio must use Web Audio API only (no Howler, Tone.js, or other extra audio libraries); keep classic bed audio light for weak networks (Celopedia PageSpeed); Play starts via Play button then ~3s countdown, and tiles must begin after countdown without waiting on music
 
 ## Learned Workspace Facts
 
@@ -20,7 +20,7 @@
 - Agent build loop: Orchestrator (Grok 4.5) → Implement (Grok 4.5) → Verify-only (Grok 4.5) → Git commit/push (Composer 2.5) per roadmap gate
 - Hit feedback direction (beat-pitch): glass-shatter crack/fade on successful taps (gold-tinted for PERFECT)
 - Locked stack: Vite+React+TS, PixiJS (+ Web Audio), CSS Modules, Zustand, Supabase (Postgres + Edge Functions + Storage), Upstash Redis, Magic.link, Celo+cUSD, Foundry, app writes+chain receipt, HTTP polling, Vercel Hobby, GitHub Actions, Sentry, PostHog
-- Charts: Classic Play direction is procedural endless from tap one (no fixed song length; music uploads not required for difficulty); hand-authored JSON charts remain in-repo for packs/content; no waveform analysis / MIDI pipeline in v1
+- Charts: Classic Play direction is procedural endless from tap one (no fixed song length; music uploads not required for difficulty); classic beds under `apps/web/public/audio/tracks/` (keep compressed); tiles lock to bed onsets (energy-flux detect, BPM-grid fallback); hand-authored JSON charts remain in-repo for packs/content; no MIDI pipeline in v1
 - On-chain/payments: Boast attestation via Foundry on Celo Sepolia (Alfajores sunset); player payments Mainnet cUSD; G16 Blitz cups (15% rake); G17 Season Pass $2.99 cUSD / 4 weeks (continues + track unlocks only)
 - G18 Observability: Sentry (`VITE_SENTRY_DSN` + Edge `SENTRY_DSN`) + PostHog funnels (`start_run`, `miss`, `purchase_continue`, `unlock_pack`); `VITE_POSTHOG_KEY` must be `phc_` (not personal `phx_`); CI job `ci`; live prove via `apps/web/scripts/prove-g18-cloud.mjs`
 - G19 Launch polish shipped: production `https://beatlane.vercel.app`; `vercel.json` (apps/web); no MiniPay CTA — instead `isMiniPay` auto-connect + dual session (MiniPay wallet or Magic email) + USDm fee abstraction (no “fund CELO for gas” UX); soft spend caps + mute persistence; perf budget `docs/g19-perf-budget.md`; Mainnet cutover `docs/mainnet-cutover-checklist.md`; deploy via `apps/web/scripts/deploy-g19-vercel.mjs` (never print secrets); prefer Vercel auto-deploy enabled
